@@ -19,7 +19,7 @@ class OnboardingScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               const PandaSleep(size: 160),
               const SizedBox(height: AppSpacing.lg),
-              Image.asset('assets/images/logo.png', height: 180, fit: BoxFit.contain),
+              Image.asset('assets/images/logo.jpg', height: 180, fit: BoxFit.contain),
               const SizedBox(height: AppSpacing.lg),
               const Text(
                 '白黒つけるほど、仲良くなるSNS。',

@@ -240,6 +240,7 @@ IT：32%
 | DB | PostgreSQL（Supabase） | リレーション強い・合致度計算向き |
 | 認証 | Supabase Auth | DB同一基盤・Google/Appleログイン |
 | インフラ | Supabase + Cloudflare | Auth・DB・Storageを一元管理 |
+| プッシュ通知 | Firebase Cloud Messaging（FCM） | iOS/Android共通・APNs対応 |
 
 ---
 
@@ -261,6 +262,7 @@ IT：32%
 | question_likes | 質問へのいいね |
 | comment_likes | コメントへのいいね |
 | notifications | お知らせ（いいね・コメント・友達・マッチ・グループ） |
+| push_tokens | プッシュ通知用デバイストークン（FCM/APNs） |
 
 ---
 

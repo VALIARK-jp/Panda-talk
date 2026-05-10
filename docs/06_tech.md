@@ -10,6 +10,7 @@
 | DB | PostgreSQL（Supabase） | リレーション強い・合致度計算向き |
 | 認証 | Supabase Auth | DBと同一基盤・Google/Appleログイン対応 |
 | インフラ | Supabase + Cloudflare | Auth・DB・Storageを一元管理 |
+| プッシュ通知 | Firebase Cloud Messaging（FCM） | iOS/Android共通・APNs対応 |
 
 ## クライアント共通API
 
