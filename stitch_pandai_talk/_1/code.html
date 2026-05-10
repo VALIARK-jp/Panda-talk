@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>パンダトーク - 価値観でつながる</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#e2e2e2",
+                        "surface-container-high": "#ebe7e6",
+                        "surface": "#fdf8f8",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#1c1b1b",
+                        "on-secondary-fixed-variant": "#454747",
+                        "inverse-on-surface": "#f4f0ef",
+                        "outline-variant": "#c4c7c7",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "primary": "#000000",
+                        "surface-dim": "#ddd9d8",
+                        "tertiary-container": "#1a1c1c",
+                        "inverse-surface": "#313030",
+                        "secondary": "#5d5f5f",
+                        "surface-variant": "#e5e2e1",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-primary-fixed-variant": "#474646",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#1c1b1b",
+                        "surface-container": "#f1edec",
+                        "secondary-fixed": "#e2e2e2",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "outline": "#747878",
+                        "tertiary": "#000000",
+                        "primary-container": "#1c1b1b",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#e5e2e1",
+                        "on-background": "#1c1b1b",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c6c6c6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-bright": "#fdf8f8",
+                        "on-surface-variant": "#444748",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#616363",
+                        "surface-tint": "#5f5e5e",
+                        "secondary-container": "#dfe0e0",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f7f3f2",
+                        "on-error": "#ffffff",
+                        "background": "#fdf8f8",
+                        "on-primary-container": "#858383",
+                        "on-tertiary-container": "#838484",
+                        "surface-container-highest": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "20px",
+                        "lg": "24px",
+                        "unit": "4px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-bold": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "fontWeight": "500"}],
+                        "headline-lg": ["24px", {"lineHeight": "1.3", "fontWeight": "800"}],
+                        "headline-xl": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-bold": ["12px", {"lineHeight": "1", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .panda-card-active:active { transform: scale(0.96); }
+        .panda-btn-active:active { transform: scale(0.95); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background border-b border-outline-variant dark:border-on-surface-variant flex justify-between items-center w-full px-container-padding h-16 sticky top-0 z-40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary font-headline-xl" data-icon="face">face</span>
+<h1 class="font-headline-xl text-headline-xl font-extrabold text-primary tracking-tight">パンダトーク</h1>
+</div>
+<button class="hover:opacity-80 transition-opacity active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined text-primary text-headline-md" data-icon="notifications">notifications</span>
+</button>
+</header>
+<main class="max-w-2xl mx-auto px-container-padding pt-lg">
+<!-- Header Section -->
+<section class="mb-xl">
+<h2 class="font-headline-lg text-headline-lg mb-sm">価値観でつながる部屋</h2>
+<p class="font-body-sm text-secondary">あなたと相性の良いパンダたちが集まるコミュニティールームです。</p>
+</section>
+<!-- Bento Grid / Group Cards -->
+<div class="grid grid-cols-1 gap-lg">
+<!-- Identical Panda Room -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg panda-card-active transition-all">
+<div class="flex justify-between items-start mb-md">
+<span class="bg-primary text-on-primary font-label-bold text-label-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="group" data-weight="fill" style="font-variation-settings: 'FILL' 1;">group</span>
+                        ほぼ同じパンダ
+                    </span>
+<span class="font-label-bold text-label-bold text-primary">平均合致度 91%</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-xs">ほぼ同じパンダ部屋</h3>
+<p class="font-body-sm text-secondary mb-md">考え方も趣味も驚くほど似ているメンバーが集まっています。居心地の良さは抜群です。</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-3">
+<img class="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant object-cover" data-alt="A portrait of a stylish young adult with a minimalist black and white aesthetic, high contrast lighting, and a neutral expression, representing a community member in a modern UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDg19ZCrbUEhrFnSZOIs5Tmv9uPwEdBQrPjCQqIULKNpuQe_RfN3ddBIdlIbGlsSts10xLtzEBWzAC0IIIlmLXSoA_vfDMwJ5f0I3Op7wY3UfsWgPcrsEd5uixQPn5sYEKy_mBdmp7G4vNcyIOiC1nAfAow3tNMGkleu_jovNkRCotN3S2rFVXJpAffkb8JzQ7dGFfOV7PXXtS4QrFRdzVQePM4pQsMvZ95VFInKCBBNoDgXNDLnWt_TNVRUaingalAc26HMSchMJA"/>
+<img class="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant object-cover" data-alt="A detailed digital avatar of a young woman with a sharp, clean monochrome style, soft studio lighting, focused on a clean professional look for a social app profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_sTsID2AaeiE4zQgV7BPI_hU6wdmk1_ZsGb1GLbs1KiaKVL-u5SEAfOSejfCjgvOcvVf5SuFEfRs06C8Q1W9ayGB7PxytNCE5IQMmmmulgpkgaQh3qONHucEJmuB2pckIZ5YU2e5HRl9L9lgGgnweN2RkJp4RzOGrho5E7UyUn57-uXyTFZB3oAm6oUaSOq8osgVrXHZfBPhtXTT7fBzCUTRLLre5AeQMZjCZuBphq3lwAl8Io4w0mIX9QfCBWYOPZqRKtTqMNw4"/>
+<img class="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant object-cover" data-alt="Close up photography of a cool individual with minimal jewelry, bright studio lighting, black and white color scheme, part of a professional UI avatar group." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzCWfmw4YAwCMop5udE7-cJZzLx2SByc6Z-8MiBM-KnMRSZswVbW3lurvYROiixI9V-AZQ1KTMARgyMAxeVpsVeRirs9979h-L7mOomeLuMbSuP29847R2euk7MR2g9sx2XS4jdX4CD8FSPapHP33boaKeP39ckstQUXYytQrP8LaVkf-xPeYKw8if7IYo31I0xGkWYGOye3NX5XNrS2FJXKxHLasWD6fscLYI5CWHxbv8NFNtC8B706LpLghs9n_QloxykRMlkqE"/>
+<div class="w-10 h-10 rounded-full border-2 border-surface bg-primary text-on-primary flex items-center justify-center font-label-bold text-label-bold">+12</div>
+</div>
+<button class="bg-primary text-on-primary font-label-bold text-label-bold px-lg py-sm rounded-lg panda-btn-active transition-transform">参加する</button>
+</div>
+</div>
+<!-- Friendly Panda Room -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg panda-card-active transition-all">
+<div class="flex justify-between items-start mb-md">
+<span class="bg-surface border-2 border-primary text-primary font-label-bold text-label-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="favorite" data-weight="fill" style="font-variation-settings: 'FILL' 1;">favorite</span>
+                        なかよしパンダ
+                    </span>
+<span class="font-label-bold text-label-bold text-primary">平均合致度 78%</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-xs">深夜のまったり部屋</h3>
+<p class="font-body-sm text-secondary mb-md">少しだけ違う価値観が刺激になる、バランスの取れたグループ。夜の雑談が盛り上がります。</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-3">
+<img class="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant object-cover" data-alt="Stylized portrait of a young professional in a monochrome photography style, sharp focus, bright studio background, modern minimalist fashion." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUaM9R1nZZ5UXXAUkVXRkPRHDeAQmK-9JEwLykYmmSdzveUh0qc77Rsl3eS-O_sOExEepdjkxgqygLeqW_a-d8g-UP_SqhTS5jx1sENjxnNHSO02f7Dye3gBwfVczRCh7y1IpwDDUHnTgd77hgNsNWBht6T2KSf4U2mEPtjU3Jh14e5dHJlbEVsXRpZCmcENuuJFVCN4ma_F8pRmItvEjnk0C1jVmFUixu8KrudSjk5ZEQEFfM7nAN05tQAiHWX-zlJp-RhI_eZXI"/>
+<img class="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant object-cover" data-alt="Minimalist avatar image of a person with a clean aesthetic, monotone color palette, high-key lighting, focused and calm expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzEM11JNN8r4Gl-YHNByZbW05ov_B4T0rOfY1Qh5JGTe5w6xTqahIAn4gqs2ft1VBDo7WJjuMNxdo6O6FweamDweUv_6kRp3LlYkKDTt5vssCImrgFPZlvamOEJLIpjBuuAinWIDW_7HsMHIPQwAX_9Xtea7Oyqyfu4nL6GQADF0qKUPsOfSo96DOhWKQBHFv_tEeuzRvSaVlmcL3m_TeORhnSXT2M65joDjyx2P7W7quxqpPvsFpbQ0ZR2tm7nT8x1AN2eDIdRWU"/>
+<div class="w-10 h-10 rounded-full border-2 border-surface bg-primary text-on-primary flex items-center justify-center font-label-bold text-label-bold">+5</div>
+</div>
+<button class="bg-surface border-2 border-primary text-primary font-label-bold text-label-bold px-lg py-sm rounded-lg panda-btn-active transition-transform">参加する</button>
+</div>
+</div>
+<!-- Opposite Panda Room -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg panda-card-active transition-all">
+<div class="flex justify-between items-start mb-md">
+<span class="bg-surface border border-outline text-secondary border-dashed font-label-bold text-label-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="compare_arrows">compare_arrows</span>
+                        真逆パンダ
+                    </span>
+<span class="font-label-bold text-label-bold text-secondary">平均合致度 32%</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-xs">真逆パンダ部屋</h3>
+<p class="font-body-sm text-secondary mb-md">「自分とは全然違う！」という発見が楽しい部屋。新しい視点に出会いたい方へ。</p>
+<div class="flex items-center justify-between">
+<div class="flex -space-x-3">
+<img class="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant object-cover" data-alt="Monochrome close-up of a person with a creative haircut, high contrast lighting, clean white background, minimalist digital art style for app avatars." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-7c4I3otIb05Qsl6YMo_AC-fQXnO7RKQqdhWzS6bsyYD8KEP1I3Bbaz6IwdOMLtDGNYn38fD0KVcME0t5T3kST870j_KDy7z38anz2HES09gAoJxlY1vLl9yjH4hU6f-9d2BY2wmzOm0FQ_iswKN0oowM7lc5K60jebG9e7vBUpadBsD4V9OoLQbaaZVP170KeBcerAr-YfSSrA0vCFVPqAAGepWdc8LtKSXBbzZ3wBCDZ3bByjBaYkp-O2JOzcQNOscPxmFCBkU"/>
+<div class="w-10 h-10 rounded-full border-2 border-surface bg-primary text-on-primary flex items-center justify-center font-label-bold text-label-bold">+28</div>
+</div>
+<button class="bg-surface border-2 border-primary text-primary font-label-bold text-label-bold px-lg py-sm rounded-lg panda-btn-active transition-transform">参加する</button>
+</div>
+</div>
+</div>
+<!-- Chat History Label -->
+<section class="mt-xl mb-md">
+<h2 class="font-headline-md text-headline-md">最近のトーク</h2>
+</section>
+<!-- Simple List for Chat Rooms -->
+<div class="space-y-sm">
+<div class="flex items-center gap-md p-md hover:bg-surface-container transition-colors rounded-xl cursor-pointer">
+<div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[32px]" data-icon="coffee">coffee</span>
+</div>
+<div class="flex-1 border-b border-outline-variant pb-md">
+<div class="flex justify-between items-baseline">
+<h4 class="font-headline-md text-body-lg">カフェ巡り同好会</h4>
+<span class="text-[10px] text-secondary">12:45</span>
+</div>
+<p class="font-body-sm text-secondary truncate">佐藤さん: 次はどこのお店に行きますか？</p>
+</div>
+</div>
+<div class="flex items-center gap-md p-md hover:bg-surface-container transition-colors rounded-xl cursor-pointer">
+<div class="w-14 h-14 bg-surface-variant border border-outline-variant rounded-xl flex items-center justify-center text-primary font-bold">
+<span class="material-symbols-outlined text-[32px]" data-icon="movie">movie</span>
+</div>
+<div class="flex-1 border-b border-outline-variant pb-md">
+<div class="flex justify-between items-baseline">
+<h4 class="font-headline-md text-body-lg">映画レビュー部屋</h4>
+<span class="text-[10px] text-secondary">昨日</span>
+</div>
+<p class="font-body-sm text-secondary truncate">田中: あのラストシーンは衝撃でしたよね...</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface dark:bg-background border-t-2 border-primary dark:border-outline-variant rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-primary dark:text-on-secondary-fixed-variant py-1 px-3 hover:bg-surface-variant dark:hover:bg-tertiary-container transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-bold text-label-bold">ホーム</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-on-secondary-fixed-variant py-1 px-3 hover:bg-surface-variant dark:hover:bg-tertiary-container transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-bold text-label-bold">マッチ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-on-secondary-fixed-variant py-1 px-3 hover:bg-surface-variant dark:hover:bg-tertiary-container transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined text-headline-xl" data-icon="add_circle">add_circle</span>
+<span class="font-label-bold text-label-bold">投稿</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-primary bg-primary dark:bg-primary-fixed dark:text-on-primary-fixed rounded-lg py-1 px-3 transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="forum" data-weight="fill" style="font-variation-settings: 'FILL' 1;">forum</span>
+<span class="font-label-bold text-label-bold">トーク</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-on-secondary-fixed-variant py-1 px-3 hover:bg-surface-variant dark:hover:bg-tertiary-container transition-colors active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">プロフ</span>
+</a>
+</nav>
+</body></html>

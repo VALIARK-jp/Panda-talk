@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ja"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>パンダイトーク - 今日の二択</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#e2e2e2",
+                    "surface-container-high": "#ebe7e6",
+                    "surface": "#fdf8f8",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#1c1b1b",
+                    "on-secondary-fixed-variant": "#454747",
+                    "inverse-on-surface": "#f4f0ef",
+                    "outline-variant": "#c4c7c7",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "on-tertiary-fixed-variant": "#454747",
+                    "primary": "#000000",
+                    "surface-dim": "#ddd9d8",
+                    "tertiary-container": "#1a1c1c",
+                    "inverse-surface": "#313030",
+                    "secondary": "#5d5f5f",
+                    "surface-variant": "#e5e2e1",
+                    "on-tertiary-fixed": "#1a1c1c",
+                    "on-primary-fixed-variant": "#474646",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed": "#1c1b1b",
+                    "surface-container": "#f1edec",
+                    "secondary-fixed": "#e2e2e2",
+                    "secondary-fixed-dim": "#c6c6c7",
+                    "outline": "#747878",
+                    "tertiary": "#000000",
+                    "primary-container": "#1c1b1b",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#e5e2e1",
+                    "on-background": "#1c1b1b",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#c6c6c6",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed": "#1a1c1c",
+                    "inverse-primary": "#c8c6c5",
+                    "surface-bright": "#fdf8f8",
+                    "on-surface-variant": "#444748",
+                    "error": "#ba1a1a",
+                    "on-secondary-container": "#616363",
+                    "surface-tint": "#5f5e5e",
+                    "secondary-container": "#dfe0e0",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-low": "#f7f3f2",
+                    "on-error": "#ffffff",
+                    "background": "#fdf8f8",
+                    "on-primary-container": "#858383",
+                    "on-tertiary-container": "#838484",
+                    "surface-container-highest": "#e5e2e1"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding": "20px",
+                    "lg": "24px",
+                    "unit": "4px",
+                    "sm": "8px",
+                    "md": "16px",
+                    "xs": "4px",
+                    "xl": "40px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "label-bold": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "500"}],
+                    "body-sm": ["14px", {"lineHeight": "1.6", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "1.3", "fontWeight": "800"}],
+                    "headline-xl": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-bold": ["12px", {"lineHeight": "1", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-scale:active {
+            transform: scale(0.96);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-background border-b border-outline-variant flex justify-between items-center px-container-padding h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary font-headline-xl" data-icon="face">face</span>
+<h1 class="font-headline-xl text-headline-xl font-extrabold text-primary tracking-tight">パンダイトーク</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary hover:opacity-80 transition-opacity cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-secondary hover:opacity-80 transition-opacity cursor-pointer" data-icon="settings">settings</span>
+</div>
+</header>
+<main class="pt-24 px-container-padding max-w-2xl mx-auto">
+<!-- Section Header -->
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-primary">今日の二択</h2>
+<p class="text-on-surface-variant font-body-sm mt-xs">毎日更新される質問に答えて、価値観の近いパンダを見つけよう。</p>
+</div>
+<!-- Question Card -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden mb-xl">
+<div class="p-lg">
+<div class="flex items-center gap-2 mb-sm text-secondary">
+<span class="material-symbols-outlined text-[20px]" data-icon="quiz">quiz</span>
+<span class="font-label-bold text-label-bold uppercase tracking-widest">Today's Topic</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mb-xl">Q. 休日は外出派？家派？</h3>
+<!-- Interaction Area (Buttons) -->
+<div class="grid grid-cols-2 gap-md mb-lg">
+<button class="active-scale flex flex-col items-center justify-center p-lg border-2 border-primary bg-on-primary text-primary rounded-xl transition-all hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[48px] mb-sm" data-icon="directions_walk">directions_walk</span>
+<span class="font-headline-md text-headline-md">外出派</span>
+</button>
+<button class="active-scale flex flex-col items-center justify-center p-lg bg-primary text-on-primary rounded-xl transition-all hover:opacity-90">
+<span class="material-symbols-outlined text-[48px] mb-sm" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-headline-md text-headline-md">家派</span>
+</button>
+</div>
+<!-- Result Section (Appears after answer) -->
+<div class="mt-xl pt-xl border-t border-outline-variant">
+<div class="flex items-start gap-lg mb-lg">
+<div class="w-20 h-20 flex-shrink-0 bg-surface-container-high rounded-full overflow-hidden flex items-center justify-center border border-outline">
+<img class="w-full h-full object-cover" data-alt="A minimalist black and white line art illustration of a cute panda character with a friendly expression. The style is clean and modern, reminiscent of premium stationery design. The panda is centered against a plain white background, emphasizing honest and playful personality with solid black fills for the ears and eye patches." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC34rwLInkZPBFFTA7hK56fuyBAGUgszSAEK8BEgOZdyKc3BL3fXonx3o_TB_tbGBj0xASy_wpcliMuxOWJKlG32SNjJxxuF1v0keu_122WoFHVD2dg5uGGnFdLWViX87rS9RDRBZ7mjVcf9s4AxC8H2BvzXdTuPkxAbLLjxyEfbZdUVSxBzHidRjAILX8X4iYBl5QcJREDS7nTB63kBqVVjH3EyaVB61KpRMYJukAopH2Mbg77U3SqnpmALEqiu_cbrq04Qdnw4IM"/>
+</div>
+<div class="relative flex-grow bg-primary text-on-primary p-md rounded-xl rounded-tl-none">
+<p class="font-body-lg text-body-lg">君は家派なんだね。</p>
+<!-- Triangle for speech bubble -->
+<div class="absolute top-0 -left-2 w-0 h-0 border-t-[0px] border-t-transparent border-r-[12px] border-r-primary border-b-[12px] border-b-transparent"></div>
+</div>
+</div>
+<!-- Stats -->
+<div class="space-y-md">
+<div>
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-bold text-label-bold text-secondary">外出派</span>
+<span class="font-label-bold text-label-bold text-secondary">42%</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-outline-variant" style="width: 42%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-bold text-label-bold text-primary">家派</span>
+<span class="font-label-bold text-label-bold text-primary">58%</span>
+</div>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 58%;"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Value Match Example (The Panda Scale) -->
+<section class="mb-xl">
+<h4 class="font-label-bold text-label-bold text-secondary uppercase tracking-widest mb-md">価値観マッチ度</h4>
+<div class="flex flex-wrap gap-sm">
+<span class="inline-flex items-center gap-1 px-4 py-2 bg-primary text-on-primary rounded-full font-label-bold text-label-bold">
+<span class="material-symbols-outlined text-sm" data-icon="groups">groups</span>
+                    ほぼ同じパンダ
+                </span>
+<span class="inline-flex items-center gap-1 px-4 py-2 bg-on-primary text-primary border-2 border-primary rounded-full font-label-bold text-label-bold">
+<span class="material-symbols-outlined text-sm" data-icon="favorite">favorite</span>
+                    なかよしパンダ
+                </span>
+<span class="inline-flex items-center gap-1 px-4 py-2 bg-on-primary text-secondary border border-outline-variant rounded-full font-label-bold text-label-bold">
+                    ちぐはぐパンダ
+                </span>
+<span class="inline-flex items-center gap-1 px-4 py-2 bg-on-primary text-secondary border border-dashed border-outline-variant rounded-full font-label-bold text-label-bold">
+                    真逆パンダ
+                </span>
+</div>
+</section>
+<!-- Secondary Feed Items -->
+<div class="space-y-lg">
+<div class="bg-surface border border-outline-variant p-lg rounded-xl flex items-center justify-between hover:bg-surface-variant transition-colors cursor-pointer">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-secondary" data-icon="history">history</span>
+<span class="font-body-lg text-body-lg">過去の二択を見る</span>
+</div>
+<span class="material-symbols-outlined text-secondary" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface border-t-2 border-primary">
+<a class="flex flex-col items-center justify-center text-on-primary bg-primary rounded-lg py-1 px-3 active-scale transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-bold text-label-bold">ホーム</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary py-1 px-3 hover:bg-surface-variant transition-colors active-scale" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard">leaderboard</span>
+<span class="font-label-bold text-label-bold">マッチ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary py-1 px-3 hover:bg-surface-variant transition-colors active-scale" href="#">
+<span class="material-symbols-outlined text-[32px]" data-icon="add_circle">add_circle</span>
+<span class="font-label-bold text-label-bold">投稿</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary py-1 px-3 hover:bg-surface-variant transition-colors active-scale" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="font-label-bold text-label-bold">トーク</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary py-1 px-3 hover:bg-surface-variant transition-colors active-scale" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">プロフ</span>
+</a>
+</nav>
+</body></html>
