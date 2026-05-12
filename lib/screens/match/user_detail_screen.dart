@@ -33,9 +33,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.arrow_back, color: AppColors.black)),
                   GestureDetector(
-                    onTap: () => Share.share('${u.name}さんと合致度${u.matchRate}%！\n価値観めっちゃ近い🐼\n#パンダトーク'),
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back, color: AppColors.black),
+                  ),
+                  GestureDetector(
+                    onTap: () => Share.share(
+                      '${u.name}さんと合致度${u.matchRate}%！\n価値観めっちゃ近い🐼\n#パンダトーク',
+                    ),
                     child: const Icon(Icons.ios_share, color: AppColors.black),
                   ),
                 ],
@@ -43,13 +48,45 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               const SizedBox(height: AppSpacing.lg),
               PandaAvatar(size: 80),
               const SizedBox(height: AppSpacing.md),
-              Text(u.name, style: const TextStyle(fontSize: AppFontSize.xxl, fontWeight: FontWeight.w900, color: AppColors.black)),
-              Text('@${u.id}', style: const TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray)),
+              Text(
+                u.name,
+                style: const TextStyle(
+                  fontSize: AppFontSize.xxl,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.black,
+                ),
+              ),
+              Text(
+                '@${u.id}',
+                style: const TextStyle(
+                  fontSize: AppFontSize.md,
+                  color: AppColors.textGray,
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
-              Text('合致度 ${u.matchRate}%', style: const TextStyle(fontSize: AppFontSize.xxxl, fontWeight: FontWeight.w900, color: AppColors.black)),
+              Text(
+                '合致度 ${u.matchRate}%',
+                style: const TextStyle(
+                  fontSize: AppFontSize.xxxl,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.black,
+                ),
+              ),
               const SizedBox(height: 8),
-              const Text('共通回答数 128問', style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray)),
-              const Text('一致した質問 112問', style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray)),
+              const Text(
+                '共通回答数 128問',
+                style: TextStyle(
+                  fontSize: AppFontSize.md,
+                  color: AppColors.textGray,
+                ),
+              ),
+              const Text(
+                '一致した質問 112問',
+                style: TextStyle(
+                  fontSize: AppFontSize.md,
+                  color: AppColors.textGray,
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
               SegmentedTabs(
                 tabs: const ['プロフィール', '回答を見る'],
@@ -57,16 +94,26 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 onChanged: (i) {
                   setState(() => _tabIndex = i);
                   if (i == 1) {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => AnswerCompareScreen(user: widget.user)));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AnswerCompareScreen(user: widget.user),
+                      ),
+                    );
                   }
                 },
               ),
               const Spacer(),
-              PandaButton(label: '✓ 友達になる', onTap: () {}),
+              PandaButton(label: '友達申請を送る', onTap: () {}),
               const SizedBox(height: AppSpacing.md),
               PandaOutlinedButton(
                 label: 'メッセージ',
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DirectChatScreen(user: widget.user))),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DirectChatScreen(user: widget.user),
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

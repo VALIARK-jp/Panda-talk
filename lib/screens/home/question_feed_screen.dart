@@ -1,25 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/question_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
-import 'answer_result_screen.dart';
+import 'question_comments_screen.dart';
 import 'question_history_screen.dart';
 
-class QuestionFeedScreen extends StatefulWidget {
+class QuestionFeedScreen extends ConsumerStatefulWidget {
   const QuestionFeedScreen({super.key});
 
   @override
-  State<QuestionFeedScreen> createState() => _QuestionFeedScreenState();
+  ConsumerState<QuestionFeedScreen> createState() => _QuestionFeedScreenState();
 }
 
-class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
-  int _tabIndex = 0;            // 0=診断 1=Hot
-  int _answeredCount = 0;       // ゲスト回答カウント（ダミー）
-  int _minorityCount = 0;       // 少数派回答カウント
-  final bool _isGuest = true;   // ゲストモードフラグ（ダミー）
+class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
+  int _tabIndex = 0; // 0=診断 1=Hot
+  int _questionIndex = 0;
+  int _answeredCount = 0; // ゲスト回答カウント（ダミー）
+  int _minorityCount = 0; // 少数派回答カウント
+  final bool _isGuest = true; // ゲストモードフラグ（ダミー）
+  bool _likedQuestion = false;
+  String? _selectedOption;
+  Timer? _nextQuestionTimer;
 
   static const _nudgeMessages = {
     10: '10問答えたね！\n登録すると合致度が見られるよ。',
@@ -27,31 +35,36 @@ class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
     30: '異端児スコアが本格的になってきた。\n記録しておこう。',
   };
 
-  void _onAnswer(String selected, int percentA) {
-    final selectedA = selected == currentQuestion.optionA;
+  @override
+  void dispose() {
+    _nextQuestionTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onAnswer(DummyQuestion q, String selected, int percentA, int total) {
+    if (_selectedOption != null) return;
+
+    final selectedA = selected == q.optionA;
     final selectedPercent = selectedA ? percentA : (100 - percentA);
     final isMinority = selectedPercent < 50;
 
     setState(() {
+      _selectedOption = selected;
       _answeredCount++;
       if (isMinority) _minorityCount++;
     });
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnswerResultScreen(
-          selected: selected,
-          percentA: percentA,
-          optionA: currentQuestion.optionA,
-          optionB: currentQuestion.optionB,
-          answeredCount: _answeredCount,
-          minorityCount: _minorityCount,
-        ),
-      ),
-    ).then((_) {
-      if (_isGuest && _nudgeMessages.containsKey(_answeredCount)) {
-        _showNudgeModal(_answeredCount);
+    _nextQuestionTimer?.cancel();
+    _nextQuestionTimer = Timer(const Duration(milliseconds: 2600), () {
+      if (!mounted) return;
+      final answeredCount = _answeredCount;
+      setState(() {
+        _questionIndex = (_questionIndex + 1) % total;
+        _selectedOption = null;
+        _likedQuestion = false;
+      });
+      if (_isGuest && _nudgeMessages.containsKey(answeredCount)) {
+        _showNudgeModal(answeredCount);
       }
     });
   }
@@ -65,9 +78,16 @@ class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final q = currentQuestion;
+  Widget _buildScreen(DummyQuestion q, int total) {
+    final selected = _selectedOption;
+    final hasAnswered = selected != null;
+    final selectedA = selected == q.optionA;
+    final selectedPercent = selectedA ? q.percentA : (100 - q.percentA);
+    final isMinority = hasAnswered && selectedPercent < 50;
+    final oddballScore = _answeredCount > 0
+        ? (_minorityCount / _answeredCount * 100).round()
+        : 0;
+
     return Scaffold(
       backgroundColor: AppColors.softGray,
       body: SafeArea(
@@ -75,19 +95,35 @@ class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
           children: [
             // ヘッダー
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: SegmentedTabs(
                       tabs: const ['診断', 'Hot'],
                       selectedIndex: _tabIndex,
-                      onChanged: (i) => setState(() => _tabIndex = i),
+                      onChanged: (i) {
+                        _nextQuestionTimer?.cancel();
+                        setState(() {
+                          _tabIndex = i;
+                          _questionIndex = 0;
+                          _selectedOption = null;
+                          _likedQuestion = false;
+                        });
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuestionHistoryScreen())),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const QuestionHistoryScreen(),
+                      ),
+                    ),
                     child: PandaAvatar(size: 36),
                   ),
                 ],
@@ -98,7 +134,12 @@ class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
               child: GestureDetector(
                 onVerticalDragEnd: (d) {
                   if (d.primaryVelocity != null && d.primaryVelocity! < -200) {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const QuestionHistoryScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const QuestionHistoryScreen(),
+                      ),
+                    );
                   }
                 },
                 child: Padding(
@@ -108,72 +149,184 @@ class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.white,
                       borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       child: Column(
                         children: [
-                          // 番号 + カテゴリ
+                          // 投稿者 + 番号 + カテゴリ
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Q.${q.number}', style: const TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
-                              TagChip(label: q.category),
+                              Row(
+                                children: [
+                                  PandaAvatar(size: 28),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        q.authorName,
+                                        style: const TextStyle(
+                                          fontSize: AppFontSize.sm,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.black,
+                                        ),
+                                      ),
+                                      Text(
+                                        '@${q.authorUsername}',
+                                        style: const TextStyle(
+                                          fontSize: AppFontSize.sm,
+                                          color: AppColors.textGray,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Q.${q.number}',
+                                    style: const TextStyle(
+                                      fontSize: AppFontSize.sm,
+                                      color: AppColors.textGray,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TagChip(label: q.category),
+                                ],
+                              ),
                             ],
                           ),
-                          const SizedBox(height: AppSpacing.lg),
-                          // パンダ2体
+                          const SizedBox(height: AppSpacing.sm),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              PandaAvatar(size: 48),
-                              const SizedBox(width: AppSpacing.xl),
-                              PandaAvatar(size: 48),
+                              IconButton(
+                                onPressed: () => setState(
+                                  () => _likedQuestion = !_likedQuestion,
+                                ),
+                                icon: Icon(
+                                  _likedQuestion
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        QuestionCommentsScreen(question: q),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.mode_comment_outlined,
+                                  color: AppColors.black,
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: AppSpacing.lg),
-                          // 質問文
-                          Text(
-                            q.text,
-                            style: const TextStyle(fontSize: AppFontSize.xl, fontWeight: FontWeight.w700, color: AppColors.black),
-                            textAlign: TextAlign.center,
+                          const SizedBox(height: AppSpacing.md),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 280),
+                            child: hasAnswered
+                                ? Column(
+                                    key: ValueKey('result-${q.number}'),
+                                    children: [
+                                      const Text(
+                                        'あなたは...',
+                                        style: TextStyle(
+                                          fontSize: AppFontSize.lg,
+                                          color: AppColors.textGray,
+                                        ),
+                                      ),
+                                      const SizedBox(height: AppSpacing.sm),
+                                      Text(
+                                        '$selected！',
+                                        style: const TextStyle(
+                                          fontSize: AppFontSize.xxxl,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.black,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: AppSpacing.sm),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 18,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isMinority
+                                              ? AppColors.black
+                                              : AppColors.softGray,
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.full,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${isMinority ? '少数派' : '多数派'} $selectedPercent%',
+                                          style: TextStyle(
+                                            fontSize: AppFontSize.sm,
+                                            fontWeight: FontWeight.w800,
+                                            color: isMinority
+                                                ? AppColors.white
+                                                : AppColors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Column(
+                                    key: ValueKey('question-${q.number}'),
+                                    children: [
+                                      PandaMascot(size: 72),
+                                      const SizedBox(height: AppSpacing.md),
+                                      Text(
+                                        q.text,
+                                        style: const TextStyle(
+                                          fontSize: AppFontSize.xl,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.black,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
                           ),
                           const Spacer(),
-                          // 選択肢ボタン
-                          Row(
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => _onAnswer(q.optionA, q.percentA),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 18),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.white,
-                                      borderRadius: BorderRadius.circular(AppRadius.md),
-                                      border: Border.all(color: AppColors.black, width: 1.5),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(q.optionA, style: const TextStyle(fontSize: AppFontSize.lg, fontWeight: FontWeight.w700, color: AppColors.black)),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => _onAnswer(q.optionB, q.percentA),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 18),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.black,
-                                      borderRadius: BorderRadius.circular(AppRadius.md),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(q.optionB, style: const TextStyle(fontSize: AppFontSize.lg, fontWeight: FontWeight.w700, color: AppColors.white)),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          SizedBox(
+                            height: 118,
+                            child: AnimatedOpacity(
+                              opacity: hasAnswered ? 1 : 0,
+                              duration: const Duration(milliseconds: 240),
+                              child: hasAnswered
+                                  ? _OddballScoreCard(
+                                      key: ValueKey('score-${q.number}'),
+                                      score: oddballScore,
+                                      answeredCount: _answeredCount,
+                                      minorityCount: _minorityCount,
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _AnswerRatioBar(
+                            question: q,
+                            selectedOption: selected,
+                            onSelect: (option) =>
+                                _onAnswer(q, option, q.percentA, total),
                           ),
                           const SizedBox(height: AppSpacing.md),
                         ],
@@ -185,6 +338,256 @@ class _QuestionFeedScreenState extends State<QuestionFeedScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final questionsAsync = ref.watch(feedQuestionsProvider);
+    return questionsAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text('エラー: $e'))),
+      data: (questions) {
+        if (questions.isEmpty) {
+          return const Scaffold(body: Center(child: Text('質問がありません')));
+        }
+        final orderedQuestions = _tabIndex == 0 ? questions : [...questions]
+          ..sort((a, b) => b.percentA.compareTo(a.percentA));
+        final question =
+            orderedQuestions[_questionIndex % orderedQuestions.length];
+        return _buildScreen(question, orderedQuestions.length);
+      },
+    );
+  }
+}
+
+class _AnswerRatioBar extends StatelessWidget {
+  final DummyQuestion question;
+  final String? selectedOption;
+  final ValueChanged<String> onSelect;
+
+  const _AnswerRatioBar({
+    required this.question,
+    required this.selectedOption,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAnswered = selectedOption != null;
+    final leftPercent = hasAnswered ? question.percentA : 50;
+    final rightPercent = hasAnswered ? 100 - question.percentA : 50;
+    final selectedA = selectedOption == question.optionA;
+    final selectedB = selectedOption == question.optionB;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedOpacity(
+          opacity: hasAnswered ? 1 : 0,
+          duration: const Duration(milliseconds: 200),
+          child: const Text(
+            'みんなの回答',
+            style: TextStyle(
+              fontSize: AppFontSize.md,
+              fontWeight: FontWeight.w700,
+              color: AppColors.black,
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(color: AppColors.borderGray),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: SizedBox(
+              height: 64,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  return Row(
+                    children: [
+                      GestureDetector(
+                        onTap: hasAnswered
+                            ? null
+                            : () => onSelect(question.optionA),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 900),
+                          curve: Curves.easeOutCubic,
+                          width: width * leftPercent / 100,
+                          color: AppColors.white,
+                          alignment: Alignment.center,
+                          child: _RatioLabel(
+                            label: hasAnswered
+                                ? '${question.optionA} $leftPercent%'
+                                : question.optionA,
+                            selected: selectedA,
+                            dark: false,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: hasAnswered
+                            ? null
+                            : () => onSelect(question.optionB),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 900),
+                          curve: Curves.easeOutCubic,
+                          width: width * rightPercent / 100,
+                          color: AppColors.black,
+                          alignment: Alignment.center,
+                          child: _RatioLabel(
+                            label: hasAnswered
+                                ? '${question.optionB} $rightPercent%'
+                                : question.optionB,
+                            selected: selectedB,
+                            dark: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RatioLabel extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final bool dark;
+
+  const _RatioLabel({
+    required this.label,
+    required this.selected,
+    required this.dark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected) ...[
+              Icon(
+                Icons.check_circle,
+                size: 16,
+                color: dark ? AppColors.white : AppColors.black,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: AppFontSize.lg,
+                fontWeight: FontWeight.w800,
+                color: dark ? AppColors.white : AppColors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OddballScoreCard extends StatelessWidget {
+  final int score;
+  final int answeredCount;
+  final int minorityCount;
+
+  const _OddballScoreCard({
+    super.key,
+    required this.score,
+    required this.answeredCount,
+    required this.minorityCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.softGray,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'あなたの異端児スコア',
+                  style: TextStyle(
+                    fontSize: AppFontSize.md,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+              Text(
+                '$score%',
+                style: const TextStyle(
+                  fontSize: AppFontSize.xl,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.black,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: LinearProgressIndicator(
+              value: score / 100,
+              minHeight: 10,
+              backgroundColor: AppColors.borderGray,
+              valueColor: const AlwaysStoppedAnimation(AppColors.black),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '凡人',
+                style: TextStyle(
+                  fontSize: AppFontSize.sm,
+                  color: AppColors.textGray,
+                ),
+              ),
+              Text(
+                '$answeredCount問中$minorityCount問で少数派',
+                style: const TextStyle(
+                  fontSize: AppFontSize.sm,
+                  color: AppColors.textGray,
+                ),
+              ),
+              const Text(
+                '異端児',
+                style: TextStyle(
+                  fontSize: AppFontSize.sm,
+                  color: AppColors.textGray,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -220,14 +623,16 @@ class _NudgeCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             message,
-            style: const TextStyle(fontSize: AppFontSize.lg, fontWeight: FontWeight.w700, color: AppColors.black, height: 1.6),
+            style: const TextStyle(
+              fontSize: AppFontSize.lg,
+              fontWeight: FontWeight.w700,
+              color: AppColors.black,
+              height: 1.6,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.lg),
-          PandaButton(
-            label: '登録する',
-            onTap: () => Navigator.pop(context),
-          ),
+          PandaButton(label: '登録する', onTap: () => Navigator.pop(context)),
           const SizedBox(height: AppSpacing.sm),
           PandaOutlinedButton(
             label: '続ける',

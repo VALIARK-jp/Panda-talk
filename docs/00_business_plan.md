@@ -156,10 +156,13 @@ display_score = match_rate * (common_answer_count / (common_answer_count + 50))
 | 真逆の人 | (1 - match_rate) * confidence DESC |
 | 50%付近 | ABS(match_rate - 0.5) * confidence ASC |
 
-### 3.5 フォロー・友達（2人ペア）
+### 3.5 友達（相互承認制）
 
-- **フォロー**: 一方的（Twitterライク）
-- **友達**: 相互確認済みの2人ペア。友達になると一部情報解禁。
+一方的なフォローは持たない。双方が承認した場合のみ友達になる。
+
+- 申請 → 承認 で友達成立
+- 断る・解除はレコード削除
+- 友達になると一部情報解禁・DMが可能になる
 
 ### 3.6 自動グループ生成（3人）
 
@@ -238,7 +241,7 @@ IT：32%
 | フロントエンド | Flutter | iOS/Android同時開発・アニメーション・MVP向き |
 | バックエンド | Hono + TypeScript | 軽量・API開発高速・型安全 |
 | DB | PostgreSQL（Supabase） | リレーション強い・合致度計算向き |
-| 認証 | Supabase Auth | DB同一基盤・Google/Appleログイン |
+| 認証 | Supabase Auth | DBと同一基盤・メール/Apple対応 |
 | インフラ | Supabase + Cloudflare | Auth・DB・Storageを一元管理 |
 | プッシュ通知 | Firebase Cloud Messaging（FCM） | iOS/Android共通・APNs対応 |
 
@@ -252,8 +255,7 @@ IT：32%
 | questions | 二択質問（ユーザー投稿） |
 | answers | 回答（ENUM: a/b） |
 | comments | 匿名コメント（choice付き） |
-| follows | フォロー（一方向） |
-| friendships | 友達（2人ペア・相互確認済み） |
+| friendships | 友達申請・友達関係（相互承認制） |
 | match_scores | 合致度キャッシュ（nC2・共通回答なしはレコードなし） |
 | groups | 3人グループ（high/middle/low ENUM） |
 | group_members | グループ所属 |
@@ -271,7 +273,7 @@ IT：32%
 ### フェーズ1: MVP
 
 **実装スコープ:**
-- ログイン（Supabase Auth / Google・Apple）
+- ログイン（Supabase Auth / メール・Apple）
 - 二択質問投稿
 - 質問への回答（投稿順・全ユーザー固定）
 - 回答後の白黒統計表示

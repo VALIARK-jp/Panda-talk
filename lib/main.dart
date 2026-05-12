@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/onboarding_screen.dart';
 import 'core/design_tokens.dart';
 
 void main() {
-  runApp(const PandaTalkApp());
+  runApp(const ProviderScope(child: PandaTalkApp()));
 }
 
 class PandaTalkApp extends StatelessWidget {

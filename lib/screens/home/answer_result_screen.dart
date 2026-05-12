@@ -9,8 +9,8 @@ class AnswerResultScreen extends StatefulWidget {
   final int percentA;
   final String optionA;
   final String optionB;
-  final int answeredCount;  // この回答後の累計回答数
-  final int minorityCount;  // この回答後の累計少数派回答数
+  final int answeredCount; // この回答後の累計回答数
+  final int minorityCount; // この回答後の累計少数派回答数
 
   const AnswerResultScreen({
     super.key,
@@ -66,11 +66,21 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
             children: [
               const SizedBox(height: AppSpacing.xl),
               // あなたは〇〇派
-              const Text('あなたは…', style: TextStyle(fontSize: AppFontSize.lg, color: AppColors.textGray)),
+              const Text(
+                'あなたは…',
+                style: TextStyle(
+                  fontSize: AppFontSize.lg,
+                  color: AppColors.textGray,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(
                 '${widget.selected}！',
-                style: const TextStyle(fontSize: AppFontSize.xxxl, fontWeight: FontWeight.w900, color: AppColors.black),
+                style: const TextStyle(
+                  fontSize: AppFontSize.xxxl,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.black,
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               // 少数派 / 多数派バッジ
@@ -78,13 +88,18 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                 opacity: _animated ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 400),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isMinority ? AppColors.black : AppColors.softGray,
                     borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text(
-                    isMinority ? '少数派 $selectedPercent%' : '多数派 $selectedPercent%',
+                    isMinority
+                        ? '少数派 $selectedPercent%'
+                        : '多数派 $selectedPercent%',
                     style: TextStyle(
                       fontSize: AppFontSize.sm,
                       fontWeight: FontWeight.w700,
@@ -94,7 +109,10 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              PandaMascot(size: 96, expression: isMinority ? 'default' : 'happy'),
+              PandaMascot(
+                size: 96,
+                expression: isMinority ? 'default' : 'happy',
+              ),
               const SizedBox(height: AppSpacing.lg),
               // みんなの比率バー
               Container(
@@ -106,7 +124,14 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('みんなの回答', style: TextStyle(fontSize: AppFontSize.md, fontWeight: FontWeight.w600, color: AppColors.black)),
+                    const Text(
+                      'みんなの回答',
+                      style: TextStyle(
+                        fontSize: AppFontSize.md,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.black,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(AppRadius.full),
@@ -120,18 +145,36 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 1500),
                                   curve: Curves.easeOut,
-                                  width: _animated ? totalW * pA / 100 : totalW * 0.5,
+                                  width: _animated
+                                      ? totalW * pA / 100
+                                      : totalW * 0.5,
                                   color: AppColors.white,
                                   alignment: Alignment.center,
-                                  child: Text('${widget.optionA} $pA%', style: const TextStyle(fontSize: AppFontSize.sm, fontWeight: FontWeight.w700, color: AppColors.black)),
+                                  child: Text(
+                                    '${widget.optionA} $pA%',
+                                    style: const TextStyle(
+                                      fontSize: AppFontSize.sm,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.black,
+                                    ),
+                                  ),
                                 ),
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 1500),
                                   curve: Curves.easeOut,
-                                  width: _animated ? totalW * pB / 100 : totalW * 0.5,
+                                  width: _animated
+                                      ? totalW * pB / 100
+                                      : totalW * 0.5,
                                   color: AppColors.black,
                                   alignment: Alignment.center,
-                                  child: Text('${widget.optionB} $pB%', style: const TextStyle(fontSize: AppFontSize.sm, fontWeight: FontWeight.w700, color: AppColors.white)),
+                                  child: Text(
+                                    '${widget.optionB} $pB%',
+                                    style: const TextStyle(
+                                      fontSize: AppFontSize.sm,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.white,
+                                    ),
+                                  ),
                                 ),
                               ],
                             );
@@ -159,12 +202,33 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('あなたの異端児スコア', style: TextStyle(fontSize: AppFontSize.md, fontWeight: FontWeight.w600, color: AppColors.black)),
+                          const Text(
+                            'あなたの異端児スコア',
+                            style: TextStyle(
+                              fontSize: AppFontSize.md,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.black,
+                            ),
+                          ),
                           Row(
                             children: [
                               if (isMinority)
-                                const Text('+1 ', style: TextStyle(fontSize: AppFontSize.md, fontWeight: FontWeight.w700, color: AppColors.black)),
-                              Text('$score%', style: const TextStyle(fontSize: AppFontSize.lg, fontWeight: FontWeight.w900, color: AppColors.black)),
+                                const Text(
+                                  '+1 ',
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.md,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.black,
+                                  ),
+                                ),
+                              Text(
+                                '$score%',
+                                style: const TextStyle(
+                                  fontSize: AppFontSize.lg,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.black,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -179,11 +243,16 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                             builder: (ctx, constraints) {
                               return Stack(
                                 children: [
-                                  Container(color: AppColors.borderGray, width: constraints.maxWidth),
+                                  Container(
+                                    color: AppColors.borderGray,
+                                    width: constraints.maxWidth,
+                                  ),
                                   AnimatedContainer(
                                     duration: const Duration(milliseconds: 800),
                                     curve: Curves.easeOut,
-                                    width: _scoreVisible ? constraints.maxWidth * score / 100 : 0,
+                                    width: _scoreVisible
+                                        ? constraints.maxWidth * score / 100
+                                        : 0,
                                     color: AppColors.black,
                                   ),
                                 ],
@@ -196,9 +265,27 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('凡人', style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
-                          Text('${widget.answeredCount}問中${widget.minorityCount}問で少数派', style: const TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
-                          const Text('異端児', style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
+                          const Text(
+                            '凡人',
+                            style: TextStyle(
+                              fontSize: AppFontSize.sm,
+                              color: AppColors.textGray,
+                            ),
+                          ),
+                          Text(
+                            '${widget.answeredCount}問中${widget.minorityCount}問で少数派',
+                            style: const TextStyle(
+                              fontSize: AppFontSize.sm,
+                              color: AppColors.textGray,
+                            ),
+                          ),
+                          const Text(
+                            '異端児',
+                            style: TextStyle(
+                              fontSize: AppFontSize.sm,
+                              color: AppColors.textGray,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -210,11 +297,16 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                 label: 'シェアする',
                 onTap: () {
                   final minority = isMinority ? '少数派' : '多数派';
-                  Share.share('私は${widget.selected}派！（$minority $selectedPercent%）\nあなたはどっち？\n#パンダトーク');
+                  Share.share(
+                    '私は${widget.selected}派！（$minority $selectedPercent%）\nあなたはどっち？\n#パンダトーク',
+                  );
                 },
               ),
               const SizedBox(height: AppSpacing.sm),
-              PandaOutlinedButton(label: '次の質問へ →', onTap: () => Navigator.pop(context)),
+              PandaOutlinedButton(
+                label: '次の質問へ →',
+                onTap: () => Navigator.pop(context),
+              ),
             ],
           ),
         ),

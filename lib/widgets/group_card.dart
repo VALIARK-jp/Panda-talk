@@ -30,28 +30,46 @@ class GroupCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name, style: const TextStyle(fontSize: AppFontSize.lg, fontWeight: FontWeight.w700, color: AppColors.black)),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: AppFontSize.lg,
+              fontWeight: FontWeight.w700,
+              color: AppColors.black,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('平均合致度：$avgMatchRate%', style: const TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray)),
+          Text(
+            '平均合致度：$avgMatchRate%',
+            style: const TextStyle(
+              fontSize: AppFontSize.md,
+              color: AppColors.textGray,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
-              ...members.map((m) => Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: PandaAvatar(size: 32),
-              )),
+              ...members.map(
+                (m) => Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: PandaAvatar(size: 32),
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   members.join('、'),
-                  style: const TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray),
+                  style: const TextStyle(
+                    fontSize: AppFontSize.sm,
+                    color: AppColors.textGray,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          PandaButton(label: '参加する', onTap: onTap),
+          PandaButton(label: '詳細を見る', onTap: onTap),
         ],
       ),
     );

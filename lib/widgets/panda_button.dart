@@ -12,7 +12,8 @@ class PandaButton extends StatefulWidget {
   State<PandaButton> createState() => _PandaButtonState();
 }
 
-class _PandaButtonState extends State<PandaButton> with SingleTickerProviderStateMixin {
+class _PandaButtonState extends State<PandaButton>
+    with SingleTickerProviderStateMixin {
   double _scale = 1.0;
 
   @override
@@ -54,7 +55,12 @@ class PandaOutlinedButton extends StatefulWidget {
   final VoidCallback? onTap;
   final double? width;
 
-  const PandaOutlinedButton({super.key, required this.label, this.onTap, this.width});
+  const PandaOutlinedButton({
+    super.key,
+    required this.label,
+    this.onTap,
+    this.width,
+  });
 
   @override
   State<PandaOutlinedButton> createState() => _PandaOutlinedButtonState();

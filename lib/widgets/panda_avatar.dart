@@ -49,10 +49,7 @@ class PandaSleep extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size * 0.6,
-      child: Image.asset(
-        'assets/images/panda/sleep.PNG',
-        fit: BoxFit.contain,
-      ),
+      child: Image.asset('assets/images/panda/sleep.PNG', fit: BoxFit.contain),
     );
   }
 }

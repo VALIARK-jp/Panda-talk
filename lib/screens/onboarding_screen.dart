@@ -12,41 +12,90 @@ class OnboardingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
-        child: Padding(
+        child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          child: Column(
-            children: [
-              const SizedBox(height: AppSpacing.xl),
-              const PandaSleep(size: 160),
-              const SizedBox(height: AppSpacing.lg),
-              Image.asset('assets/images/logo.jpg', height: 180, fit: BoxFit.contain),
-              const SizedBox(height: AppSpacing.lg),
-              const Text(
-                '白黒つけるほど、仲良くなるSNS。',
-                style: TextStyle(fontSize: AppFontSize.lg, fontWeight: FontWeight.w700, color: AppColors.black),
-                textAlign: TextAlign.center,
+          children: [
+            const SizedBox(height: AppSpacing.lg),
+            const PandaSleep(size: 120),
+            const SizedBox(height: AppSpacing.md),
+            Image.asset(
+              'assets/images/logo.jpg',
+              height: 120,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'パンダトーク',
+              style: TextStyle(
+                fontSize: AppFontSize.xxl,
+                fontWeight: FontWeight.w900,
+                color: AppColors.black,
               ),
-              const SizedBox(height: AppSpacing.md),
-              const Text(
-                'いろんな「どっち派？」に答えて、\n自分のタイプを見つけよう。\n合う人、真逆な人とつながって、\n新しい友達をつくれるアプリ。',
-                style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray, height: 1.7),
-                textAlign: TextAlign.center,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              '白黒つけるほど、仲良くなるSNS。',
+              style: TextStyle(
+                fontSize: AppFontSize.lg,
+                fontWeight: FontWeight.w700,
+                color: AppColors.black,
               ),
-              const Spacer(),
-              PandaButton(
-                label: 'はじめる',
-                onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainApp())),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'いろんな「どっち派？」に答えて、\n自分のタイプを見つけよう。\n合う人、真逆な人とつながって、\n新しい友達をつくれるアプリ。',
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                color: AppColors.textGray,
+                height: 1.7,
               ),
-              const SizedBox(height: AppSpacing.md),
-              PandaOutlinedButton(
-                label: 'ログイン',
-                onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainApp())),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            PandaButton(
+              label: 'Googleで新規登録',
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MainApp()),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              const Text('利用規約・プライバシーポリシー', style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
-              const SizedBox(height: AppSpacing.md),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            PandaOutlinedButton(
+              label: 'Appleで新規登録',
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MainApp()),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            PandaOutlinedButton(
+              label: '登録せずにはじめる',
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MainApp()),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            PandaOutlinedButton(
+              label: 'ログイン',
+              onTap: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MainApp()),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              '利用規約・プライバシーポリシー',
+              style: TextStyle(
+                fontSize: AppFontSize.sm,
+                color: AppColors.textGray,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
         ),
       ),
     );

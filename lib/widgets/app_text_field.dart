@@ -20,13 +20,23 @@ class AppTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: AppFontSize.md, fontWeight: FontWeight.w600, color: AppColors.black)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: AppFontSize.md,
+            fontWeight: FontWeight.w600,
+            color: AppColors.black,
+          ),
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           initialValue: controller == null ? initialValue : null,
           maxLines: maxLines,
-          style: const TextStyle(fontSize: AppFontSize.lg, color: AppColors.black),
+          style: const TextStyle(
+            fontSize: AppFontSize.lg,
+            color: AppColors.black,
+          ),
           decoration: InputDecoration(
             filled: true,
             fillColor: AppColors.softGray,
@@ -34,7 +44,10 @@ class AppTextField extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.md),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],

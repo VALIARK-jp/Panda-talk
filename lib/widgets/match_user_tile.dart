@@ -56,10 +56,17 @@ class MatchUserTile extends StatelessWidget {
             ),
             Text(
               '合致度 $matchRate%',
-              style: const TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray),
+              style: const TextStyle(
+                fontSize: AppFontSize.md,
+                color: AppColors.textGray,
+              ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: AppColors.textGray, size: 20),
+            const Icon(
+              Icons.chevron_right,
+              color: AppColors.textGray,
+              size: 20,
+            ),
           ],
         ),
       ),

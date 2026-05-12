@@ -27,28 +27,57 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
             children: [
               Row(
                 children: [
-                  const Text('質問を投稿', style: TextStyle(fontSize: AppFontSize.xxl, fontWeight: FontWeight.w900, color: AppColors.black)),
+                  const Text(
+                    '質問を投稿',
+                    style: TextStyle(
+                      fontSize: AppFontSize.xxl,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.black,
+                    ),
+                  ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QuestionSearchScreen())),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const QuestionSearchScreen(),
+                      ),
+                    ),
                     child: const Row(
                       children: [
                         Icon(Icons.search, color: AppColors.textGray, size: 20),
                         SizedBox(width: 4),
-                        Text('検索', style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray)),
+                        Text(
+                          '検索',
+                          style: TextStyle(
+                            fontSize: AppFontSize.md,
+                            color: AppColors.textGray,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              const AppTextField(label: '質問文', initialValue: '恋愛は追う派？追われる派？', maxLines: 2),
+              const AppTextField(
+                label: '質問文',
+                initialValue: '恋愛は追う派？追われる派？',
+                maxLines: 2,
+              ),
               const SizedBox(height: AppSpacing.md),
               const AppTextField(label: '選択肢A', initialValue: '追う派'),
               const SizedBox(height: AppSpacing.md),
               const AppTextField(label: '選択肢B', initialValue: '追われる派'),
               const SizedBox(height: AppSpacing.md),
-              const Text('カテゴリ', style: TextStyle(fontSize: AppFontSize.md, fontWeight: FontWeight.w600, color: AppColors.black)),
+              const Text(
+                'カテゴリ',
+                style: TextStyle(
+                  fontSize: AppFontSize.md,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.black,
+                ),
+              ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -60,7 +89,9 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
                   child: DropdownButton<String>(
                     value: _category,
                     isExpanded: true,
-                    items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                    items: _categories
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
                     onChanged: (v) => setState(() => _category = v!),
                   ),
                 ),
@@ -78,9 +109,19 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.info_outline, size: 16, color: AppColors.textGray),
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: AppColors.textGray,
+                        ),
                         SizedBox(width: 6),
-                        Text('類似する質問があります', style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
+                        Text(
+                          '類似する質問があります',
+                          style: TextStyle(
+                            fontSize: AppFontSize.sm,
+                            color: AppColors.textGray,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -93,8 +134,22 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
                       ),
                       child: const Row(
                         children: [
-                          Expanded(child: Text('恋愛は追う派？待つ派？', style: TextStyle(fontSize: AppFontSize.md, color: AppColors.black))),
-                          Text('Q.0987', style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray)),
+                          Expanded(
+                            child: Text(
+                              '恋愛は追う派？待つ派？',
+                              style: TextStyle(
+                                fontSize: AppFontSize.md,
+                                color: AppColors.black,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Q.0987',
+                            style: TextStyle(
+                              fontSize: AppFontSize.sm,
+                              color: AppColors.textGray,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -103,10 +158,90 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
               PandaButton(label: '投稿する', onTap: () => Navigator.pop(context)),
+              const SizedBox(height: AppSpacing.lg),
+              const Text(
+                '自分の投稿',
+                style: TextStyle(
+                  fontSize: AppFontSize.md,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.black,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const _MyQuestionCard(
+                title: '朝はパン派？ごはん派？',
+                category: '食べ物',
+                number: 1204,
+              ),
+              const _MyQuestionCard(
+                title: '連絡は電話派？チャット派？',
+                category: '生活',
+                number: 1188,
+              ),
               const SizedBox(height: AppSpacing.md),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MyQuestionCard extends StatelessWidget {
+  final String title;
+  final String category;
+  final int number;
+
+  const _MyQuestionCard({
+    required this.title,
+    required this.category,
+    required this.number,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.borderGray),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Q.$number / $category',
+                  style: const TextStyle(
+                    fontSize: AppFontSize.sm,
+                    color: AppColors.textGray,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: AppFontSize.md,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.edit_outlined, color: AppColors.black),
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.delete_outline, color: AppColors.textGray),
+          ),
+        ],
       ),
     );
   }
