@@ -4,8 +4,24 @@ import '../widgets/panda_avatar.dart';
 import '../widgets/panda_button.dart';
 import 'main_app.dart';
 
-class OnboardingScreen extends StatelessWidget {
+enum _OnboardingMode { start, login, signup }
+
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  _OnboardingMode _mode = _OnboardingMode.start;
+
+  void _enterApp() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const MainApp()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +31,17 @@ class OnboardingScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           children: [
-            const SizedBox(height: AppSpacing.lg),
+            if (_mode != _OnboardingMode.start)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  onPressed: () =>
+                      setState(() => _mode = _OnboardingMode.start),
+                  icon: const Icon(Icons.arrow_back, color: AppColors.black),
+                ),
+              )
+            else
+              const SizedBox(height: AppSpacing.lg),
             const PandaSleep(size: 120),
             const SizedBox(height: AppSpacing.md),
             Image.asset(
@@ -34,9 +60,9 @@ class OnboardingScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
-              '白黒つけるほど、仲良くなるSNS。',
-              style: TextStyle(
+            Text(
+              _title,
+              style: const TextStyle(
                 fontSize: AppFontSize.lg,
                 fontWeight: FontWeight.w700,
                 color: AppColors.black,
@@ -44,9 +70,9 @@ class OnboardingScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.md),
-            const Text(
-              'いろんな「どっち派？」に答えて、\n自分のタイプを見つけよう。\n合う人、真逆な人とつながって、\n新しい友達をつくれるアプリ。',
-              style: TextStyle(
+            Text(
+              _body,
+              style: const TextStyle(
                 fontSize: AppFontSize.md,
                 color: AppColors.textGray,
                 height: 1.7,
@@ -54,37 +80,7 @@ class OnboardingScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.lg),
-            PandaButton(
-              label: 'Googleで新規登録',
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MainApp()),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            PandaOutlinedButton(
-              label: 'Appleで新規登録',
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MainApp()),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            PandaOutlinedButton(
-              label: '登録せずにはじめる',
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MainApp()),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            PandaOutlinedButton(
-              label: 'ログイン',
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const MainApp()),
-              ),
-            ),
+            ..._buildActions(),
             const SizedBox(height: AppSpacing.lg),
             const Text(
               '利用規約・プライバシーポリシー',
@@ -99,5 +95,77 @@ class OnboardingScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String get _title {
+    switch (_mode) {
+      case _OnboardingMode.login:
+        return 'ログイン';
+      case _OnboardingMode.signup:
+        return '新規登録';
+      case _OnboardingMode.start:
+        return 'まずはどっち派に答えてみよう。';
+    }
+  }
+
+  String get _body {
+    switch (_mode) {
+      case _OnboardingMode.login:
+        return '前に使ったアカウントで続きから再開できます。';
+      case _OnboardingMode.signup:
+        return '回答履歴や合致度を保存して、友達と比べられるようになります。';
+      case _OnboardingMode.start:
+        return '登録しなくても質問に答えられます。\nみんなの回答比率や少数派判定を見ながら、\n自分のタイプを見つけよう。';
+    }
+  }
+
+  List<Widget> _buildActions() {
+    switch (_mode) {
+      case _OnboardingMode.login:
+        return [
+          PandaButton(label: 'Googleでログイン', onTap: _enterApp),
+          const SizedBox(height: AppSpacing.md),
+          PandaOutlinedButton(label: 'Appleでログイン', onTap: _enterApp),
+          const SizedBox(height: AppSpacing.md),
+          TextButton(
+            onPressed: () => setState(() => _mode = _OnboardingMode.signup),
+            child: const Text(
+              '新規登録はこちら',
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                fontWeight: FontWeight.w800,
+                color: AppColors.black,
+              ),
+            ),
+          ),
+        ];
+      case _OnboardingMode.signup:
+        return [
+          PandaButton(label: 'Googleで新規登録', onTap: _enterApp),
+          const SizedBox(height: AppSpacing.md),
+          PandaOutlinedButton(label: 'Appleで新規登録', onTap: _enterApp),
+          const SizedBox(height: AppSpacing.md),
+          TextButton(
+            onPressed: () => setState(() => _mode = _OnboardingMode.login),
+            child: const Text(
+              'ログインはこちら',
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                fontWeight: FontWeight.w800,
+                color: AppColors.black,
+              ),
+            ),
+          ),
+        ];
+      case _OnboardingMode.start:
+        return [
+          PandaButton(label: '始めよう', onTap: _enterApp),
+          const SizedBox(height: AppSpacing.md),
+          PandaOutlinedButton(
+            label: 'ログイン',
+            onTap: () => setState(() => _mode = _OnboardingMode.login),
+          ),
+        ];
+    }
   }
 }

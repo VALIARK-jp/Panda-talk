@@ -1,11 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
+import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 
-class ProfileEditScreen extends StatelessWidget {
+class ProfileEditScreen extends ConsumerStatefulWidget {
   const ProfileEditScreen({super.key});
+
+  @override
+  ConsumerState<ProfileEditScreen> createState() => _ProfileEditScreenState();
+}
+
+class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _bioController;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = ref.read(profileControllerProvider);
+    _nameController = TextEditingController(text: profile.name);
+    _bioController = TextEditingController(text: profile.bio);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _bioController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,15 +80,26 @@ class ProfileEditScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            const AppTextField(label: '名前', initialValue: 'ぱんだちゃん'),
+            AppTextField(label: '名前', controller: _nameController),
             const SizedBox(height: AppSpacing.md),
-            const AppTextField(
+            AppTextField(
               label: '自己紹介',
-              initialValue: 'パンダが大好きです',
+              controller: _bioController,
               maxLines: 3,
             ),
             const SizedBox(height: AppSpacing.xl),
-            PandaButton(label: '保存する', onTap: () => Navigator.pop(context)),
+            PandaButton(
+              label: '保存する',
+              onTap: () {
+                ref
+                    .read(profileControllerProvider.notifier)
+                    .updateProfile(
+                      name: _nameController.text,
+                      bio: _bioController.text,
+                    );
+                Navigator.pop(context);
+              },
+            ),
           ],
         ),
       ),

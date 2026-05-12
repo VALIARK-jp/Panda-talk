@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/design_tokens.dart';
+import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/tag_chip.dart';
@@ -9,12 +11,12 @@ import '../notifications/notifications_screen.dart';
 import '../settings/settings_screen.dart';
 import 'profile_edit_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final tags = ['夜型', '外出派', '即レス派', '追う派', '計画派'];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(profileControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -77,8 +79,8 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               PandaAvatar(size: 72),
               const SizedBox(height: AppSpacing.md),
-              const Text(
-                'ぱんだちゃん',
+              Text(
+                profile.name,
                 style: TextStyle(
                   fontSize: AppFontSize.xl,
                   fontWeight: FontWeight.w900,
@@ -86,8 +88,8 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                '@panda_123',
+              Text(
+                '@${profile.username}',
                 style: TextStyle(
                   fontSize: AppFontSize.md,
                   color: AppColors.textGray,
@@ -126,11 +128,11 @@ class ProfileScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _StatItem(label: '回答数', value: '128'),
+                  _StatItem(label: '回答数', value: '${profile.answerCount}'),
                   _Divider(),
-                  _StatItem(label: '投稿数', value: '12'),
+                  _StatItem(label: '投稿数', value: '${profile.postCount}'),
                   _Divider(),
-                  _StatItem(label: '友達数', value: '23人'),
+                  _StatItem(label: '友達数', value: '${profile.friendCount}人'),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
@@ -148,19 +150,19 @@ class ProfileScreen extends StatelessWidget {
                     color: AppColors.softGray,
                     borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '異端児スコア 26%',
-                        style: TextStyle(
+                        '異端児スコア ${profile.oddballScore}%',
+                        style: const TextStyle(
                           fontSize: AppFontSize.sm,
                           fontWeight: FontWeight.w700,
                           color: AppColors.black,
                         ),
                       ),
-                      SizedBox(width: 6),
-                      Icon(
+                      const SizedBox(width: 6),
+                      const Icon(
                         Icons.ios_share,
                         size: 14,
                         color: AppColors.textGray,
@@ -188,8 +190,8 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'パンダが大好きです🐼🤍',
+                    Text(
+                      profile.bio,
                       style: TextStyle(
                         fontSize: AppFontSize.md,
                         color: AppColors.black,
@@ -214,7 +216,7 @@ class ProfileScreen extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: tags
+                children: profile.tags
                     .map((t) => TagChip(label: t, filled: true))
                     .toList(),
               ),

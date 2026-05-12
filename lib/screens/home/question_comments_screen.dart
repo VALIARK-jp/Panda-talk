@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/comment_providers.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
 
-class QuestionCommentsScreen extends StatefulWidget {
+class QuestionCommentsScreen extends ConsumerStatefulWidget {
   final DummyQuestion question;
   const QuestionCommentsScreen({super.key, required this.question});
 
   @override
-  State<QuestionCommentsScreen> createState() => _QuestionCommentsScreenState();
+  ConsumerState<QuestionCommentsScreen> createState() =>
+      _QuestionCommentsScreenState();
 }
 
-class _QuestionCommentsScreenState extends State<QuestionCommentsScreen> {
+class _QuestionCommentsScreenState
+    extends ConsumerState<QuestionCommentsScreen> {
   int _tabIndex = 0;
-  final Set<int> _liked = {0};
-
-  final _comments = const [
-    _Comment(option: '外出派', body: '外に出た方がちゃんと休日感ある。', likes: 18, isMine: false),
-    _Comment(option: '家派', body: '予定がない日に家で回復するのが最高。', likes: 12, isMine: true),
-    _Comment(option: '外出派', body: '散歩だけでも気分が変わる。', likes: 7, isMine: false),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    final visible = _comments.where((c) {
+    final commentState = ref.watch(commentControllerProvider(widget.question));
+    final commentsController = ref.read(
+      commentControllerProvider(widget.question).notifier,
+    );
+    final visible = commentState.comments.where((c) {
       if (_tabIndex == 1) return c.option == widget.question.optionA;
       if (_tabIndex == 2) return c.option == widget.question.optionB;
       return true;
@@ -87,20 +88,11 @@ class _QuestionCommentsScreenState extends State<QuestionCommentsScreen> {
                 itemCount: visible.length,
                 itemBuilder: (context, i) {
                   final comment = visible[i];
-                  final originalIndex = _comments.indexOf(comment);
-                  final liked = _liked.contains(originalIndex);
                   return _CommentTile(
                     comment: comment,
-                    liked: liked,
-                    onLike: () {
-                      setState(() {
-                        if (liked) {
-                          _liked.remove(originalIndex);
-                        } else {
-                          _liked.add(originalIndex);
-                        }
-                      });
-                    },
+                    onLike: () => commentsController.toggleLike(comment.id),
+                    onDelete: () =>
+                        commentsController.deleteComment(comment.id),
                   );
                 },
               ),
@@ -130,7 +122,14 @@ class _QuestionCommentsScreenState extends State<QuestionCommentsScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  PandaButton(label: '投稿', width: 76, onTap: () {}),
+                  PandaButton(
+                    label: '投稿',
+                    width: 76,
+                    onTap: () => commentsController.postComment(
+                      widget.question.optionA,
+                      '匿名コメントを投稿しました。',
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -141,29 +140,15 @@ class _QuestionCommentsScreenState extends State<QuestionCommentsScreen> {
   }
 }
 
-class _Comment {
-  final String option;
-  final String body;
-  final int likes;
-  final bool isMine;
-
-  const _Comment({
-    required this.option,
-    required this.body,
-    required this.likes,
-    required this.isMine,
-  });
-}
-
 class _CommentTile extends StatelessWidget {
-  final _Comment comment;
-  final bool liked;
+  final DummyComment comment;
   final VoidCallback onLike;
+  final VoidCallback onDelete;
 
   const _CommentTile({
     required this.comment,
-    required this.liked,
     required this.onLike,
+    required this.onDelete,
   });
 
   @override
@@ -202,7 +187,7 @@ class _CommentTile extends StatelessWidget {
               const Spacer(),
               if (comment.isMine)
                 IconButton(
-                  onPressed: () {},
+                  onPressed: onDelete,
                   icon: const Icon(
                     Icons.delete_outline,
                     color: AppColors.textGray,
@@ -226,13 +211,13 @@ class _CommentTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  liked ? Icons.favorite : Icons.favorite_border,
+                  comment.likedByMe ? Icons.favorite : Icons.favorite_border,
                   size: 18,
                   color: AppColors.black,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${comment.likes + (liked ? 1 : 0)}',
+                  '${comment.likes}',
                   style: const TextStyle(
                     fontSize: AppFontSize.sm,
                     color: AppColors.textGray,

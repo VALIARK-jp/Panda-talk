@@ -21,12 +21,8 @@ class QuestionFeedScreen extends ConsumerStatefulWidget {
 
 class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   int _tabIndex = 0; // 0=診断 1=Hot
-  int _questionIndex = 0;
-  int _answeredCount = 0; // ゲスト回答カウント（ダミー）
-  int _minorityCount = 0; // 少数派回答カウント
   final bool _isGuest = true; // ゲストモードフラグ（ダミー）
-  bool _likedQuestion = false;
-  String? _selectedOption;
+  final _pageController = PageController();
   Timer? _nextQuestionTimer;
 
   static const _nudgeMessages = {
@@ -38,35 +34,79 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   @override
   void dispose() {
     _nextQuestionTimer?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
   void _onAnswer(DummyQuestion q, String selected, int percentA, int total) {
-    if (_selectedOption != null) return;
-
-    final selectedA = selected == q.optionA;
-    final selectedPercent = selectedA ? percentA : (100 - percentA);
-    final isMinority = selectedPercent < 50;
-
-    setState(() {
-      _selectedOption = selected;
-      _answeredCount++;
-      if (isMinority) _minorityCount++;
-    });
+    final controller = ref.read(questionFeedControllerProvider.notifier);
+    if (ref.read(questionFeedControllerProvider).selectedOptionFor(q.number) !=
+        null) {
+      return;
+    }
+    controller.answer(q, selected);
 
     _nextQuestionTimer?.cancel();
-    _nextQuestionTimer = Timer(const Duration(milliseconds: 2600), () {
+    _nextQuestionTimer = Timer(const Duration(milliseconds: 850), () {
       if (!mounted) return;
-      final answeredCount = _answeredCount;
-      setState(() {
-        _questionIndex = (_questionIndex + 1) % total;
-        _selectedOption = null;
-        _likedQuestion = false;
-      });
+      final answeredCount = ref
+          .read(questionFeedControllerProvider)
+          .answeredCount;
+      _goToNextQuestion(total);
       if (_isGuest && _nudgeMessages.containsKey(answeredCount)) {
         _showNudgeModal(answeredCount);
       }
     });
+  }
+
+  void _goToNextQuestion(int total) {
+    _nextQuestionTimer?.cancel();
+    final currentIndex = ref.read(questionFeedControllerProvider).questionIndex;
+    final nextIndex = (currentIndex + 1) % total;
+    _animateToQuestion(nextIndex);
+  }
+
+  void _handleManualSwipe(
+    DragEndDetails details,
+    List<DummyQuestion> questions,
+    QuestionFeedState feedState,
+  ) {
+    final velocity = details.primaryVelocity;
+    if (velocity == null) return;
+
+    final total = questions.length;
+    final currentIndex = feedState.questionIndex % total;
+    final currentQuestion = questions[currentIndex];
+    final currentAnswered =
+        feedState.selectedOptionFor(currentQuestion.number) != null;
+
+    if (velocity < -200) {
+      if (currentAnswered) _goToNextQuestion(total);
+      return;
+    }
+
+    if (velocity > 200) {
+      for (var index = currentIndex - 1; index >= 0; index--) {
+        final question = questions[index];
+        if (feedState.selectedOptionFor(question.number) != null) {
+          _nextQuestionTimer?.cancel();
+          _animateToQuestion(index);
+          return;
+        }
+      }
+    }
+  }
+
+  void _animateToQuestion(int index) {
+    if (!_pageController.hasClients) {
+      ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(index);
+      return;
+    }
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _showNudgeModal(int count) {
@@ -78,22 +118,221 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     );
   }
 
-  Widget _buildScreen(DummyQuestion q, int total) {
-    final selected = _selectedOption;
+  Widget _buildQuestionPage(
+    DummyQuestion q,
+    List<DummyQuestion> questions,
+    int total,
+    QuestionFeedState feedState,
+  ) {
+    final selected = feedState.selectedOptionFor(q.number);
     final hasAnswered = selected != null;
     final selectedA = selected == q.optionA;
     final selectedPercent = selectedA ? q.percentA : (100 - q.percentA);
     final isMinority = hasAnswered && selectedPercent < 50;
-    final oddballScore = _answeredCount > 0
-        ? (_minorityCount / _answeredCount * 100).round()
+    final oddballScore = feedState.answeredCount > 0
+        ? (feedState.minorityCount / feedState.answeredCount * 100).round()
         : 0;
+    final likedQuestion = feedState.likedQuestionNumbers.contains(q.number);
 
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: [
+              // 投稿者 + 番号 + カテゴリ
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      PandaAvatar(size: 28),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            q.authorName,
+                            style: const TextStyle(
+                              fontSize: AppFontSize.sm,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.black,
+                            ),
+                          ),
+                          Text(
+                            '@${q.authorUsername}',
+                            style: const TextStyle(
+                              fontSize: AppFontSize.sm,
+                              color: AppColors.textGray,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        'Q.${q.number}',
+                        style: const TextStyle(
+                          fontSize: AppFontSize.sm,
+                          color: AppColors.textGray,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TagChip(label: q.category),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    onPressed: () => ref
+                        .read(questionFeedControllerProvider.notifier)
+                        .toggleQuestionLike(q.number),
+                    icon: Icon(
+                      likedQuestion ? Icons.favorite : Icons.favorite_border,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => QuestionCommentsScreen(question: q),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.mode_comment_outlined,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                child: hasAnswered
+                    ? Column(
+                        key: ValueKey('result-${q.number}'),
+                        children: [
+                          const Text(
+                            'あなたは...',
+                            style: TextStyle(
+                              fontSize: AppFontSize.lg,
+                              color: AppColors.textGray,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            '$selected！',
+                            style: const TextStyle(
+                              fontSize: AppFontSize.xxxl,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.black,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isMinority
+                                  ? AppColors.black
+                                  : AppColors.softGray,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.full,
+                              ),
+                            ),
+                            child: Text(
+                              '${isMinority ? '少数派' : '多数派'} $selectedPercent%',
+                              style: TextStyle(
+                                fontSize: AppFontSize.sm,
+                                fontWeight: FontWeight.w800,
+                                color: isMinority
+                                    ? AppColors.white
+                                    : AppColors.black,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        key: ValueKey('question-${q.number}'),
+                        children: [
+                          PandaMascot(size: 72),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            q.text,
+                            style: const TextStyle(
+                              fontSize: AppFontSize.xl,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.black,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+              ),
+              const Spacer(),
+              SizedBox(
+                height: 118,
+                child: AnimatedOpacity(
+                  opacity: hasAnswered ? 1 : 0,
+                  duration: const Duration(milliseconds: 240),
+                  child: hasAnswered
+                      ? _OddballScoreCard(
+                          key: ValueKey('score-${q.number}'),
+                          score: oddballScore,
+                          answeredCount: feedState.answeredCount,
+                          minorityCount: feedState.minorityCount,
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _AnswerRatioBar(
+                question: q,
+                selectedOption: selected,
+                onSelect: (option) => _onAnswer(q, option, q.percentA, total),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScreen(
+    List<DummyQuestion> questions,
+    QuestionFeedState feedState,
+  ) {
+    final total = questions.length;
     return Scaffold(
       backgroundColor: AppColors.softGray,
       body: SafeArea(
         child: Column(
           children: [
-            // ヘッダー
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
@@ -109,10 +348,13 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                         _nextQuestionTimer?.cancel();
                         setState(() {
                           _tabIndex = i;
-                          _questionIndex = 0;
-                          _selectedOption = null;
-                          _likedQuestion = false;
                         });
+                        ref
+                            .read(questionFeedControllerProvider.notifier)
+                            .resetForTab();
+                        if (_pageController.hasClients) {
+                          _pageController.jumpToPage(0);
+                        }
                       },
                     ),
                   ),
@@ -129,210 +371,30 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 ],
               ),
             ),
-            // 質問カード
             Expanded(
               child: GestureDetector(
-                onVerticalDragEnd: (d) {
-                  if (d.primaryVelocity != null && d.primaryVelocity! < -200) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const QuestionHistoryScreen(),
-                      ),
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragEnd: (details) =>
+                    _handleManualSwipe(details, questions, feedState),
+                child: PageView.builder(
+                  controller: _pageController,
+                  scrollDirection: Axis.vertical,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: total,
+                  onPageChanged: (index) {
+                    _nextQuestionTimer?.cancel();
+                    ref
+                        .read(questionFeedControllerProvider.notifier)
+                        .setQuestionIndex(index);
+                  },
+                  itemBuilder: (context, index) {
+                    return _buildQuestionPage(
+                      questions[index],
+                      questions,
+                      total,
+                      feedState,
                     );
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: Column(
-                        children: [
-                          // 投稿者 + 番号 + カテゴリ
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  PandaAvatar(size: 28),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        q.authorName,
-                                        style: const TextStyle(
-                                          fontSize: AppFontSize.sm,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.black,
-                                        ),
-                                      ),
-                                      Text(
-                                        '@${q.authorUsername}',
-                                        style: const TextStyle(
-                                          fontSize: AppFontSize.sm,
-                                          color: AppColors.textGray,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    'Q.${q.number}',
-                                    style: const TextStyle(
-                                      fontSize: AppFontSize.sm,
-                                      color: AppColors.textGray,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  TagChip(label: q.category),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              IconButton(
-                                onPressed: () => setState(
-                                  () => _likedQuestion = !_likedQuestion,
-                                ),
-                                icon: Icon(
-                                  _likedQuestion
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
-                                  color: AppColors.black,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        QuestionCommentsScreen(question: q),
-                                  ),
-                                ),
-                                icon: const Icon(
-                                  Icons.mode_comment_outlined,
-                                  color: AppColors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 280),
-                            child: hasAnswered
-                                ? Column(
-                                    key: ValueKey('result-${q.number}'),
-                                    children: [
-                                      const Text(
-                                        'あなたは...',
-                                        style: TextStyle(
-                                          fontSize: AppFontSize.lg,
-                                          color: AppColors.textGray,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppSpacing.sm),
-                                      Text(
-                                        '$selected！',
-                                        style: const TextStyle(
-                                          fontSize: AppFontSize.xxxl,
-                                          fontWeight: FontWeight.w900,
-                                          color: AppColors.black,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: AppSpacing.sm),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isMinority
-                                              ? AppColors.black
-                                              : AppColors.softGray,
-                                          borderRadius: BorderRadius.circular(
-                                            AppRadius.full,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '${isMinority ? '少数派' : '多数派'} $selectedPercent%',
-                                          style: TextStyle(
-                                            fontSize: AppFontSize.sm,
-                                            fontWeight: FontWeight.w800,
-                                            color: isMinority
-                                                ? AppColors.white
-                                                : AppColors.black,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Column(
-                                    key: ValueKey('question-${q.number}'),
-                                    children: [
-                                      PandaMascot(size: 72),
-                                      const SizedBox(height: AppSpacing.md),
-                                      Text(
-                                        q.text,
-                                        style: const TextStyle(
-                                          fontSize: AppFontSize.xl,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.black,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                          const Spacer(),
-                          SizedBox(
-                            height: 118,
-                            child: AnimatedOpacity(
-                              opacity: hasAnswered ? 1 : 0,
-                              duration: const Duration(milliseconds: 240),
-                              child: hasAnswered
-                                  ? _OddballScoreCard(
-                                      key: ValueKey('score-${q.number}'),
-                                      score: oddballScore,
-                                      answeredCount: _answeredCount,
-                                      minorityCount: _minorityCount,
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          _AnswerRatioBar(
-                            question: q,
-                            selectedOption: selected,
-                            onSelect: (option) =>
-                                _onAnswer(q, option, q.percentA, total),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                        ],
-                      ),
-                    ),
-                  ),
+                  },
                 ),
               ),
             ),
@@ -345,6 +407,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   @override
   Widget build(BuildContext context) {
     final questionsAsync = ref.watch(feedQuestionsProvider);
+    final feedState = ref.watch(questionFeedControllerProvider);
     return questionsAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -353,11 +416,11 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         if (questions.isEmpty) {
           return const Scaffold(body: Center(child: Text('質問がありません')));
         }
-        final orderedQuestions = _tabIndex == 0 ? questions : [...questions]
-          ..sort((a, b) => b.percentA.compareTo(a.percentA));
-        final question =
-            orderedQuestions[_questionIndex % orderedQuestions.length];
-        return _buildScreen(question, orderedQuestions.length);
+        final orderedQuestions = [...questions];
+        if (_tabIndex == 1) {
+          orderedQuestions.sort((a, b) => b.percentA.compareTo(a.percentA));
+        }
+        return _buildScreen(orderedQuestions, feedState);
       },
     );
   }

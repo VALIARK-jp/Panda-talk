@@ -1,48 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/notification_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../friends/friends_screen.dart';
 
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
-
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  bool _allRead = false;
-
-  final _notifications = const [
-    DummyNotification(
-      title: '友達申請が届きました',
-      body: 'りなさんが友達になりたがっています',
-      time: '3分前',
-      isRead: false,
-      targetLabel: '友達申請',
-    ),
-    DummyNotification(
-      title: '質問にいいねされました',
-      body: '投稿した「朝型？夜型？」にいいねがつきました',
-      time: '1時間前',
-      isRead: false,
-      targetLabel: '質問',
-    ),
-    DummyNotification(
-      title: '友達申請が承認されました',
-      body: 'こうたろうさんと友達になりました',
-      time: '昨日',
-      isRead: true,
-      targetLabel: 'プロフィール',
-    ),
-  ];
-
-  int get _unreadCount =>
-      _allRead ? 0 : _notifications.where((n) => !n.isRead).length;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notificationState = ref.watch(notificationControllerProvider);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -62,7 +31,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'お知らせ $_unreadCount',
+                      'お知らせ ${notificationState.unreadCount}',
                       style: const TextStyle(
                         fontSize: AppFontSize.xl,
                         fontWeight: FontWeight.w800,
@@ -71,7 +40,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => setState(() => _allRead = true),
+                    onPressed: ref
+                        .read(notificationControllerProvider.notifier)
+                        .markAllAsRead,
                     child: const Text(
                       'すべて既読',
                       style: TextStyle(
@@ -86,15 +57,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                itemCount: _notifications.length,
+                itemCount: notificationState.notifications.length,
                 itemBuilder: (context, i) {
-                  final n = _notifications[i];
-                  final isRead = _allRead || n.isRead;
+                  final n = notificationState.notifications[i];
                   return _NotificationTile(
                     notification: n,
-                    isRead: isRead,
+                    isRead: n.isRead,
                     onTap: () {
-                      setState(() => _allRead = true);
+                      ref
+                          .read(notificationControllerProvider.notifier)
+                          .markAsRead(n.id);
                       if (n.targetLabel == '友達申請') {
                         Navigator.push(
                           context,

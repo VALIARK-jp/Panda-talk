@@ -1,22 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
+import '../../core/dummy_data.dart';
+import '../../presentation/providers/post_providers.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/panda_button.dart';
 import 'question_search_screen.dart';
 
-class QuestionPostScreen extends StatefulWidget {
+class QuestionPostScreen extends ConsumerStatefulWidget {
   const QuestionPostScreen({super.key});
 
   @override
-  State<QuestionPostScreen> createState() => _QuestionPostScreenState();
+  ConsumerState<QuestionPostScreen> createState() => _QuestionPostScreenState();
 }
 
-class _QuestionPostScreenState extends State<QuestionPostScreen> {
+class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
+  final _questionController = TextEditingController(text: '恋愛は追う派？追われる派？');
+  final _optionAController = TextEditingController(text: '追う派');
+  final _optionBController = TextEditingController(text: '追われる派');
   String _category = '恋愛';
   final _categories = ['恋愛', '生活', '性格', '旅行', '仕事', '食べ物'];
 
   @override
+  void dispose() {
+    _questionController.dispose();
+    _optionAController.dispose();
+    _optionBController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _postQuestion() async {
+    await ref
+        .read(questionPostControllerProvider.notifier)
+        .postQuestion(
+          text: _questionController.text,
+          optionA: _optionAController.text,
+          optionB: _optionBController.text,
+          category: _category,
+        );
+    _questionController.clear();
+    _optionAController.clear();
+    _optionBController.clear();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('質問を投稿しました')));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final myQuestions = ref.watch(questionPostControllerProvider);
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -60,15 +94,15 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              const AppTextField(
+              AppTextField(
                 label: '質問文',
-                initialValue: '恋愛は追う派？追われる派？',
+                controller: _questionController,
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpacing.md),
-              const AppTextField(label: '選択肢A', initialValue: '追う派'),
+              AppTextField(label: '選択肢A', controller: _optionAController),
               const SizedBox(height: AppSpacing.md),
-              const AppTextField(label: '選択肢B', initialValue: '追われる派'),
+              AppTextField(label: '選択肢B', controller: _optionBController),
               const SizedBox(height: AppSpacing.md),
               const Text(
                 'カテゴリ',
@@ -79,85 +113,15 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.softGray,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _category,
-                    isExpanded: true,
-                    items: _categories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _category = v!),
-                  ),
-                ),
+              _CategoryDropdown(
+                value: _category,
+                categories: _categories,
+                onChanged: (value) => setState(() => _category = value),
               ),
               const SizedBox(height: AppSpacing.lg),
-              // 類似質問警告
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.softGray,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: AppColors.textGray,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          '類似する質問があります',
-                          style: TextStyle(
-                            fontSize: AppFontSize.sm,
-                            color: AppColors.textGray,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                        border: Border.all(color: AppColors.borderGray),
-                      ),
-                      child: const Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '恋愛は追う派？待つ派？',
-                              style: TextStyle(
-                                fontSize: AppFontSize.md,
-                                color: AppColors.black,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Q.0987',
-                            style: TextStyle(
-                              fontSize: AppFontSize.sm,
-                              color: AppColors.textGray,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const _SimilarQuestionNotice(),
               const SizedBox(height: AppSpacing.xl),
-              PandaButton(label: '投稿する', onTap: () => Navigator.pop(context)),
+              PandaButton(label: '投稿する', onTap: _postQuestion),
               const SizedBox(height: AppSpacing.lg),
               const Text(
                 '自分の投稿',
@@ -168,15 +132,14 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              const _MyQuestionCard(
-                title: '朝はパン派？ごはん派？',
-                category: '食べ物',
-                number: 1204,
-              ),
-              const _MyQuestionCard(
-                title: '連絡は電話派？チャット派？',
-                category: '生活',
-                number: 1188,
+              ...myQuestions.map(
+                (question) => _MyQuestionCard(
+                  question: question,
+                  onEdit: _showEditSheet,
+                  onDelete: (number) => ref
+                      .read(questionPostControllerProvider.notifier)
+                      .deleteQuestion(number),
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
@@ -185,17 +148,186 @@ class _QuestionPostScreenState extends State<QuestionPostScreen> {
       ),
     );
   }
+
+  void _showEditSheet(DummyQuestion question) {
+    final questionController = TextEditingController(text: question.text);
+    final optionAController = TextEditingController(text: question.optionA);
+    final optionBController = TextEditingController(text: question.optionB);
+    var category = question.category;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '質問を編集',
+                    style: TextStyle(
+                      fontSize: AppFontSize.xl,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.black,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    label: '質問文',
+                    controller: questionController,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(label: '選択肢A', controller: optionAController),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(label: '選択肢B', controller: optionBController),
+                  const SizedBox(height: AppSpacing.md),
+                  _CategoryDropdown(
+                    value: category,
+                    categories: _categories,
+                    onChanged: (value) => setSheetState(() => category = value),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  PandaButton(
+                    label: '保存する',
+                    onTap: () async {
+                      await ref
+                          .read(questionPostControllerProvider.notifier)
+                          .editQuestion(
+                            number: question.number,
+                            text: questionController.text,
+                            optionA: optionAController.text,
+                            optionB: optionBController.text,
+                            category: category,
+                          );
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CategoryDropdown extends StatelessWidget {
+  final String value;
+  final List<String> categories;
+  final ValueChanged<String> onChanged;
+
+  const _CategoryDropdown({
+    required this.value,
+    required this.categories,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.softGray,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          items: categories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _SimilarQuestionNotice extends StatelessWidget {
+  const _SimilarQuestionNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.softGray,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.info_outline, size: 16, color: AppColors.textGray),
+              SizedBox(width: 6),
+              Text(
+                '類似する質問があります',
+                style: TextStyle(
+                  fontSize: AppFontSize.sm,
+                  color: AppColors.textGray,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: AppColors.borderGray),
+            ),
+            child: const Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '恋愛は追う派？待つ派？',
+                    style: TextStyle(
+                      fontSize: AppFontSize.md,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Q.0987',
+                  style: TextStyle(
+                    fontSize: AppFontSize.sm,
+                    color: AppColors.textGray,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MyQuestionCard extends StatelessWidget {
-  final String title;
-  final String category;
-  final int number;
+  final DummyQuestion question;
+  final ValueChanged<DummyQuestion> onEdit;
+  final ValueChanged<int> onDelete;
 
   const _MyQuestionCard({
-    required this.title,
-    required this.category,
-    required this.number,
+    required this.question,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -215,7 +347,7 @@ class _MyQuestionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Q.$number / $category',
+                  'Q.${question.number} / ${question.category}',
                   style: const TextStyle(
                     fontSize: AppFontSize.sm,
                     color: AppColors.textGray,
@@ -223,7 +355,7 @@ class _MyQuestionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  title,
+                  question.text,
                   style: const TextStyle(
                     fontSize: AppFontSize.md,
                     fontWeight: FontWeight.w700,
@@ -234,11 +366,11 @@ class _MyQuestionCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => onEdit(question),
             icon: const Icon(Icons.edit_outlined, color: AppColors.black),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () => onDelete(question.number),
             icon: const Icon(Icons.delete_outline, color: AppColors.textGray),
           ),
         ],

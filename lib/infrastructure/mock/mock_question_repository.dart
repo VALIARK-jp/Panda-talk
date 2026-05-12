@@ -1,49 +1,74 @@
 import '../../core/dummy_data.dart';
 
 class MockQuestionRepository {
+  final List<DummyQuestion> _feedQuestions = [
+    const DummyQuestion(
+      number: 1256,
+      category: '生活',
+      authorName: 'こうたろう',
+      authorUsername: 'kotaro_123',
+      text: '休日は外出派？家派？',
+      optionA: '外出派',
+      optionB: '家派',
+      percentA: 64,
+    ),
+    const DummyQuestion(
+      number: 1255,
+      category: '生活',
+      authorName: 'まなみ',
+      authorUsername: 'manami_456',
+      text: '朝型？夜型？',
+      optionA: '朝型',
+      optionB: '夜型',
+      percentA: 38,
+    ),
+    const DummyQuestion(
+      number: 1254,
+      category: '性格',
+      authorName: 'ゆうき',
+      authorUsername: 'yuuki_789',
+      text: 'LINEは即レス派？溜める派？',
+      optionA: '即レス派',
+      optionB: '溜める派',
+      percentA: 55,
+    ),
+    const DummyQuestion(
+      number: 1253,
+      category: '恋愛',
+      authorName: 'りな',
+      authorUsername: 'rina_222',
+      text: '恋愛は追う派？追われる派？',
+      optionA: '追う派',
+      optionB: '追われる派',
+      percentA: 42,
+    ),
+  ];
+
+  final List<DummyQuestion> _myQuestions = [
+    const DummyQuestion(
+      number: 1204,
+      category: '食べ物',
+      authorName: 'ぱんだちゃん',
+      authorUsername: 'panda_123',
+      text: '朝はパン派？ごはん派？',
+      optionA: 'パン派',
+      optionB: 'ごはん派',
+      percentA: 47,
+    ),
+    const DummyQuestion(
+      number: 1188,
+      category: '生活',
+      authorName: 'ぱんだちゃん',
+      authorUsername: 'panda_123',
+      text: '連絡は電話派？チャット派？',
+      optionA: '電話派',
+      optionB: 'チャット派',
+      percentA: 24,
+    ),
+  ];
+
   Future<List<DummyQuestion>> getFeedQuestions() async {
-    return [
-      const DummyQuestion(
-        number: 1256,
-        category: '生活',
-        authorName: 'こうたろう',
-        authorUsername: 'kotaro_123',
-        text: '休日は外出派？家派？',
-        optionA: '外出派',
-        optionB: '家派',
-        percentA: 64,
-      ),
-      const DummyQuestion(
-        number: 1255,
-        category: '生活',
-        authorName: 'まなみ',
-        authorUsername: 'manami_456',
-        text: '朝型？夜型？',
-        optionA: '朝型',
-        optionB: '夜型',
-        percentA: 38,
-      ),
-      const DummyQuestion(
-        number: 1254,
-        category: '性格',
-        authorName: 'ゆうき',
-        authorUsername: 'yuuki_789',
-        text: 'LINEは即レス派？溜める派？',
-        optionA: '即レス派',
-        optionB: '溜める派',
-        percentA: 55,
-      ),
-      const DummyQuestion(
-        number: 1253,
-        category: '恋愛',
-        authorName: 'りな',
-        authorUsername: 'rina_222',
-        text: '恋愛は追う派？追われる派？',
-        optionA: '追う派',
-        optionB: '追われる派',
-        percentA: 42,
-      ),
-    ];
+    return List.unmodifiable([..._myQuestions, ..._feedQuestions]);
   }
 
   Future<DummyQuestion> getCurrentQuestion() async {
@@ -172,5 +197,56 @@ class MockQuestionRepository {
         percentA: 48,
       ),
     ];
+  }
+
+  Future<List<DummyQuestion>> getMyQuestions() async {
+    return List.unmodifiable(_myQuestions);
+  }
+
+  Future<void> postQuestion({
+    required String text,
+    required String optionA,
+    required String optionB,
+    required String category,
+  }) async {
+    final nextNumber = _myQuestions.isEmpty
+        ? 1200
+        : _myQuestions.map((q) => q.number).reduce((a, b) => a > b ? a : b) + 1;
+    _myQuestions.insert(
+      0,
+      DummyQuestion(
+        number: nextNumber,
+        category: category,
+        authorName: 'ぱんだちゃん',
+        authorUsername: 'panda_123',
+        text: text,
+        optionA: optionA,
+        optionB: optionB,
+        percentA: 50,
+      ),
+    );
+  }
+
+  Future<void> editQuestion({
+    required int number,
+    required String text,
+    required String optionA,
+    required String optionB,
+    required String category,
+  }) async {
+    final index = _myQuestions.indexWhere(
+      (question) => question.number == number,
+    );
+    if (index == -1) return;
+    _myQuestions[index] = _myQuestions[index].copyWith(
+      text: text,
+      optionA: optionA,
+      optionB: optionB,
+      category: category,
+    );
+  }
+
+  Future<void> deleteQuestion(int number) async {
+    _myQuestions.removeWhere((question) => question.number == number);
   }
 }

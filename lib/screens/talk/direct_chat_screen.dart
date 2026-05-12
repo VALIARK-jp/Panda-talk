@@ -6,19 +6,38 @@ import '../../presentation/providers/talk_providers.dart';
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/panda_avatar.dart';
 
-class DirectChatScreen extends ConsumerWidget {
+class DirectChatScreen extends ConsumerStatefulWidget {
   final DummyUser user;
   const DirectChatScreen({super.key, required this.user});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final messagesAsync = ref.watch(directMessagesProvider(user.id));
+  ConsumerState<DirectChatScreen> createState() => _DirectChatScreenState();
+}
+
+class _DirectChatScreenState extends ConsumerState<DirectChatScreen> {
+  final _messageController = TextEditingController();
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    ref
+        .read(messageActionsProvider)
+        .sendDirectMessage(widget.user.id, _messageController.text);
+    _messageController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messagesAsync = ref.watch(directMessagesProvider(widget.user.id));
     return Scaffold(
       backgroundColor: AppColors.softGray,
       body: SafeArea(
         child: Column(
           children: [
-            // ヘッダー
             Container(
               color: AppColors.white,
               padding: const EdgeInsets.symmetric(
@@ -36,7 +55,7 @@ class DirectChatScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      user.name,
+                      widget.user.name,
                       style: const TextStyle(
                         fontSize: AppFontSize.lg,
                         fontWeight: FontWeight.w700,
@@ -48,7 +67,6 @@ class DirectChatScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            // メッセージ
             Expanded(
               child: messagesAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -63,7 +81,6 @@ class DirectChatScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            // フッター
             Container(
               color: AppColors.white,
               padding: const EdgeInsets.symmetric(
@@ -76,35 +93,35 @@ class DirectChatScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: AppColors.softGray,
                         borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
-                      child: const Text(
-                        'メッセージを入力…',
-                        style: TextStyle(
-                          fontSize: AppFontSize.md,
-                          color: AppColors.textGray,
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration.collapsed(
+                          hintText: 'メッセージを入力...',
                         ),
+                        onSubmitted: (_) => _send(),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.black,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward,
-                      color: AppColors.white,
-                      size: 20,
+                  GestureDetector(
+                    onTap: _send,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.black,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        color: AppColors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],

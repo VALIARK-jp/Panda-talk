@@ -32,6 +32,25 @@ class DummyQuestion {
     this.myAnswer,
     required this.percentA,
   });
+
+  DummyQuestion copyWith({
+    String? category,
+    String? text,
+    String? optionA,
+    String? optionB,
+  }) {
+    return DummyQuestion(
+      number: number,
+      category: category ?? this.category,
+      authorName: authorName,
+      authorUsername: authorUsername,
+      text: text ?? this.text,
+      optionA: optionA ?? this.optionA,
+      optionB: optionB ?? this.optionB,
+      myAnswer: myAnswer,
+      percentA: percentA,
+    );
+  }
 }
 
 class DummyMessage {
@@ -80,16 +99,121 @@ class DummyFriendRequest {
 }
 
 class DummyNotification {
+  final String id;
   final String title;
   final String body;
   final String time;
   final bool isRead;
   final String targetLabel;
   const DummyNotification({
+    required this.id,
     required this.title,
     required this.body,
     required this.time,
     required this.isRead,
     required this.targetLabel,
   });
+
+  DummyNotification copyWith({bool? isRead}) {
+    return DummyNotification(
+      id: id,
+      title: title,
+      body: body,
+      time: time,
+      isRead: isRead ?? this.isRead,
+      targetLabel: targetLabel,
+    );
+  }
+}
+
+class DummyComment {
+  final String id;
+  final String option;
+  final String body;
+  final int likes;
+  final bool isMine;
+  final bool likedByMe;
+
+  const DummyComment({
+    required this.id,
+    required this.option,
+    required this.body,
+    required this.likes,
+    required this.isMine,
+    this.likedByMe = false,
+  });
+
+  DummyComment copyWith({int? likes, bool? likedByMe}) {
+    return DummyComment(
+      id: id,
+      option: option,
+      body: body,
+      likes: likes ?? this.likes,
+      isMine: isMine,
+      likedByMe: likedByMe ?? this.likedByMe,
+    );
+  }
+}
+
+class DummyNotificationSettings {
+  final bool friendRequests;
+  final bool questionLikes;
+  final bool messages;
+  final bool groupUpdates;
+
+  const DummyNotificationSettings({
+    required this.friendRequests,
+    required this.questionLikes,
+    required this.messages,
+    required this.groupUpdates,
+  });
+
+  DummyNotificationSettings copyWith({
+    bool? friendRequests,
+    bool? questionLikes,
+    bool? messages,
+    bool? groupUpdates,
+  }) {
+    return DummyNotificationSettings(
+      friendRequests: friendRequests ?? this.friendRequests,
+      questionLikes: questionLikes ?? this.questionLikes,
+      messages: messages ?? this.messages,
+      groupUpdates: groupUpdates ?? this.groupUpdates,
+    );
+  }
+}
+
+class DummyProfile {
+  final String name;
+  final String username;
+  final String bio;
+  final int answerCount;
+  final int postCount;
+  final int friendCount;
+  final int oddballScore;
+  final List<String> tags;
+
+  const DummyProfile({
+    required this.name,
+    required this.username,
+    required this.bio,
+    required this.answerCount,
+    required this.postCount,
+    required this.friendCount,
+    required this.oddballScore,
+    required this.tags,
+  });
+
+  DummyProfile copyWith({String? name, String? bio}) {
+    return DummyProfile(
+      name: name ?? this.name,
+      username: username,
+      bio: bio ?? this.bio,
+      answerCount: answerCount,
+      postCount: postCount,
+      friendCount: friendCount,
+      oddballScore: oddballScore,
+      tags: tags,
+    );
+  }
 }

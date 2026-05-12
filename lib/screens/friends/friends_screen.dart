@@ -1,45 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/friend_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../match/answer_compare_screen.dart';
 import '../match/user_detail_screen.dart';
 
-class FriendsScreen extends StatefulWidget {
+class FriendsScreen extends ConsumerStatefulWidget {
   const FriendsScreen({super.key});
 
   @override
-  State<FriendsScreen> createState() => _FriendsScreenState();
+  ConsumerState<FriendsScreen> createState() => _FriendsScreenState();
 }
 
-class _FriendsScreenState extends State<FriendsScreen> {
+class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   int _tabIndex = 0;
   final _searchController = TextEditingController(text: '@panda');
-
-  final _friends = const [
-    DummyUser(name: 'こうたろう', id: 'kotaro_123', matchRate: 92),
-    DummyUser(name: 'まなみ', id: 'manami_456', matchRate: 88),
-    DummyUser(name: 'たくみ', id: 'takumi_111', matchRate: 29),
-  ];
-
-  final _requests = const [
-    DummyFriendRequest(
-      user: DummyUser(name: 'りな', id: 'rina_222', matchRate: 31),
-      message: '友達申請が届いています',
-    ),
-    DummyFriendRequest(
-      user: DummyUser(name: 'ゆうき', id: 'yuuki_789', matchRate: 84),
-      message: '回答の傾向が近いユーザーです',
-    ),
-  ];
-
-  final _searchResults = const [
-    DummyUser(name: 'ぱんだ好き', id: 'panda_love', matchRate: 74),
-    DummyUser(name: 'ぱんだ社長', id: 'panda_ceo', matchRate: 52),
-    DummyUser(name: 'ぱんだ夜型', id: 'panda_night', matchRate: 67),
-  ];
 
   @override
   void dispose() {
@@ -49,6 +28,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final friendState = ref.watch(friendControllerProvider);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -87,50 +67,64 @@ class _FriendsScreenState extends State<FriendsScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Expanded(child: _buildTab()),
+            Expanded(child: _buildTab(friendState)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTab() {
-    if (_tabIndex == 1) return _buildRequests();
-    if (_tabIndex == 2) return _buildSearch();
+  Widget _buildTab(FriendState friendState) {
+    if (_tabIndex == 1) return _buildRequests(friendState);
+    if (_tabIndex == 2) return _buildSearch(friendState);
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      itemCount: _friends.length,
+      itemCount: friendState.friends.length,
       itemBuilder: (context, i) => _FriendTile(
-        user: _friends[i],
-        trailing: PandaOutlinedButton(label: '解除', width: 96, onTap: () {}),
+        user: friendState.friends[i],
+        trailing: PandaOutlinedButton(
+          label: '解除',
+          width: 96,
+          onTap: () => ref
+              .read(friendControllerProvider.notifier)
+              .deleteFriendship(friendState.friends[i].id),
+        ),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => UserDetailScreen(user: _friends[i]),
+            builder: (_) => UserDetailScreen(user: friendState.friends[i]),
           ),
         ),
         onCompare: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => AnswerCompareScreen(user: _friends[i]),
+            builder: (_) => AnswerCompareScreen(user: friendState.friends[i]),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildRequests() {
+  Widget _buildRequests(FriendState friendState) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      itemCount: _requests.length,
+      itemCount: friendState.requests.length,
       itemBuilder: (context, i) {
-        final request = _requests[i];
-        return _RequestCard(request: request);
+        final request = friendState.requests[i];
+        return _RequestCard(
+          request: request,
+          onAccept: () => ref
+              .read(friendControllerProvider.notifier)
+              .acceptRequest(request.user.id),
+          onReject: () => ref
+              .read(friendControllerProvider.notifier)
+              .rejectRequest(request.user.id),
+        );
       },
     );
   }
 
-  Widget _buildSearch() {
+  Widget _buildSearch(FriendState friendState) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       children: [
@@ -147,6 +141,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
+                  onChanged: ref
+                      .read(friendControllerProvider.notifier)
+                      .setSearchQuery,
                   decoration: const InputDecoration.collapsed(
                     hintText: '@usernameで検索',
                   ),
@@ -160,10 +157,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        ..._searchResults.map(
+        ...friendState.searchResults.map(
           (user) => _FriendTile(
             user: user,
-            trailing: PandaButton(label: '申請', width: 96, onTap: () {}),
+            trailing: friendState.requestedUserIds.contains(user.id)
+                ? const _RequestedBadge()
+                : PandaButton(
+                    label: '申請',
+                    width: 96,
+                    onTap: () => ref
+                        .read(friendControllerProvider.notifier)
+                        .sendFriendRequest(user.id),
+                  ),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
@@ -244,7 +249,14 @@ class _FriendTile extends StatelessWidget {
 
 class _RequestCard extends StatelessWidget {
   final DummyFriendRequest request;
-  const _RequestCard({required this.request});
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _RequestCard({
+    required this.request,
+    required this.onAccept,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -291,15 +303,40 @@ class _RequestCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: PandaButton(label: '承認', onTap: () {}),
+                child: PandaButton(label: '承認', onTap: onAccept),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: PandaOutlinedButton(label: '断る', onTap: () {}),
+                child: PandaOutlinedButton(label: '断る', onTap: onReject),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RequestedBadge extends StatelessWidget {
+  const _RequestedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 96,
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      decoration: BoxDecoration(
+        color: AppColors.softGray,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      alignment: Alignment.center,
+      child: const Text(
+        '申請済み',
+        style: TextStyle(
+          fontSize: AppFontSize.sm,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textGray,
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/friend_providers.dart';
 import '../../presentation/providers/match_providers.dart';
 import '../../widgets/match_user_tile.dart';
 import '../../widgets/panda_avatar.dart';
@@ -20,29 +21,11 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   int _tabIndex = 0;
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  final Set<String> _requestedUserIds = {};
-
-  final _friendCandidates = const [
-    DummyUser(name: 'ぱんだ好き', id: 'panda_love', matchRate: 74),
-    DummyUser(name: 'ぱんだ夜型', id: 'panda_night', matchRate: 67),
-    DummyUser(name: 'ぱんだ社長', id: 'panda_ceo', matchRate: 52),
-    DummyUser(name: 'こうたろう', id: 'kotaro_123', matchRate: 92),
-    DummyUser(name: 'まなみ', id: 'manami_456', matchRate: 88),
-  ];
 
   AsyncValue<List<DummyUser>> get _usersAsync {
     if (_tabIndex == 0) return ref.watch(similarUsersProvider);
     if (_tabIndex == 1) return ref.watch(oppositeUsersProvider);
     return ref.watch(middleUsersProvider);
-  }
-
-  List<DummyUser> get _searchResults {
-    final query = _searchQuery.trim().replaceFirst('@', '').toLowerCase();
-    if (query.isEmpty) return const [];
-    return _friendCandidates.where((user) {
-      return user.id.toLowerCase().startsWith(query) ||
-          user.name.toLowerCase().contains(query);
-    }).toList();
   }
 
   @override
@@ -54,6 +37,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   @override
   Widget build(BuildContext context) {
     final searching = _searchQuery.trim().isNotEmpty;
+    final friendState = ref.watch(friendControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -109,8 +93,12 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        onChanged: (value) =>
-                            setState(() => _searchQuery = value),
+                        onChanged: (value) {
+                          setState(() => _searchQuery = value);
+                          ref
+                              .read(friendControllerProvider.notifier)
+                              .setSearchQuery(value);
+                        },
                         decoration: const InputDecoration.collapsed(
                           hintText: '@usernameで友達検索',
                         ),
@@ -125,6 +113,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                         onTap: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
+                          ref
+                              .read(friendControllerProvider.notifier)
+                              .setSearchQuery('');
                         },
                         child: const Icon(
                           Icons.close,
@@ -147,17 +138,17 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
               Expanded(
                 child: searching
                     ? _FriendSearchResults(
-                        users: _searchResults,
-                        requestedUserIds: _requestedUserIds,
+                        users: friendState.searchResults,
+                        requestedUserIds: friendState.requestedUserIds,
                         onOpenUser: (user) => Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => UserDetailScreen(user: user),
                           ),
                         ),
-                        onRequest: (user) {
-                          setState(() => _requestedUserIds.add(user.id));
-                        },
+                        onRequest: (user) => ref
+                            .read(friendControllerProvider.notifier)
+                            .sendFriendRequest(user.id),
                       )
                     : _usersAsync.when(
                         loading: () =>

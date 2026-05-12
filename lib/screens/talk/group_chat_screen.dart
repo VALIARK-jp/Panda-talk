@@ -5,19 +5,39 @@ import '../../core/dummy_data.dart';
 import '../../presentation/providers/talk_providers.dart';
 import '../../widgets/chat_bubble.dart';
 
-class GroupChatScreen extends ConsumerWidget {
+class GroupChatScreen extends ConsumerStatefulWidget {
   final DummyGroup group;
   const GroupChatScreen({super.key, required this.group});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final messagesAsync = ref.watch(groupMessagesProvider(group.name));
+  ConsumerState<GroupChatScreen> createState() => _GroupChatScreenState();
+}
+
+class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
+  final _messageController = TextEditingController();
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    ref
+        .read(messageActionsProvider)
+        .sendGroupMessage(widget.group.name, _messageController.text);
+    _messageController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messagesAsync = ref.watch(groupMessagesProvider(widget.group.name));
+    final group = widget.group;
     return Scaffold(
       backgroundColor: AppColors.softGray,
       body: SafeArea(
         child: Column(
           children: [
-            // ヘッダー
             Container(
               color: AppColors.white,
               padding: const EdgeInsets.symmetric(
@@ -92,7 +112,6 @@ class GroupChatScreen extends ConsumerWidget {
                     .toList(),
               ),
             ),
-            // メッセージ
             Expanded(
               child: messagesAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -112,7 +131,6 @@ class GroupChatScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            // フッター
             Container(
               color: AppColors.white,
               padding: const EdgeInsets.symmetric(
@@ -125,35 +143,35 @@ class GroupChatScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: AppColors.softGray,
                         borderRadius: BorderRadius.circular(AppRadius.full),
                       ),
-                      child: const Text(
-                        'メッセージを入力…',
-                        style: TextStyle(
-                          fontSize: AppFontSize.md,
-                          color: AppColors.textGray,
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration.collapsed(
+                          hintText: 'メッセージを入力...',
                         ),
+                        onSubmitted: (_) => _send(),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.black,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_forward,
-                      color: AppColors.white,
-                      size: 20,
+                  GestureDetector(
+                    onTap: _send,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.black,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward,
+                        color: AppColors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],

@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
+import '../../presentation/providers/settings_providers.dart';
 import '../../widgets/panda_button.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool _friendRequests = true;
-  bool _questionLikes = true;
-  bool _messages = true;
-  bool _groupUpdates = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsControllerProvider);
+    final controller = ref.read(settingsControllerProvider.notifier);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -52,23 +46,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: AppSpacing.sm),
             _SwitchRow(
               title: '友達申請',
-              value: _friendRequests,
-              onChanged: (v) => setState(() => _friendRequests = v),
+              value: settings.friendRequests,
+              onChanged: controller.updateFriendRequests,
             ),
             _SwitchRow(
               title: '質問へのいいね',
-              value: _questionLikes,
-              onChanged: (v) => setState(() => _questionLikes = v),
+              value: settings.questionLikes,
+              onChanged: controller.updateQuestionLikes,
             ),
             _SwitchRow(
               title: 'DM・グループチャット',
-              value: _messages,
-              onChanged: (v) => setState(() => _messages = v),
+              value: settings.messages,
+              onChanged: controller.updateMessages,
             ),
             _SwitchRow(
               title: 'グループ再編成',
-              value: _groupUpdates,
-              onChanged: (v) => setState(() => _groupUpdates = v),
+              value: settings.groupUpdates,
+              onChanged: controller.updateGroupUpdates,
             ),
             const SizedBox(height: AppSpacing.lg),
             PandaOutlinedButton(

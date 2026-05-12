@@ -19,23 +19,10 @@ class TalkScreen extends ConsumerStatefulWidget {
 class _TalkScreenState extends ConsumerState<TalkScreen> {
   int _tabIndex = 0;
 
-  final _threads = const [
-    DummyDirectThread(
-      user: DummyUser(name: 'こうたろう', id: 'kotaro_123', matchRate: 92),
-      lastMessage: '今日の質問見た？俺らまた一致してたね',
-      time: '12:20',
-      unreadCount: 2,
-    ),
-    DummyDirectThread(
-      user: DummyUser(name: 'まなみ', id: 'manami_456', matchRate: 88),
-      lastMessage: '次の質問も答えてみるね',
-      time: '昨日',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsProvider);
+    final threads = ref.watch(directThreadsProvider);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -62,7 +49,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
               const SizedBox(height: AppSpacing.md),
               Expanded(
                 child: _tabIndex == 0
-                    ? _DmList(threads: _threads)
+                    ? _DmList(threads: threads)
                     : groupsAsync.when(
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
