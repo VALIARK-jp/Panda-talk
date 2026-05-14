@@ -9,50 +9,74 @@ class CommentState {
   const CommentState({required this.question, required this.comments});
 }
 
-class CommentController extends StateNotifier<CommentState> {
-  CommentController(this._ref, DummyQuestion question)
-    : super(CommentState(question: question, comments: const [])) {
-    _refresh();
+class CommentController
+    extends AutoDisposeFamilyAsyncNotifier<CommentState, DummyQuestion> {
+  @override
+  Future<CommentState> build(DummyQuestion arg) async {
+    final comments =
+        await ref.read(commentRepositoryProvider).getComments(arg);
+    return CommentState(question: arg, comments: comments);
   }
 
-  final Ref _ref;
-
-  void toggleLike(String commentId) {
-    _ref
-        .read(commentRepositoryProvider)
-        .toggleLike(state.question.number, commentId);
-    _refresh();
+  Future<void> toggleLike(String commentId, bool currentIsLiked) async {
+    final prev = state;
+    if (prev.value == null) return;
+    
+    // Optimsitic UI update could be done here, but we will rely on refresh for now to ensure consistency, 
+    // or just await and refresh. Let's do simple await and refresh.
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(commentRepositoryProvider).toggleLike(
+            questionNumber: arg.number,
+            commentId: commentId,
+            isLike: !currentIsLiked,
+          );
+      ref.invalidateSelf();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      // Fallback
+      ref.invalidateSelf();
+    }
   }
 
-  void deleteComment(String commentId) {
-    _ref
-        .read(commentRepositoryProvider)
-        .deleteComment(state.question.number, commentId);
-    _refresh();
+  Future<void> deleteComment(String commentId) async {
+    final prev = state;
+    if (prev.value == null) return;
+    
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(commentRepositoryProvider).deleteComment(
+            questionNumber: arg.number,
+            commentId: commentId,
+          );
+      ref.invalidateSelf();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      ref.invalidateSelf();
+    }
   }
 
-  void postComment(String option, String body) {
-    _ref
-        .read(commentRepositoryProvider)
-        .postComment(state.question.number, option, body);
-    _refresh();
-  }
-
-  void _refresh() {
-    state = CommentState(
-      question: state.question,
-      comments: _ref
-          .read(commentRepositoryProvider)
-          .getComments(state.question),
-    );
+  Future<void> postComment(String option, String body) async {
+    final prev = state;
+    if (prev.value == null) return;
+    
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(commentRepositoryProvider).postComment(
+            questionNumber: arg.number,
+            option: option,
+            body: body,
+            question: arg,
+          );
+      ref.invalidateSelf();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      ref.invalidateSelf();
+    }
   }
 }
 
-final commentControllerProvider =
-    StateNotifierProvider.family<
-      CommentController,
-      CommentState,
-      DummyQuestion
-    >((ref, question) {
-      return CommentController(ref, question);
-    });
+final commentControllerProvider = AsyncNotifierProvider.family.autoDispose<
+    CommentController, CommentState, DummyQuestion>(
+  CommentController.new,
+);
