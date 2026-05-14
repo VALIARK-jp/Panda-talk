@@ -22,6 +22,8 @@ import '../api/api_profile_repository.dart';
 import '../match_repository.dart';
 import '../api/api_match_repository.dart';
 import '../question_repository.dart';
+import '../friend_repository.dart';
+import '../api/api_friend_repository.dart';
 import '../comment_repository.dart';
 import '../api/api_comment_repository.dart';
 
@@ -38,6 +40,20 @@ final matchRepositoryProvider = Provider<MatchRepository>((ref) {
   if (_useApiRepositories) return ApiMatchRepository();
   return MockMatchRepository();
 });
+final groupRepositoryProvider = Provider((ref) => MockGroupRepository());
+final messageRepositoryProvider = Provider((ref) => MockMessageRepository());
+final friendRepositoryProvider = Provider<FriendRepository>((ref) {
+  if (_useApiRepositories) return ApiFriendRepository();
+  return MockFriendRepository();
+});
+final notificationRepositoryProvider = Provider(
+  (ref) => MockNotificationRepository(),
+);
+final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
+final commentRepositoryProvider = Provider((ref) => MockCommentRepository());
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  if (_useApiRepositories) return ApiProfileRepository();
+  return MockProfileRepository();
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   if (_useApiRepositories) return ApiGroupRepository();
   return MockGroupRepository();

@@ -38,7 +38,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
   @override
   Widget build(BuildContext context) {
     final searching = _searchQuery.trim().isNotEmpty;
-    final friendState = ref.watch(friendControllerProvider);
+    final friendStateAsync = ref.watch(friendControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -140,18 +140,26 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
               ],
               Expanded(
                 child: searching
-                    ? _FriendSearchResults(
-                        users: friendState.searchResults,
-                        requestedUserIds: friendState.requestedUserIds,
-                        onOpenUser: (user) => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => UserDetailScreen(user: user),
+                    ? friendStateAsync.when(
+                        data: (friendState) => _FriendSearchResults(
+                          users: friendState.searchResults,
+                          requestedUserIds: friendState.requestedUserIds,
+                          onOpenUser: (user) => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserDetailScreen(user: user),
+                            ),
                           ),
+                          onRequest: (user) => ref
+                              .read(friendControllerProvider.notifier)
+                              .sendFriendRequest(user.id),
                         ),
-                        onRequest: (user) => ref
-                            .read(friendControllerProvider.notifier)
-                            .sendFriendRequest(user.id),
+                        loading: () => const Center(
+                          child: CircularProgressIndicator(color: AppColors.black),
+                        ),
+                        error: (e, st) => Center(
+                          child: Text('エラーが発生しました\n$e', textAlign: TextAlign.center),
+                        ),
                       )
                     : _usersAsync.when(
                         loading: () =>

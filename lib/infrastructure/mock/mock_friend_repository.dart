@@ -1,6 +1,7 @@
 import '../../core/dummy_data.dart';
+import '../friend_repository.dart';
 
-class MockFriendRepository {
+class MockFriendRepository implements FriendRepository {
   final List<DummyUser> _friends = [
     const DummyUser(name: 'こうたろう', id: 'kotaro_123', matchRate: 92),
     const DummyUser(name: 'まなみ', id: 'manami_456', matchRate: 88),
@@ -28,13 +29,17 @@ class MockFriendRepository {
 
   final Set<String> _requestedUserIds = {};
 
-  List<DummyUser> getFriends() => List.unmodifiable(_friends);
+  @override
+  Future<List<DummyUser>> getFriends() async => List.unmodifiable(_friends);
 
-  List<DummyFriendRequest> getRequests() => List.unmodifiable(_requests);
+  @override
+  Future<List<DummyFriendRequest>> getRequests() async => List.unmodifiable(_requests);
 
-  Set<String> getRequestedUserIds() => Set.unmodifiable(_requestedUserIds);
+  @override
+  Future<Set<String>> getRequestedUserIds() async => Set.unmodifiable(_requestedUserIds);
 
-  List<DummyUser> searchUsers(String keyword) {
+  @override
+  Future<List<DummyUser>> searchUsers(String keyword) async {
     final query = keyword.trim().replaceFirst('@', '').toLowerCase();
     if (query.isEmpty) return const [];
     return _candidates.where((user) {
@@ -43,11 +48,13 @@ class MockFriendRepository {
     }).toList();
   }
 
-  void sendFriendRequest(String userId) {
+  @override
+  Future<void> sendFriendRequest(String userId) async {
     _requestedUserIds.add(userId);
   }
 
-  void acceptRequest(String userId) {
+  @override
+  Future<void> acceptRequest(String userId) async {
     final index = _requests.indexWhere((request) => request.user.id == userId);
     if (index == -1) return;
     final request = _requests.removeAt(index);
@@ -56,11 +63,13 @@ class MockFriendRepository {
     }
   }
 
-  void rejectRequest(String userId) {
+  @override
+  Future<void> rejectRequest(String userId) async {
     _requests.removeWhere((request) => request.user.id == userId);
   }
 
-  void deleteFriendship(String userId) {
+  @override
+  Future<void> deleteFriendship(String userId) async {
     _friends.removeWhere((friend) => friend.id == userId);
   }
 }
