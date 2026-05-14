@@ -9,6 +9,8 @@ import '../mock/mock_message_repository.dart';
 import '../message_repository.dart';
 import '../api/api_message_repository.dart';
 import '../mock/mock_friend_repository.dart';
+import '../friend_repository.dart';
+import '../api/api_friend_repository.dart';
 import '../mock/mock_notification_repository.dart';
 import '../notification_repository.dart';
 import '../api/api_notification_repository.dart';
@@ -22,8 +24,6 @@ import '../api/api_profile_repository.dart';
 import '../match_repository.dart';
 import '../api/api_match_repository.dart';
 import '../question_repository.dart';
-import '../friend_repository.dart';
-import '../api/api_friend_repository.dart';
 import '../comment_repository.dart';
 import '../api/api_comment_repository.dart';
 
@@ -36,45 +36,42 @@ final questionRepositoryProvider = Provider<QuestionRepository>((ref) {
   if (_useApiRepositories) return ApiQuestionRepository();
   return MockQuestionRepository();
 });
+
 final matchRepositoryProvider = Provider<MatchRepository>((ref) {
   if (_useApiRepositories) return ApiMatchRepository();
   return MockMatchRepository();
 });
-final groupRepositoryProvider = Provider((ref) => MockGroupRepository());
-final messageRepositoryProvider = Provider((ref) => MockMessageRepository());
-final friendRepositoryProvider = Provider<FriendRepository>((ref) {
-  if (_useApiRepositories) return ApiFriendRepository();
-  return MockFriendRepository();
-});
-final notificationRepositoryProvider = Provider(
-  (ref) => MockNotificationRepository(),
-);
-final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
-final commentRepositoryProvider = Provider((ref) => MockCommentRepository());
-final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  if (_useApiRepositories) return ApiProfileRepository();
-  return MockProfileRepository();
+
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   if (_useApiRepositories) return ApiGroupRepository();
   return MockGroupRepository();
 });
+
 final messageRepositoryProvider = Provider<MessageRepository>((ref) {
   if (_useApiRepositories) return ApiMessageRepository();
   return MockMessageRepository();
 });
-final friendRepositoryProvider = Provider((ref) => MockFriendRepository());
+
+final friendRepositoryProvider = Provider<FriendRepository>((ref) {
+  if (_useApiRepositories) return ApiFriendRepository();
+  return MockFriendRepository();
+});
+
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   if (_useApiRepositories) return ApiNotificationRepository();
   return MockNotificationRepository();
 });
+
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   if (_useApiRepositories) return ApiSettingsRepository();
   return MockSettingsRepository();
 });
+
 final commentRepositoryProvider = Provider<CommentRepository>((ref) {
   if (_useApiRepositories) return ApiCommentRepository();
   return MockCommentRepository();
 });
+
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   if (_useApiRepositories) return ApiProfileRepository();
   return MockProfileRepository();
