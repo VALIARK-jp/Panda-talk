@@ -2,35 +2,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dummy_data.dart';
 import '../../infrastructure/providers/repositories.dart';
 
-class SettingsController extends StateNotifier<DummyNotificationSettings> {
-  SettingsController(this._ref)
-    : super(_ref.read(settingsRepositoryProvider).getNotificationSettings());
+import 'dart:async';
 
-  final Ref _ref;
-
-  void updateFriendRequests(bool value) {
-    _update(state.copyWith(friendRequests: value));
+class SettingsController extends AsyncNotifier<DummyNotificationSettings> {
+  @override
+  FutureOr<DummyNotificationSettings> build() {
+    return ref.read(settingsRepositoryProvider).getNotificationSettings();
   }
 
-  void updateQuestionLikes(bool value) {
-    _update(state.copyWith(questionLikes: value));
+  Future<void> updateFriendRequests(bool value) async {
+    final newSettings = state.value!.copyWith(friendRequests: value);
+    await _update(newSettings);
   }
 
-  void updateMessages(bool value) {
-    _update(state.copyWith(messages: value));
+  Future<void> updateQuestionLikes(bool value) async {
+    final newSettings = state.value!.copyWith(questionLikes: value);
+    await _update(newSettings);
   }
 
-  void updateGroupUpdates(bool value) {
-    _update(state.copyWith(groupUpdates: value));
+  Future<void> updateMessages(bool value) async {
+    final newSettings = state.value!.copyWith(messages: value);
+    await _update(newSettings);
   }
 
-  void _update(DummyNotificationSettings settings) {
-    _ref.read(settingsRepositoryProvider).updateNotificationSettings(settings);
-    state = settings;
+  Future<void> updateGroupUpdates(bool value) async {
+    final newSettings = state.value!.copyWith(groupUpdates: value);
+    await _update(newSettings);
+  }
+
+  Future<void> _update(DummyNotificationSettings settings) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref
+          .read(settingsRepositoryProvider)
+          .updateNotificationSettings(settings);
+      return settings;
+    });
   }
 }
 
 final settingsControllerProvider =
-    StateNotifierProvider<SettingsController, DummyNotificationSettings>((ref) {
-      return SettingsController(ref);
-    });
+    AsyncNotifierProvider<SettingsController, DummyNotificationSettings>(() {
+  return SettingsController();
+});
