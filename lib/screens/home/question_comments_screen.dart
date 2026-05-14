@@ -21,15 +21,10 @@ class _QuestionCommentsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final commentState = ref.watch(commentControllerProvider(widget.question));
+    final commentStateAsync = ref.watch(commentControllerProvider(widget.question));
     final commentsController = ref.read(
       commentControllerProvider(widget.question).notifier,
     );
-    final visible = commentState.comments.where((c) {
-      if (_tabIndex == 1) return c.option == widget.question.optionA;
-      if (_tabIndex == 2) return c.option == widget.question.optionB;
-      return true;
-    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -83,18 +78,37 @@ class _QuestionCommentsScreenState
             ),
             const SizedBox(height: AppSpacing.md),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                itemCount: visible.length,
-                itemBuilder: (context, i) {
-                  final comment = visible[i];
-                  return _CommentTile(
-                    comment: comment,
-                    onLike: () => commentsController.toggleLike(comment.id),
-                    onDelete: () =>
-                        commentsController.deleteComment(comment.id),
+              child: commentStateAsync.when(
+                data: (commentState) {
+                  final visible = commentState.comments.where((c) {
+                    if (_tabIndex == 1) return c.option == widget.question.optionA;
+                    if (_tabIndex == 2) return c.option == widget.question.optionB;
+                    return true;
+                  }).toList();
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    itemCount: visible.length,
+                    itemBuilder: (context, i) {
+                      final comment = visible[i];
+                      return _CommentTile(
+                        comment: comment,
+                        onLike: () => commentsController.toggleLike(comment.id, comment.likedByMe),
+                        onDelete: () => commentsController.deleteComment(comment.id),
+                      );
+                    },
                   );
                 },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.black),
+                ),
+                error: (error, stack) => Center(
+                  child: Text(
+                    'エラーが発生しました\n$error',
+                    style: const TextStyle(color: AppColors.textGray),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
             ),
             Container(
