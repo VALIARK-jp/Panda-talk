@@ -10,6 +10,7 @@ import '../../widgets/tag_chip.dart';
 import '../friends/friends_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../settings/settings_screen.dart';
+import '../../presentation/providers/notification_providers.dart';
 import 'profile_edit_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -59,18 +60,19 @@ class ProfileScreen extends ConsumerWidget {
                               Icons.notifications_outlined,
                               color: AppColors.black,
                             ),
-                            Positioned(
-                              right: -1,
-                              top: -1,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.black,
-                                  shape: BoxShape.circle,
+                            if (ref.watch(unreadNotificationCountProvider) > 0)
+                              Positioned(
+                                right: -1,
+                                top: -1,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.black,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
