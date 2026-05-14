@@ -1,6 +1,7 @@
 import '../../core/dummy_data.dart';
+import '../comment_repository.dart';
 
-class MockCommentRepository {
+class MockCommentRepository implements CommentRepository {
   final Map<int, List<DummyComment>> _commentsByQuestion = {
     1256: [
       const DummyComment(
@@ -28,32 +29,35 @@ class MockCommentRepository {
     ],
   };
 
-  List<DummyComment> getComments(DummyQuestion question) {
+  @override
+  Future<List<DummyComment>> getComments(DummyQuestion question) async {
     return List.unmodifiable(
       _commentsByQuestion[question.number] ?? _fallbackComments(question),
     );
   }
 
-  void toggleLike(int questionNumber, String commentId) {
+  @override
+  Future<void> toggleLike({required int questionNumber, required String commentId, required bool isLike}) async {
     final comments = _commentsByQuestion[questionNumber];
     if (comments == null) return;
     final index = comments.indexWhere((comment) => comment.id == commentId);
     if (index == -1) return;
     final comment = comments[index];
-    final liked = !comment.likedByMe;
     comments[index] = comment.copyWith(
-      likedByMe: liked,
-      likes: comment.likes + (liked ? 1 : -1),
+      likedByMe: isLike,
+      likes: comment.likes + (isLike ? 1 : -1),
     );
   }
 
-  void deleteComment(int questionNumber, String commentId) {
+  @override
+  Future<void> deleteComment({required int questionNumber, required String commentId}) async {
     _commentsByQuestion[questionNumber]?.removeWhere(
       (comment) => comment.id == commentId && comment.isMine,
     );
   }
 
-  void postComment(int questionNumber, String option, String body) {
+  @override
+  Future<void> postComment({required int questionNumber, required String option, required String body, String? apiQuestionId, DummyQuestion? question}) async {
     final comments = _commentsByQuestion.putIfAbsent(questionNumber, () => []);
     comments.insert(
       0,

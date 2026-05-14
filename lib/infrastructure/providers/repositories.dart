@@ -10,6 +10,8 @@ import '../mock/mock_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
 import '../question_repository.dart';
+import '../comment_repository.dart';
+import '../api/api_comment_repository.dart';
 
 const _useApiRepositories = bool.fromEnvironment(
   'PANDA_TALK_USE_API',
@@ -28,5 +30,8 @@ final notificationRepositoryProvider = Provider(
   (ref) => MockNotificationRepository(),
 );
 final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
-final commentRepositoryProvider = Provider((ref) => MockCommentRepository());
+final commentRepositoryProvider = Provider<CommentRepository>((ref) {
+  if (_useApiRepositories) return ApiCommentRepository();
+  return MockCommentRepository();
+});
 final profileRepositoryProvider = Provider((ref) => MockProfileRepository());
