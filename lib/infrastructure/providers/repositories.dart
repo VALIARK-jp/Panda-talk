@@ -3,6 +3,8 @@ import '../api/api_question_repository.dart';
 import '../mock/mock_question_repository.dart';
 import '../mock/mock_match_repository.dart';
 import '../mock/mock_group_repository.dart';
+import '../group_repository.dart';
+import '../api/api_group_repository.dart';
 import '../mock/mock_message_repository.dart';
 import '../mock/mock_friend_repository.dart';
 import '../mock/mock_notification_repository.dart';
@@ -30,20 +32,21 @@ final matchRepositoryProvider = Provider<MatchRepository>((ref) {
   if (_useApiRepositories) return ApiMatchRepository();
   return MockMatchRepository();
 });
-final groupRepositoryProvider = Provider((ref) => MockGroupRepository());
+final groupRepositoryProvider = Provider<GroupRepository>((ref) {
+  if (_useApiRepositories) return ApiGroupRepository();
+  return MockGroupRepository();
+});
 final messageRepositoryProvider = Provider((ref) => MockMessageRepository());
 final friendRepositoryProvider = Provider((ref) => MockFriendRepository());
 final notificationRepositoryProvider = Provider(
   (ref) => MockNotificationRepository(),
 );
 final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
-final commentRepositoryProvider = Provider((ref) => MockCommentRepository());
-final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  if (_useApiRepositories) return ApiProfileRepository();
-  return MockProfileRepository();
-});
 final commentRepositoryProvider = Provider<CommentRepository>((ref) {
   if (_useApiRepositories) return ApiCommentRepository();
   return MockCommentRepository();
 });
-final profileRepositoryProvider = Provider((ref) => MockProfileRepository());
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  if (_useApiRepositories) return ApiProfileRepository();
+  return MockProfileRepository();
+});

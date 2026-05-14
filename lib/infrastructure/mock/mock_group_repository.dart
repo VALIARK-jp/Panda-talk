@@ -1,6 +1,8 @@
 import '../../core/dummy_data.dart';
+import '../group_repository.dart';
 
-class MockGroupRepository {
+class MockGroupRepository implements GroupRepository {
+  @override
   Future<List<DummyGroup>> getGroups() async {
     return [
       const DummyGroup(
