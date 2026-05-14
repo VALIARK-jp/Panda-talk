@@ -23,7 +23,25 @@ export class SupabaseUserRepository implements IUserRepository {
       id: `eq.${id}`,
       limit: 1,
     })
-    return rows[0] ? mapUser(rows[0]) : null
+    if (!rows[0]) return null
+
+    // Fetch counts from other tables
+    const [answerCount, postCount, friendCount] = await Promise.all([
+      this.client.count('panda_answers', { user_id: `eq.${id}` }),
+      this.client.count('panda_questions', { user_id: `eq.${id}` }),
+      this.client.count('panda_friendships', {
+        or: `(user_a_id.eq.${id},user_b_id.eq.${id})`,
+        status: 'eq.accepted',
+      }),
+    ])
+
+    return mapUser(rows[0], {
+      answerCount,
+      postCount,
+      friendCount,
+      oddballScore: 0, // TODO: Implement oddball score algorithm
+      tags: [], // TODO: Generate tags from answers
+    })
   }
 
   async findByIds(ids: UUID[]): Promise<User[]> {
@@ -95,7 +113,10 @@ export class SupabaseUserRepository implements IUserRepository {
   }
 }
 
-function mapUser(row: UserRow): User {
+function mapUser(
+  row: UserRow,
+  stats?: Partial<Pick<User, 'answerCount' | 'postCount' | 'friendCount' | 'oddballScore' | 'tags'>>
+): User {
   return {
     id: row.id,
     email: row.email,
@@ -104,6 +125,7 @@ function mapUser(row: UserRow): User {
     avatarUrl: row.avatar_url,
     bio: row.bio,
     createdAt: row.created_at,
+    ...stats,
   }
 }
 
