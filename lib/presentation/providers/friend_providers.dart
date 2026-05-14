@@ -34,64 +34,119 @@ class FriendState {
   }
 }
 
-class FriendController extends StateNotifier<FriendState> {
-  FriendController(this._ref)
-    : super(
-        const FriendState(
-          friends: [],
-          requests: [],
-          searchResults: [],
-          requestedUserIds: {},
-          searchQuery: '@panda',
-        ),
-      ) {
-    _refresh();
-    setSearchQuery(state.searchQuery);
-  }
+class FriendController extends AsyncNotifier<FriendState> {
+  @override
+  Future<FriendState> build() async {
+    final repository = ref.read(friendRepositoryProvider);
+    final friends = await repository.getFriends();
+    final requests = await repository.getRequests();
+    final requestedUserIds = await repository.getRequestedUserIds();
+    final searchResults = await repository.searchUsers('@panda');
 
-  final Ref _ref;
-
-  void setSearchQuery(String query) {
-    final repository = _ref.read(friendRepositoryProvider);
-    state = state.copyWith(
-      searchQuery: query,
-      searchResults: repository.searchUsers(query),
-      requestedUserIds: repository.getRequestedUserIds(),
+    return FriendState(
+      friends: friends,
+      requests: requests,
+      searchResults: searchResults,
+      requestedUserIds: requestedUserIds,
+      searchQuery: '@panda',
     );
   }
 
-  void sendFriendRequest(String userId) {
-    _ref.read(friendRepositoryProvider).sendFriendRequest(userId);
-    _refresh();
-    setSearchQuery(state.searchQuery);
+  Future<void> setSearchQuery(String query) async {
+    final prev = state.value;
+    if (prev == null) return;
+
+    state = const AsyncValue.loading();
+    try {
+      final repository = ref.read(friendRepositoryProvider);
+      final searchResults = await repository.searchUsers(query);
+      final requestedUserIds = await repository.getRequestedUserIds();
+
+      state = AsyncValue.data(prev.copyWith(
+        searchQuery: query,
+        searchResults: searchResults,
+        requestedUserIds: requestedUserIds,
+      ));
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 
-  void acceptRequest(String userId) {
-    _ref.read(friendRepositoryProvider).acceptRequest(userId);
-    _refresh();
+  Future<void> sendFriendRequest(String userId) async {
+    final prev = state.value;
+    if (prev == null) return;
+
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(friendRepositoryProvider).sendFriendRequest(userId);
+      await _refresh();
+      await setSearchQuery(prev.searchQuery);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      ref.invalidateSelf();
+    }
   }
 
-  void rejectRequest(String userId) {
-    _ref.read(friendRepositoryProvider).rejectRequest(userId);
-    _refresh();
+  Future<void> acceptRequest(String userId) async {
+    final prev = state.value;
+    if (prev == null) return;
+
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(friendRepositoryProvider).acceptRequest(userId);
+      await _refresh();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      ref.invalidateSelf();
+    }
   }
 
-  void deleteFriendship(String userId) {
-    _ref.read(friendRepositoryProvider).deleteFriendship(userId);
-    _refresh();
+  Future<void> rejectRequest(String userId) async {
+    final prev = state.value;
+    if (prev == null) return;
+
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(friendRepositoryProvider).rejectRequest(userId);
+      await _refresh();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      ref.invalidateSelf();
+    }
   }
 
-  void _refresh() {
-    final repository = _ref.read(friendRepositoryProvider);
-    state = state.copyWith(
-      friends: repository.getFriends(),
-      requests: repository.getRequests(),
-      requestedUserIds: repository.getRequestedUserIds(),
-    );
+  Future<void> deleteFriendship(String userId) async {
+    final prev = state.value;
+    if (prev == null) return;
+
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(friendRepositoryProvider).deleteFriendship(userId);
+      await _refresh();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      ref.invalidateSelf();
+    }
+  }
+
+  Future<void> _refresh() async {
+    final prev = state.value;
+    if (prev == null) return;
+
+    final repository = ref.read(friendRepositoryProvider);
+    final friends = await repository.getFriends();
+    final requests = await repository.getRequests();
+    final requestedUserIds = await repository.getRequestedUserIds();
+
+    state = AsyncValue.data(prev.copyWith(
+      friends: friends,
+      requests: requests,
+      requestedUserIds: requestedUserIds,
+    ));
   }
 }
 
 final friendControllerProvider =
-    StateNotifierProvider<FriendController, FriendState>((ref) {
-      return FriendController(ref);
-    });
+    AsyncNotifierProvider<FriendController, FriendState>(
+  FriendController.new,
+);

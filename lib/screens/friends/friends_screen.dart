@@ -28,7 +28,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final friendState = ref.watch(friendControllerProvider);
+    final friendStateAsync = ref.watch(friendControllerProvider);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -67,7 +67,17 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Expanded(child: _buildTab(friendState)),
+            Expanded(
+              child: friendStateAsync.when(
+                data: (friendState) => _buildTab(friendState),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.black),
+                ),
+                error: (e, st) => Center(
+                  child: Text('エラーが発生しました\n$e', textAlign: TextAlign.center),
+                ),
+              ),
+            ),
           ],
         ),
       ),

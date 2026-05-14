@@ -10,6 +10,8 @@ import '../mock/mock_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
 import '../question_repository.dart';
+import '../friend_repository.dart';
+import '../api/api_friend_repository.dart';
 
 const _useApiRepositories = bool.fromEnvironment(
   'PANDA_TALK_USE_API',
@@ -23,7 +25,10 @@ final questionRepositoryProvider = Provider<QuestionRepository>((ref) {
 final matchRepositoryProvider = Provider((ref) => MockMatchRepository());
 final groupRepositoryProvider = Provider((ref) => MockGroupRepository());
 final messageRepositoryProvider = Provider((ref) => MockMessageRepository());
-final friendRepositoryProvider = Provider((ref) => MockFriendRepository());
+final friendRepositoryProvider = Provider<FriendRepository>((ref) {
+  if (_useApiRepositories) return ApiFriendRepository();
+  return MockFriendRepository();
+});
 final notificationRepositoryProvider = Provider(
   (ref) => MockNotificationRepository(),
 );
