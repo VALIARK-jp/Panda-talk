@@ -1,6 +1,7 @@
+import '../notification_repository.dart';
 import '../../core/dummy_data.dart';
 
-class MockNotificationRepository {
+class MockNotificationRepository implements NotificationRepository {
   final List<DummyNotification> _notifications = [
     const DummyNotification(
       id: 'friend_request_rina',
@@ -28,10 +29,15 @@ class MockNotificationRepository {
     ),
   ];
 
-  List<DummyNotification> getNotifications() =>
-      List.unmodifiable(_notifications);
+  @override
+  Future<List<DummyNotification>> getNotifications() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return List.unmodifiable(_notifications);
+  }
 
-  void markAsRead(String id) {
+  @override
+  Future<void> markAsRead(String id) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     final index = _notifications.indexWhere(
       (notification) => notification.id == id,
     );
@@ -39,7 +45,9 @@ class MockNotificationRepository {
     _notifications[index] = _notifications[index].copyWith(isRead: true);
   }
 
-  void markAllAsRead() {
+  @override
+  Future<void> markAllAsRead() async {
+    await Future.delayed(const Duration(milliseconds: 300));
     for (var i = 0; i < _notifications.length; i++) {
       _notifications[i] = _notifications[i].copyWith(isRead: true);
     }

@@ -8,6 +8,8 @@ import '../api/api_group_repository.dart';
 import '../mock/mock_message_repository.dart';
 import '../mock/mock_friend_repository.dart';
 import '../mock/mock_notification_repository.dart';
+import '../notification_repository.dart';
+import '../api/api_notification_repository.dart';
 import '../mock/mock_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
@@ -44,9 +46,10 @@ final messageRepositoryProvider = Provider<MessageRepository>((ref) {
   return MockMessageRepository();
 });
 final friendRepositoryProvider = Provider((ref) => MockFriendRepository());
-final notificationRepositoryProvider = Provider(
-  (ref) => MockNotificationRepository(),
-);
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
+  if (_useApiRepositories) return ApiNotificationRepository();
+  return MockNotificationRepository();
+});
 final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
 final commentRepositoryProvider = Provider<CommentRepository>((ref) {
   if (_useApiRepositories) return ApiCommentRepository();

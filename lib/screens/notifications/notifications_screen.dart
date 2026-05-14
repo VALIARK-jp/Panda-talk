@@ -11,7 +11,8 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notificationState = ref.watch(notificationControllerProvider);
+    final notificationAsync = ref.watch(notificationControllerProvider);
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -31,7 +32,7 @@ class NotificationsScreen extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'お知らせ ${notificationState.unreadCount}',
+                      'お知らせ ${unreadCount > 0 ? unreadCount : ''}',
                       style: const TextStyle(
                         fontSize: AppFontSize.xl,
                         fontWeight: FontWeight.w800,
@@ -40,9 +41,9 @@ class NotificationsScreen extends ConsumerWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: ref
+                    onPressed: () => ref
                         .read(notificationControllerProvider.notifier)
-                        .markAllAsRead,
+                        .markAllAsRead(),
                     child: const Text(
                       'すべて既読',
                       style: TextStyle(
@@ -55,29 +56,33 @@ class NotificationsScreen extends ConsumerWidget {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                itemCount: notificationState.notifications.length,
-                itemBuilder: (context, i) {
-                  final n = notificationState.notifications[i];
-                  return _NotificationTile(
-                    notification: n,
-                    isRead: n.isRead,
-                    onTap: () {
-                      ref
-                          .read(notificationControllerProvider.notifier)
-                          .markAsRead(n.id);
-                      if (n.targetLabel == '友達申請') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FriendsScreen(),
-                          ),
-                        );
-                      }
-                    },
-                  );
-                },
+              child: notificationAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('エラー: $e')),
+                data: (notifications) => ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  itemCount: notifications.length,
+                  itemBuilder: (context, i) {
+                    final n = notifications[i];
+                    return _NotificationTile(
+                      notification: n,
+                      isRead: n.isRead,
+                      onTap: () {
+                        ref
+                            .read(notificationControllerProvider.notifier)
+                            .markAsRead(n.id);
+                        if (n.targetLabel == '友達申請') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const FriendsScreen(),
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ],
