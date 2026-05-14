@@ -72,11 +72,13 @@ class DummyMessage {
 }
 
 class DummyGroup {
+  final String id;
   final String name;
   final int avgMatchRate;
   final List<String> members;
   final String type;
   const DummyGroup({
+    required this.id,
     required this.name,
     required this.avgMatchRate,
     required this.members,
