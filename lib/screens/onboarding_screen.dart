@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+
 import '../core/design_tokens.dart';
 import '../widgets/panda_avatar.dart';
 import '../widgets/panda_button.dart';
-import 'main_app.dart';
+import 'auth/login_screen.dart';
 
 enum _OnboardingMode { start, login, signup }
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  const OnboardingScreen({
+    super.key,
+    required this.onStartGuest,
+    required this.onOpenLogin,
+  });
+
+  final VoidCallback onStartGuest;
+  final void Function(LoginScreenMode mode) onOpenLogin;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -15,13 +23,6 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   _OnboardingMode _mode = _OnboardingMode.start;
-
-  void _enterApp() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainApp()),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,47 +124,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     switch (_mode) {
       case _OnboardingMode.login:
         return [
-          PandaButton(label: 'Googleでログイン', onTap: _enterApp),
-          const SizedBox(height: AppSpacing.md),
-          PandaOutlinedButton(label: 'Appleでログイン', onTap: _enterApp),
-          const SizedBox(height: AppSpacing.md),
-          TextButton(
-            onPressed: () => setState(() => _mode = _OnboardingMode.signup),
-            child: const Text(
-              '新規登録はこちら',
-              style: TextStyle(
-                fontSize: AppFontSize.md,
-                fontWeight: FontWeight.w800,
-                color: AppColors.black,
-              ),
-            ),
+          PandaButton(
+            label: 'ログイン画面へ',
+            onTap: () => widget.onOpenLogin(LoginScreenMode.login),
           ),
         ];
       case _OnboardingMode.signup:
         return [
-          PandaButton(label: 'Googleで新規登録', onTap: _enterApp),
-          const SizedBox(height: AppSpacing.md),
-          PandaOutlinedButton(label: 'Appleで新規登録', onTap: _enterApp),
-          const SizedBox(height: AppSpacing.md),
-          TextButton(
-            onPressed: () => setState(() => _mode = _OnboardingMode.login),
-            child: const Text(
-              'ログインはこちら',
-              style: TextStyle(
-                fontSize: AppFontSize.md,
-                fontWeight: FontWeight.w800,
-                color: AppColors.black,
-              ),
-            ),
+          PandaButton(
+            label: '新規登録画面へ',
+            onTap: () => widget.onOpenLogin(LoginScreenMode.signup),
           ),
         ];
       case _OnboardingMode.start:
         return [
-          PandaButton(label: '始めよう', onTap: _enterApp),
+          PandaButton(label: '始めよう', onTap: widget.onStartGuest),
           const SizedBox(height: AppSpacing.md),
           PandaOutlinedButton(
             label: 'ログイン',
-            onTap: () => setState(() => _mode = _OnboardingMode.login),
+            onTap: () => widget.onOpenLogin(LoginScreenMode.login),
           ),
         ];
     }

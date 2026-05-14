@@ -7,6 +7,7 @@ export interface IUserRepository {
   searchByUsername(prefix: string, limit: number): Promise<User[]>
   isUsernameTaken(username: string): Promise<boolean>
   create(data: Omit<User, 'id' | 'createdAt'>): Promise<User>
+  upsert(data: Omit<User, 'createdAt'>): Promise<User>
   update(id: UUID, data: Partial<Pick<User, 'name' | 'avatarUrl' | 'bio'>>): Promise<User>
   delete(id: UUID): Promise<void>
 }

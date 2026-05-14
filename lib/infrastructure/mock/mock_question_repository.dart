@@ -1,6 +1,7 @@
 import '../../core/dummy_data.dart';
+import '../question_repository.dart';
 
-class MockQuestionRepository {
+class MockQuestionRepository implements QuestionRepository {
   final List<DummyQuestion> _feedQuestions = [
     const DummyQuestion(
       number: 1256,
@@ -67,10 +68,12 @@ class MockQuestionRepository {
     ),
   ];
 
+  @override
   Future<List<DummyQuestion>> getFeedQuestions() async {
     return List.unmodifiable([..._myQuestions, ..._feedQuestions]);
   }
 
+  @override
   Future<DummyQuestion> getCurrentQuestion() async {
     return const DummyQuestion(
       number: 1256,
@@ -84,6 +87,7 @@ class MockQuestionRepository {
     );
   }
 
+  @override
   Future<List<DummyQuestion>> getHistory() async {
     return [
       const DummyQuestion(
@@ -144,6 +148,7 @@ class MockQuestionRepository {
     ];
   }
 
+  @override
   Future<List<DummyQuestion>> search(String keyword) async {
     return [
       const DummyQuestion(
@@ -199,10 +204,12 @@ class MockQuestionRepository {
     ];
   }
 
+  @override
   Future<List<DummyQuestion>> getMyQuestions() async {
     return List.unmodifiable(_myQuestions);
   }
 
+  @override
   Future<void> postQuestion({
     required String text,
     required String optionA,
@@ -227,6 +234,7 @@ class MockQuestionRepository {
     );
   }
 
+  @override
   Future<void> editQuestion({
     required int number,
     required String text,
@@ -246,7 +254,16 @@ class MockQuestionRepository {
     );
   }
 
+  @override
   Future<void> deleteQuestion(int number) async {
     _myQuestions.removeWhere((question) => question.number == number);
+  }
+
+  @override
+  Future<int> answerQuestion({
+    required DummyQuestion question,
+    required String selectedOption,
+  }) async {
+    return question.percentA;
   }
 }

@@ -2,6 +2,8 @@ name = "panda-talk-backend"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
+# valiark-dev: replace with Dashboard → Settings → API (Project URL and anon key).
 [vars]
-SUPABASE_URL = ""
-SUPABASE_ANON_KEY = ""
+SUPABASE_URL = "https://rothadmykmuxncagbwqd.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvdGhhZG15a211eG5jYWdid3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTE0NjEsImV4cCI6MjA5NDIyNzQ2MX0.tOx_XbfZXvgzDJEA4s2fqSh73IIKwZLKJI0-QGHPro0"
+# Set this with `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`.

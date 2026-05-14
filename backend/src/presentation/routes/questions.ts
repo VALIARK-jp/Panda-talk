@@ -1,27 +1,22 @@
 import { Hono } from 'hono'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, resolveUserId } from '../middleware/auth'
 import { handleError } from '../middleware/errorHandler'
-import {
-  getFeedUseCase,
-  getHotFeedUseCase,
-  postQuestionUseCase,
-  editQuestionUseCase,
-  deleteQuestionUseCase,
-  searchQuestionsUseCase,
-  getQuestionStatsUseCase,
-} from '../../infrastructure/mock/container'
+import { createContainer } from '../../infrastructure/container'
+import type { Env } from '../../infrastructure/env'
 
 type Variables = { userId: string }
 
-const app = new Hono<{ Variables: Variables }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // GET /questions - フィード取得（認証なし）
 app.get('/', async (c) => {
   try {
     const limit = Number(c.req.query('limit') ?? '20')
     const cursor = c.req.query('cursor')
-    const userId = c.req.header('Authorization')?.replace('Bearer ', '') ?? 'anonymous'
-    const questions = await getFeedUseCase.execute(userId, limit, cursor)
+    const token = c.req.header('Authorization')?.replace('Bearer ', '')
+    const userId = token ? await resolveUserId(c.env, token) : 'anonymous'
+    const { getFeedUseCase } = createContainer(c.env)
+    const questions = await getFeedUseCase.execute(userId ?? 'anonymous', limit, cursor)
     return c.json({ questions })
   } catch (err) {
     return handleError(err, c)
@@ -33,6 +28,7 @@ app.get('/hot', async (c) => {
   try {
     const limit = Number(c.req.query('limit') ?? '20')
     const cursor = c.req.query('cursor')
+    const { getHotFeedUseCase } = createContainer(c.env)
     const questions = await getHotFeedUseCase.execute(limit, cursor)
     return c.json({ questions })
   } catch (err) {
@@ -45,7 +41,22 @@ app.get('/search', async (c) => {
   try {
     const q = c.req.query('q') ?? ''
     const limit = Number(c.req.query('limit') ?? '20')
+    const { searchQuestionsUseCase } = createContainer(c.env)
     const questions = await searchQuestionsUseCase.execute(q, limit)
+    return c.json({ questions })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// GET /questions/history - 回答済み履歴（認証必要）
+app.get('/history', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const limit = Number(c.req.query('limit') ?? '20')
+    const cursor = c.req.query('cursor')
+    const { getAnsweredHistoryUseCase } = createContainer(c.env)
+    const questions = await getAnsweredHistoryUseCase.execute(userId, limit, cursor)
     return c.json({ questions })
   } catch (err) {
     return handleError(err, c)
@@ -56,6 +67,7 @@ app.get('/search', async (c) => {
 app.get('/:id/stats', async (c) => {
   try {
     const id = c.req.param('id')
+    const { getQuestionStatsUseCase } = createContainer(c.env)
     const stats = await getQuestionStatsUseCase.execute(id)
     return c.json({ stats })
   } catch (err) {
@@ -73,6 +85,7 @@ app.post('/', authMiddleware, async (c) => {
       optionB: string
       category?: string | null
     }>()
+    const { postQuestionUseCase } = createContainer(c.env)
     const question = await postQuestionUseCase.execute({
       userId,
       text: body.text,
@@ -97,6 +110,7 @@ app.patch('/:id', authMiddleware, async (c) => {
       optionB?: string
       category?: string | null
     }>()
+    const { editQuestionUseCase } = createContainer(c.env)
     const question = await editQuestionUseCase.execute({
       id,
       userId,
@@ -113,6 +127,7 @@ app.delete('/:id', authMiddleware, async (c) => {
   try {
     const userId = c.get('userId')
     const id = c.req.param('id')
+    const { deleteQuestionUseCase } = createContainer(c.env)
     await deleteQuestionUseCase.execute(id, userId)
     return c.json({ success: true })
   } catch (err) {

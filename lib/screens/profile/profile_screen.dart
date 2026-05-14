@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/design_tokens.dart';
 import '../../presentation/providers/profile_providers.dart';
+import '../../widgets/guest_login_button.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/tag_chip.dart';
@@ -74,6 +75,8 @@ class ProfileScreen extends ConsumerWidget {
                       color: AppColors.black,
                     ),
                   ),
+                  const SizedBox(width: AppSpacing.md),
+                  const GuestLoginButton(),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),

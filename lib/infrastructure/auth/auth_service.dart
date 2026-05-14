@@ -1,0 +1,425 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_line_sdk/flutter_line_sdk.dart';
+import 'package:http/http.dart' as http;
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../config/app_config.dart';
+
+/// Email is already registered on this Supabase project (e.g. another app).
+class EmailAlreadyRegisteredException implements Exception {
+  const EmailAlreadyRegisteredException();
+}
+
+class NativeAuthResponse {
+  const NativeAuthResponse({required this.authResponse, required this.isNewUser});
+
+  final AuthResponse authResponse;
+  final bool isNewUser;
+}
+
+class AuthService {
+  AuthService({http.Client? client})
+    : _client = client ?? http.Client(),
+      _supabase = Supabase.instance.client;
+
+  final http.Client _client;
+  final SupabaseClient _supabase;
+
+  User? get currentUser => _supabase.auth.currentUser;
+
+  Stream<User?> get authStateChanges {
+    return _supabase.auth.onAuthStateChange.map((event) => event.session?.user);
+  }
+
+  void _debugLogAuthRedirect(String label) {
+    if (kDebugMode) {
+      debugPrint('[AuthService] $label → authRedirectUrl=${AppConfig.authRedirectUrl}');
+    }
+  }
+
+  Future<AuthResponse> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final response = await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      final user = response.user;
+      if (user != null) {
+        final provider = user.appMetadata['provider'] as String?;
+        final treatAsEmail = provider == 'email' || provider == null;
+        if (treatAsEmail && user.emailConfirmedAt == null) {
+          await signOut();
+          throw Exception(
+            'メールアドレスが確認されていません。受信トレイを確認してください。',
+          );
+        }
+        // panda_profiles sync runs from PandaTalkApp ref.listen (avoid awaiting
+        // localhost Worker here — real devices hang; pedal_share uses Supabase directly).
+      }
+      return response;
+    } on http.ClientException catch (e) {
+      debugPrint('signInWithEmail network: $e');
+      throw Exception(
+        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
+      );
+    } on AuthException catch (error) {
+      throw Exception(_authMessage(error));
+    }
+  }
+
+  Future<AuthResponse> signUpWithEmail({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    try {
+      _debugLogAuthRedirect('signUpWithEmail');
+      final response = await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {'displayName': displayName, 'name': displayName},
+        emailRedirectTo: AppConfig.authRedirectUrl,
+      );
+      // panda_profiles sync runs from PandaTalkApp ref.listen when session appears.
+      return response;
+    } on http.ClientException catch (e) {
+      debugPrint('signUpWithEmail network: $e');
+      throw Exception(
+        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
+      );
+    } on AuthException catch (error) {
+      if (_emailAlreadyRegistered(error)) {
+        throw const EmailAlreadyRegisteredException();
+      }
+      throw Exception(_authMessage(error));
+    }
+  }
+
+  Future<NativeAuthResponse> signInWithLine() async {
+    if (AppConfig.lineChannelId.isEmpty) {
+      throw Exception('LINEチャンネルIDが設定されていません');
+    }
+
+    try {
+      final result = await LineSDK.instance.login();
+      final accessToken = result.accessToken.value;
+      if (accessToken.isEmpty) {
+        throw Exception('LINE認証がキャンセルされました');
+      }
+
+      final response = await _client.post(
+        Uri.parse('${AppConfig.supabaseFunctionsUrl}/line-auth-native'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'accessToken': accessToken}),
+      );
+      final nativeResponse = await _verifyNativeOtp(response);
+
+      final profile = await LineSDK.instance.getProfile();
+      await _supabase.auth.updateUser(
+        UserAttributes(
+          data: {
+            'displayName': profile.displayName,
+            'name': profile.displayName,
+            'photoURL': profile.pictureUrl,
+            'statusMessage': profile.statusMessage,
+          },
+        ),
+      );
+
+      return nativeResponse;
+    } on PlatformException catch (error) {
+      if (error.code == 'CANCEL') {
+        throw Exception('LINE認証がキャンセルされました');
+      }
+      if (error.code == 'AUTHENTICATION_AGENT_ERROR') {
+        throw Exception('LINE認証エラーが発生しました。もう一度お試しください');
+      }
+      throw Exception('LINE認証に失敗しました: ${error.message ?? error.code}');
+    }
+  }
+
+  Future<NativeAuthResponse> signInWithApple() async {
+    try {
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final identityToken = appleCredential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        throw Exception(
+          'Apple のサインイン情報を取得できませんでした。'
+          'Xcode の Runner で Sign in with Apple を有効にし、'
+          'Apple Developer の App ID（com.pandatalk.pandaTalk）でも Sign in with Apple をオンにしてください。',
+        );
+      }
+
+      final response = await _client.post(
+        Uri.parse('${AppConfig.supabaseFunctionsUrl}/apple-auth-native'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'identityToken': identityToken,
+          'authorizationCode': appleCredential.authorizationCode,
+          'email': appleCredential.email,
+          'givenName': appleCredential.givenName,
+          'familyName': appleCredential.familyName,
+        }),
+      );
+      final nativeResponse = await _verifyNativeOtp(response);
+
+      final displayName = _appleDisplayName(appleCredential);
+      if (displayName != null) {
+        await _supabase.auth.updateUser(
+          UserAttributes(
+            data: {
+              'displayName': displayName,
+              'name': displayName,
+              'givenName': appleCredential.givenName,
+              'familyName': appleCredential.familyName,
+            },
+          ),
+        );
+      }
+
+      return nativeResponse;
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) {
+        throw Exception('Apple認証がキャンセルされました');
+      }
+      if (error.code == AuthorizationErrorCode.failed) {
+        throw Exception('Apple認証に失敗しました。もう一度お試しください');
+      }
+      if (error.code == AuthorizationErrorCode.invalidResponse) {
+        throw Exception('Apple認証のレスポンスが無効です');
+      }
+      if (error.code == AuthorizationErrorCode.notHandled) {
+        throw Exception('Apple認証が処理できませんでした');
+      }
+      if (error.code == AuthorizationErrorCode.unknown) {
+        throw Exception('Apple認証中に不明なエラーが発生しました');
+      }
+      throw Exception('Apple認証に失敗しました: ${error.message}');
+    }
+  }
+
+  Future<void> signOut() async {
+    final provider = _supabase.auth.currentUser?.appMetadata['provider'];
+    try {
+      await _supabase.auth.signOut();
+    } catch (e) {
+      debugPrint('signOut failed: $e');
+      try {
+        await _supabase.auth.signOut();
+      } catch (e2) {
+        debugPrint('signOut retry failed: $e2');
+        rethrow;
+      }
+    }
+    if (provider == 'line') {
+      try {
+        await LineSDK.instance.logout();
+      } catch (error) {
+        debugPrint('LINE logout failed: $error');
+      }
+    }
+  }
+
+  /// Opens in-app password update flow via [AppConfig.authRedirectUrl] (pedal_share pattern).
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      _debugLogAuthRedirect('requestPasswordReset');
+      await _supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: AppConfig.authRedirectUrl,
+      );
+    } on http.ClientException catch (e) {
+      debugPrint('requestPasswordReset network: $e');
+      throw Exception(
+        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
+      );
+    } on AuthException catch (error) {
+      throw Exception(_authMessage(error));
+    }
+  }
+
+  /// Resend signup confirmation email (requires address only).
+  Future<void> resendSignupEmail(String email) async {
+    try {
+      _debugLogAuthRedirect('resendSignupEmail');
+      await _supabase.auth.resend(
+        type: OtpType.signup,
+        email: email.trim(),
+        emailRedirectTo: AppConfig.authRedirectUrl,
+      );
+    } on http.ClientException catch (e) {
+      debugPrint('resendSignupEmail network: $e');
+      throw Exception(
+        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
+      );
+    } on AuthException catch (error) {
+      throw Exception(_authMessage(error));
+    }
+  }
+
+  Future<void> ensureBackendProfile({
+    required String provider,
+    String? displayName,
+    String? avatarUrl,
+  }) async {
+    final session = _supabase.auth.currentSession;
+    final user = session?.user;
+    if (session == null || user == null) return;
+
+    final metadata = user.userMetadata ?? const <String, dynamic>{};
+    final metadataDisplayName = metadata['displayName'] as String?;
+    final metadataName = metadata['name'] as String?;
+    final name = displayName ??
+        metadataDisplayName ??
+        metadataName ??
+        user.email?.split('@').first ??
+        'panda user';
+
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'email': user.email,
+        'name': name,
+        'username': _usernameFrom(name, user.id),
+        'avatarUrl': avatarUrl ?? metadata['photoURL'],
+        'provider': provider,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(response.body);
+    }
+  }
+
+  Future<NativeAuthResponse> _verifyNativeOtp(http.Response response) async {
+    if (response.statusCode != 200) {
+      throw Exception(_nativeAuthError(response));
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final hashedToken = data['hashed_token'] as String?;
+    if (hashedToken == null || hashedToken.isEmpty) {
+      throw Exception('認証トークンの取得に失敗しました');
+    }
+
+    final otpType = data['otp_type'] == 'signup' ? OtpType.signup : OtpType.email;
+    final verifyResponse = await _supabase.auth.verifyOTP(
+      tokenHash: hashedToken,
+      type: otpType,
+    );
+    final session = _supabase.auth.currentSession ?? verifyResponse.session;
+    if (session == null) {
+      throw Exception('セッションの取得に失敗しました');
+    }
+
+    return NativeAuthResponse(
+      authResponse: AuthResponse(session: session, user: session.user),
+      isNewUser: data['is_new_user'] as bool? ?? false,
+    );
+  }
+
+  String _nativeAuthError(http.Response response) {
+    try {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final error = data['error'] ?? '認証に失敗しました';
+      final details = data['details'];
+      return details == null ? '$error' : '$error: $details';
+    } catch (_) {
+      return response.body.isEmpty ? '認証に失敗しました' : response.body;
+    }
+  }
+
+  bool _emailAlreadyRegistered(AuthException error) {
+    final message = error.message.toLowerCase();
+    return message.contains('already registered') ||
+        message.contains('already been registered') ||
+        message.contains('user already exists') ||
+        message.contains('email address is already registered');
+  }
+
+  String _authMessage(AuthException error) {
+    final message = error.message.toLowerCase();
+
+    if (message.contains('clientexception') ||
+        message.contains('socketexception') ||
+        message.contains('failed host lookup') ||
+        message.contains('no address associated with hostname') ||
+        message.contains('network is unreachable') ||
+        message.contains('connection refused') ||
+        message.contains('connection timed out')) {
+      return 'ネットワーク接続に問題があります。インターネット接続を確認してください。';
+    }
+
+    switch (error.code) {
+      case 'user_not_found':
+        return '入力されたメールアドレスのユーザーは見つかりませんでした。';
+      case 'invalid_credentials':
+      case 'invalid_grant':
+        return 'メールアドレスまたはパスワードが違います';
+      case 'email_exists':
+        return 'このメールアドレスはすでに登録済みです。ログインをお試しください。';
+      case 'weak_password':
+        return 'パスワードはより強力なものにしてください（例：8文字以上）。';
+      case 'invalid_email':
+        return '有効なメールアドレス形式で入力してください。';
+      case '429':
+        return 'リクエストが多すぎます。しばらく時間をおいてから再度お試しください。';
+      case 'access_token_expired':
+      case 'jwt_expired':
+        return 'セッションの有効期限が切れました。再度ログインしてください。';
+      default:
+        break;
+    }
+
+    if (message.contains('invalid login credentials')) {
+      return 'メールアドレスまたはパスワードが違います';
+    }
+    if (message.contains('already registered') ||
+        message.contains('already been registered')) {
+      return 'このメールアドレスはすでに登録されています';
+    }
+    if (message.contains('email not confirmed')) {
+      return 'メールアドレスが確認されていません。受信トレイを確認してください。';
+    }
+    return error.message;
+  }
+
+  String? _appleDisplayName(AuthorizationCredentialAppleID credential) {
+    if (credential.givenName != null && credential.familyName != null) {
+      return '${credential.familyName} ${credential.givenName}';
+    }
+    return credential.familyName ?? credential.givenName;
+  }
+
+  String _usernameFrom(String name, String userId) {
+    final base = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final normalized = base.length >= 3 ? base : 'panda';
+    final compactId = userId.replaceAll('-', '');
+    final suffix = compactId.substring(0, compactId.length < 6 ? compactId.length : 6);
+    final maxBaseLength = 30 - suffix.length - 1;
+    final baseLength = normalized.length < maxBaseLength
+        ? normalized.length
+        : maxBaseLength;
+    return '${normalized.substring(0, baseLength)}_$suffix';
+  }
+}

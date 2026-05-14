@@ -1,8 +1,16 @@
-import type { UUID, Question, QuestionWithUser, HotQuestion, QuestionStats } from '../entities/index'
+import type {
+  UUID,
+  Question,
+  QuestionWithUser,
+  HotQuestion,
+  QuestionStats,
+  AnsweredQuestion,
+} from '../entities/index'
 
 export interface IQuestionRepository {
   getFeed(userId: UUID, limit: number, cursor?: UUID): Promise<QuestionWithUser[]>
   getHotFeed(limit: number, cursor?: UUID): Promise<HotQuestion[]>
+  getAnsweredHistory(userId: UUID, limit: number, cursor?: UUID): Promise<AnsweredQuestion[]>
   findById(id: UUID): Promise<QuestionWithUser | null>
   getStats(questionId: UUID): Promise<QuestionStats>
   search(keyword: string, limit: number): Promise<QuestionWithUser[]>

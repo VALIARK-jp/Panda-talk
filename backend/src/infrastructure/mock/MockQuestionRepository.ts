@@ -4,6 +4,7 @@ import type {
   QuestionWithUser,
   HotQuestion,
   QuestionStats,
+  AnsweredQuestion,
 } from '../../domain/entities/index'
 import type { IQuestionRepository } from '../../domain/repositories/IQuestionRepository'
 
@@ -87,6 +88,22 @@ export class MockQuestionRepository implements IQuestionRepository {
       commentCount: Math.floor(Math.random() * 20),
     }))
     list.sort((a, b) => b.likeCount - a.likeCount)
+    if (cursor) {
+      const idx = list.findIndex((q) => q.id === cursor)
+      if (idx !== -1) list = list.slice(idx + 1)
+    }
+    return list.slice(0, limit)
+  }
+
+  async getAnsweredHistory(
+    userId: UUID,
+    limit: number,
+    cursor?: UUID
+  ): Promise<AnsweredQuestion[]> {
+    let list: AnsweredQuestion[] = questions.map((q, index) => ({
+      ...toQuestionWithUser(q),
+      myAnswer: index % 2 === 0 ? q.optionA : q.optionB,
+    }))
     if (cursor) {
       const idx = list.findIndex((q) => q.id === cursor)
       if (idx !== -1) list = list.slice(idx + 1)

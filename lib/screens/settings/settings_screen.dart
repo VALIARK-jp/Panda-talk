@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
+import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/settings_providers.dart';
 import '../../widgets/panda_button.dart';
 
@@ -67,7 +68,11 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             PandaOutlinedButton(
               label: 'ログアウト',
-              onTap: () => Navigator.pop(context),
+              onTap: () async {
+                await ref.read(authServiceProvider).signOut();
+                ref.read(guestModeProvider.notifier).state = false;
+                if (context.mounted) Navigator.pop(context);
+              },
             ),
             const SizedBox(height: AppSpacing.sm),
             PandaButton(

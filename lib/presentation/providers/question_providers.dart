@@ -24,6 +24,7 @@ class QuestionFeedState {
   final int answeredCount;
   final int minorityCount;
   final Map<int, String> selectedOptionsByQuestion;
+  final Map<int, int> percentAByQuestion;
   final Set<int> likedQuestionNumbers;
 
   const QuestionFeedState({
@@ -31,6 +32,7 @@ class QuestionFeedState {
     this.answeredCount = 0,
     this.minorityCount = 0,
     this.selectedOptionsByQuestion = const {},
+    this.percentAByQuestion = const {},
     this.likedQuestionNumbers = const {},
   });
 
@@ -38,11 +40,16 @@ class QuestionFeedState {
     return selectedOptionsByQuestion[questionNumber];
   }
 
+  int percentAFor(DummyQuestion question) {
+    return percentAByQuestion[question.number] ?? question.percentA;
+  }
+
   QuestionFeedState copyWith({
     int? questionIndex,
     int? answeredCount,
     int? minorityCount,
     Map<int, String>? selectedOptionsByQuestion,
+    Map<int, int>? percentAByQuestion,
     Set<int>? likedQuestionNumbers,
   }) {
     return QuestionFeedState(
@@ -51,28 +58,35 @@ class QuestionFeedState {
       minorityCount: minorityCount ?? this.minorityCount,
       selectedOptionsByQuestion:
           selectedOptionsByQuestion ?? this.selectedOptionsByQuestion,
+      percentAByQuestion: percentAByQuestion ?? this.percentAByQuestion,
       likedQuestionNumbers: likedQuestionNumbers ?? this.likedQuestionNumbers,
     );
   }
 }
 
 class QuestionFeedController extends StateNotifier<QuestionFeedState> {
-  QuestionFeedController() : super(const QuestionFeedState());
+  QuestionFeedController(this._ref) : super(const QuestionFeedState());
 
-  void answer(DummyQuestion question, String selected) {
+  final Ref _ref;
+
+  Future<void> answer(DummyQuestion question, String selected) async {
     if (state.selectedOptionsByQuestion.containsKey(question.number)) return;
 
+    final percentA = await _ref
+        .read(questionRepositoryProvider)
+        .answerQuestion(question: question, selectedOption: selected);
     final selectedA = selected == question.optionA;
-    final selectedPercent = selectedA
-        ? question.percentA
-        : (100 - question.percentA);
+    final selectedPercent = selectedA ? percentA : (100 - percentA);
     final isMinority = selectedPercent < 50;
 
     final selectedOptions = {...state.selectedOptionsByQuestion};
     selectedOptions[question.number] = selected;
+    final percentAByQuestion = {...state.percentAByQuestion};
+    percentAByQuestion[question.number] = percentA;
 
     state = state.copyWith(
       selectedOptionsByQuestion: selectedOptions,
+      percentAByQuestion: percentAByQuestion,
       answeredCount: state.answeredCount + 1,
       minorityCount: state.minorityCount + (isMinority ? 1 : 0),
     );
@@ -109,5 +123,5 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
 
 final questionFeedControllerProvider =
     StateNotifierProvider<QuestionFeedController, QuestionFeedState>((ref) {
-      return QuestionFeedController();
+      return QuestionFeedController(ref);
     });

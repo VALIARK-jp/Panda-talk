@@ -12,6 +12,7 @@ class DummyUser {
 }
 
 class DummyQuestion {
+  final String? apiId;
   final int number;
   final String category;
   final String authorName;
@@ -22,6 +23,7 @@ class DummyQuestion {
   final String? myAnswer;
   final int percentA;
   const DummyQuestion({
+    this.apiId,
     required this.number,
     required this.category,
     this.authorName = 'ぱんだ好き',
@@ -38,8 +40,11 @@ class DummyQuestion {
     String? text,
     String? optionA,
     String? optionB,
+    String? myAnswer,
+    int? percentA,
   }) {
     return DummyQuestion(
+      apiId: apiId,
       number: number,
       category: category ?? this.category,
       authorName: authorName,
@@ -47,8 +52,8 @@ class DummyQuestion {
       text: text ?? this.text,
       optionA: optionA ?? this.optionA,
       optionB: optionB ?? this.optionB,
-      myAnswer: myAnswer,
-      percentA: percentA,
+      myAnswer: myAnswer ?? this.myAnswer,
+      percentA: percentA ?? this.percentA,
     );
   }
 }

@@ -2,7 +2,11 @@
   "name": "panda-talk-backend",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev:lan": "wrangler dev --ip 0.0.0.0",
+    "dev:db": "node scripts/dev-with-supabase.mjs",
+    "dev:db:lan": "WRANGLER_DEV_IP=0.0.0.0 node scripts/dev-with-supabase.mjs",
+    "deploy": "wrangler deploy",
+    "seed:dev": "node ../scripts/seed-supabase-dev.mjs"
   },
   "dependencies": {
     "hono": "^4.0.0"

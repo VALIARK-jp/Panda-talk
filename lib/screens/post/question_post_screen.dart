@@ -4,6 +4,7 @@ import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/post_providers.dart';
 import '../../widgets/app_text_field.dart';
+import '../../widgets/guest_login_button.dart';
 import '../../widgets/panda_button.dart';
 import 'question_search_screen.dart';
 
@@ -91,6 +92,8 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  const GuestLoginButton(),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),

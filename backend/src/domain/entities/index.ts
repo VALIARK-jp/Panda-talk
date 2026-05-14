@@ -42,6 +42,10 @@ export type HotQuestion = QuestionWithUser & {
   commentCount: number
 }
 
+export type AnsweredQuestion = QuestionWithUser & {
+  myAnswer: string
+}
+
 export type Answer = {
   id: UUID
   userId: UUID

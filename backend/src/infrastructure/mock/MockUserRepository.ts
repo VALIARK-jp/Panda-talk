@@ -64,6 +64,18 @@ export class MockUserRepository implements IUserRepository {
     return user
   }
 
+  async upsert(data: Omit<User, 'createdAt'>): Promise<User> {
+    const idx = users.findIndex((u) => u.id === data.id)
+    if (idx === -1) {
+      const user = { ...data, createdAt: new Date().toISOString() }
+      users.push(user)
+      return user
+    }
+
+    users[idx] = { ...users[idx], ...data }
+    return users[idx]
+  }
+
   async update(
     id: UUID,
     data: Partial<Pick<User, 'name' | 'avatarUrl' | 'bio'>>

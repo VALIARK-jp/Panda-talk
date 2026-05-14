@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/talk_providers.dart';
+import '../../widgets/guest_login_button.dart';
 import '../../widgets/group_card.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
@@ -32,13 +33,20 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.md),
-              const Text(
-                'トーク',
-                style: TextStyle(
-                  fontSize: AppFontSize.xxl,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.black,
-                ),
+              const Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'トーク',
+                      style: TextStyle(
+                        fontSize: AppFontSize.xxl,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.black,
+                      ),
+                    ),
+                  ),
+                  GuestLoginButton(),
+                ],
               ),
               const SizedBox(height: AppSpacing.sm),
               SegmentedTabs(

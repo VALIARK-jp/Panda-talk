@@ -4,6 +4,7 @@ import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/friend_providers.dart';
 import '../../presentation/providers/match_providers.dart';
+import '../../widgets/guest_login_button.dart';
 import '../../widgets/match_user_tile.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
@@ -70,6 +71,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                       color: AppColors.black,
                     ),
                   ),
+                  const SizedBox(width: 4),
+                  const GuestLoginButton(),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),

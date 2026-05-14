@@ -1,12 +1,13 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import { handleError } from '../middleware/errorHandler'
-import { answerQuestionUseCase } from '../../infrastructure/mock/container'
+import { createContainer } from '../../infrastructure/container'
+import type { Env } from '../../infrastructure/env'
 import type { AnswerChoice } from '../../domain/entities/index'
 
 type Variables = { userId: string }
 
-const app = new Hono<{ Variables: Variables }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // POST /answers - 回答（認証必要）
 app.post('/', authMiddleware, async (c) => {
@@ -16,6 +17,7 @@ app.post('/', authMiddleware, async (c) => {
       questionId: string
       choice: AnswerChoice
     }>()
+    const { answerQuestionUseCase } = createContainer(c.env)
     const result = await answerQuestionUseCase.execute({
       userId,
       questionId: body.questionId,

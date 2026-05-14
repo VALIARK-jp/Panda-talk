@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 node_modules/
+supabase/.temp/
+backend/supabase/.temp/
+backend/.wrangler/
 
 # Symbolication related
 app.*.symbols

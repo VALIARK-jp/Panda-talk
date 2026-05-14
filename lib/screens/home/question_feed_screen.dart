@@ -7,6 +7,7 @@ import '../../core/dummy_data.dart';
 import '../../presentation/providers/question_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
+import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
 import 'question_comments_screen.dart';
@@ -38,13 +39,14 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     super.dispose();
   }
 
-  void _onAnswer(DummyQuestion q, String selected, int percentA, int total) {
+  Future<void> _onAnswer(DummyQuestion q, String selected, int total) async {
     final controller = ref.read(questionFeedControllerProvider.notifier);
     if (ref.read(questionFeedControllerProvider).selectedOptionFor(q.number) !=
         null) {
       return;
     }
-    controller.answer(q, selected);
+    await controller.answer(q, selected);
+    if (!mounted) return;
 
     _nextQuestionTimer?.cancel();
     _nextQuestionTimer = Timer(const Duration(milliseconds: 850), () {
@@ -78,7 +80,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final currentIndex = feedState.questionIndex % total;
     final currentQuestion = questions[currentIndex];
     final currentAnswered =
-        feedState.selectedOptionFor(currentQuestion.number) != null;
+        feedState.selectedOptionFor(currentQuestion.number) != null ||
+        currentQuestion.myAnswer != null;
 
     if (velocity < -200) {
       if (currentAnswered) _goToNextQuestion(total);
@@ -88,7 +91,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     if (velocity > 200) {
       for (var index = currentIndex - 1; index >= 0; index--) {
         final question = questions[index];
-        if (feedState.selectedOptionFor(question.number) != null) {
+        if (feedState.selectedOptionFor(question.number) != null ||
+            question.myAnswer != null) {
           _nextQuestionTimer?.cancel();
           _animateToQuestion(index);
           return;
@@ -124,10 +128,11 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     int total,
     QuestionFeedState feedState,
   ) {
-    final selected = feedState.selectedOptionFor(q.number);
+    final selected = feedState.selectedOptionFor(q.number) ?? q.myAnswer;
     final hasAnswered = selected != null;
+    final percentA = feedState.percentAFor(q);
     final selectedA = selected == q.optionA;
-    final selectedPercent = selectedA ? q.percentA : (100 - q.percentA);
+    final selectedPercent = selectedA ? percentA : (100 - percentA);
     final isMinority = hasAnswered && selectedPercent < 50;
     final oddballScore = feedState.answeredCount > 0
         ? (feedState.minorityCount / feedState.answeredCount * 100).round()
@@ -312,8 +317,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
               const SizedBox(height: AppSpacing.md),
               _AnswerRatioBar(
                 question: q,
+                percentA: percentA,
                 selectedOption: selected,
-                onSelect: (option) => _onAnswer(q, option, q.percentA, total),
+                onSelect: (option) => _onAnswer(q, option, total),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
@@ -328,6 +334,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     QuestionFeedState feedState,
   ) {
     final total = questions.length;
+    final showingAnsweredHistory =
+        questions.isNotEmpty && questions.every((q) => q.myAnswer != null);
     return Scaffold(
       backgroundColor: AppColors.softGray,
       body: SafeArea(
@@ -358,7 +366,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
@@ -366,11 +374,44 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                         builder: (_) => const QuestionHistoryScreen(),
                       ),
                     ),
-                    child: PandaAvatar(size: 36),
+                    child: const Icon(
+                      Icons.history,
+                      color: AppColors.black,
+                      size: 24,
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  const GuestLoginButton(),
                 ],
               ),
             ),
+            if (showingAnsweredHistory)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.borderGray),
+                ),
+                child: const Text(
+                  '未回答の質問はありません',
+                  style: TextStyle(
+                    fontSize: AppFontSize.sm,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -414,7 +455,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       error: (e, _) => Scaffold(body: Center(child: Text('エラー: $e'))),
       data: (questions) {
         if (questions.isEmpty) {
-          return const Scaffold(body: Center(child: Text('質問がありません')));
+          return const Scaffold(body: Center(child: Text('まだ表示できる質問がありません')));
         }
         final orderedQuestions = [...questions];
         if (_tabIndex == 1) {
@@ -428,11 +469,13 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
 class _AnswerRatioBar extends StatelessWidget {
   final DummyQuestion question;
+  final int percentA;
   final String? selectedOption;
   final ValueChanged<String> onSelect;
 
   const _AnswerRatioBar({
     required this.question,
+    required this.percentA,
     required this.selectedOption,
     required this.onSelect,
   });
@@ -440,8 +483,8 @@ class _AnswerRatioBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasAnswered = selectedOption != null;
-    final leftPercent = hasAnswered ? question.percentA : 50;
-    final rightPercent = hasAnswered ? 100 - question.percentA : 50;
+    final leftPercent = hasAnswered ? percentA : 50;
+    final rightPercent = hasAnswered ? 100 - percentA : 50;
     final selectedA = selectedOption == question.optionA;
     final selectedB = selectedOption == question.optionB;
 
