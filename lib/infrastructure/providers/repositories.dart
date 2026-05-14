@@ -9,6 +9,8 @@ import '../mock/mock_notification_repository.dart';
 import '../mock/mock_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
+import '../profile_repository.dart';
+import '../api/api_profile_repository.dart';
 import '../question_repository.dart';
 
 const _useApiRepositories = bool.fromEnvironment(
@@ -29,4 +31,7 @@ final notificationRepositoryProvider = Provider(
 );
 final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
 final commentRepositoryProvider = Provider((ref) => MockCommentRepository());
-final profileRepositoryProvider = Provider((ref) => MockProfileRepository());
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  if (_useApiRepositories) return ApiProfileRepository();
+  return MockProfileRepository();
+});
