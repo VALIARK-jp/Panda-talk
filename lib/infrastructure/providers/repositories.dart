@@ -6,11 +6,15 @@ import '../mock/mock_group_repository.dart';
 import '../group_repository.dart';
 import '../api/api_group_repository.dart';
 import '../mock/mock_message_repository.dart';
+import '../message_repository.dart';
+import '../api/api_message_repository.dart';
 import '../mock/mock_friend_repository.dart';
 import '../mock/mock_notification_repository.dart';
 import '../notification_repository.dart';
 import '../api/api_notification_repository.dart';
 import '../mock/mock_settings_repository.dart';
+import '../settings_repository.dart';
+import '../api/api_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
 import '../profile_repository.dart';
@@ -20,9 +24,6 @@ import '../api/api_match_repository.dart';
 import '../question_repository.dart';
 import '../comment_repository.dart';
 import '../api/api_comment_repository.dart';
-
-import '../message_repository.dart';
-import '../api/api_message_repository.dart';
 
 const _useApiRepositories = bool.fromEnvironment(
   'PANDA_TALK_USE_API',
@@ -50,7 +51,10 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   if (_useApiRepositories) return ApiNotificationRepository();
   return MockNotificationRepository();
 });
-final settingsRepositoryProvider = Provider((ref) => MockSettingsRepository());
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  if (_useApiRepositories) return ApiSettingsRepository();
+  return MockSettingsRepository();
+});
 final commentRepositoryProvider = Provider<CommentRepository>((ref) {
   if (_useApiRepositories) return ApiCommentRepository();
   return MockCommentRepository();
