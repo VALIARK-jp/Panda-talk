@@ -20,9 +20,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(profileControllerProvider);
-    _nameController = TextEditingController(text: profile.name);
-    _bioController = TextEditingController(text: profile.bio);
+    final profileAsync = ref.read(profileControllerProvider);
+    final profile = profileAsync.value;
+    _nameController = TextEditingController(text: profile?.name ?? '');
+    _bioController = TextEditingController(text: profile?.bio ?? '');
   }
 
   @override
@@ -90,13 +91,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             const SizedBox(height: AppSpacing.xl),
             PandaButton(
               label: '保存する',
-              onTap: () {
-                ref
+              onTap: () async {
+                await ref
                     .read(profileControllerProvider.notifier)
                     .updateProfile(
                       name: _nameController.text,
                       bio: _bioController.text,
                     );
+                if (!context.mounted) return;
                 Navigator.pop(context);
               },
             ),

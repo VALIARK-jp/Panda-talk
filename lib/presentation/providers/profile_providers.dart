@@ -2,19 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dummy_data.dart';
 import '../../infrastructure/providers/repositories.dart';
 
-class ProfileController extends StateNotifier<DummyProfile> {
-  ProfileController(this._ref)
-    : super(_ref.read(profileRepositoryProvider).getProfile());
+class ProfileController extends AsyncNotifier<DummyProfile> {
+  @override
+  Future<DummyProfile> build() {
+    return ref.read(profileRepositoryProvider).getProfile();
+  }
 
-  final Ref _ref;
-
-  void updateProfile({required String name, required String bio}) {
-    _ref.read(profileRepositoryProvider).updateProfile(name: name, bio: bio);
-    state = _ref.read(profileRepositoryProvider).getProfile();
+  Future<void> updateProfile({required String name, required String bio}) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(profileRepositoryProvider).updateProfile(name: name, bio: bio);
+      return ref.read(profileRepositoryProvider).getProfile();
+    });
   }
 }
 
 final profileControllerProvider =
-    StateNotifierProvider<ProfileController, DummyProfile>((ref) {
-      return ProfileController(ref);
-    });
+    AsyncNotifierProvider<ProfileController, DummyProfile>(ProfileController.new);
