@@ -1,6 +1,8 @@
 import '../../core/dummy_data.dart';
+import '../match_repository.dart';
 
-class MockMatchRepository {
+class MockMatchRepository implements MatchRepository {
+  @override
   Future<List<DummyUser>> getSimilar() async {
     return [
       const DummyUser(name: 'こうたろう', id: 'kotaro_123', matchRate: 92),
@@ -11,6 +13,7 @@ class MockMatchRepository {
     ];
   }
 
+  @override
   Future<List<DummyUser>> getOpposite() async {
     return [
       const DummyUser(name: 'たくみ', id: 'takumi_111', matchRate: 29),
@@ -21,6 +24,7 @@ class MockMatchRepository {
     ];
   }
 
+  @override
   Future<List<DummyUser>> getMiddle() async {
     return [
       const DummyUser(name: 'さくら', id: 'sakura_001', matchRate: 51),
@@ -31,6 +35,7 @@ class MockMatchRepository {
     ];
   }
 
+  @override
   Future<List<Map<String, Object>>> getCompareAnswers(String userId) async {
     return [
       {'question': '休日は外出派？家派？', 'mine': '外出派', 'theirs': '外出派', 'match': true},
