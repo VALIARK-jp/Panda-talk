@@ -19,6 +19,9 @@ import '../question_repository.dart';
 import '../comment_repository.dart';
 import '../api/api_comment_repository.dart';
 
+import '../message_repository.dart';
+import '../api/api_message_repository.dart';
+
 const _useApiRepositories = bool.fromEnvironment(
   'PANDA_TALK_USE_API',
   defaultValue: true,
@@ -36,7 +39,10 @@ final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   if (_useApiRepositories) return ApiGroupRepository();
   return MockGroupRepository();
 });
-final messageRepositoryProvider = Provider((ref) => MockMessageRepository());
+final messageRepositoryProvider = Provider<MessageRepository>((ref) {
+  if (_useApiRepositories) return ApiMessageRepository();
+  return MockMessageRepository();
+});
 final friendRepositoryProvider = Provider((ref) => MockFriendRepository());
 final notificationRepositoryProvider = Provider(
   (ref) => MockNotificationRepository(),

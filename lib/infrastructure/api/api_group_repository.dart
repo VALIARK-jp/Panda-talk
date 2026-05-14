@@ -60,6 +60,7 @@ class ApiGroupRepository implements GroupRepository {
     final name = groupMap['name'] as String? ?? 'グループ';
 
     return DummyGroup(
+      id: groupMap['id'] as String,
       name: name,
       avgMatchRate: avgMatchRate,
       members: members,
