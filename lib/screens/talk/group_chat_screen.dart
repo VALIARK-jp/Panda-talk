@@ -25,13 +25,13 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   void _send() {
     ref
         .read(messageActionsProvider)
-        .sendGroupMessage(widget.group.name, _messageController.text);
+        .sendGroupMessage(widget.group.id, _messageController.text);
     _messageController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    final messagesAsync = ref.watch(groupMessagesProvider(widget.group.name));
+    final messagesAsync = ref.watch(groupMessagesProvider(widget.group.id));
     final group = widget.group;
     return Scaffold(
       backgroundColor: AppColors.softGray,

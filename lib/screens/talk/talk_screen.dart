@@ -23,7 +23,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsProvider);
-    final threads = ref.watch(directThreadsProvider);
+    final threadsAsync = ref.watch(directThreadsProvider);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -57,7 +57,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
               const SizedBox(height: AppSpacing.md),
               Expanded(
                 child: _tabIndex == 0
-                    ? _DmList(threads: threads)
+                    ? threadsAsync.when(
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (e, _) => Center(child: Text('エラー: $e')),
+                        data: (threads) => _DmList(threads: threads),
+                      )
                     : groupsAsync.when(
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),

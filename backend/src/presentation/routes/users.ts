@@ -86,4 +86,35 @@ app.patch('/me', authMiddleware, async (c) => {
   }
 })
 
+// In-memory settings storage for mock API
+const mockSettings: Record<string, any> = {}
+
+// GET /users/me/settings - 通知設定取得（認証必要）
+app.get('/me/settings', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const settings = mockSettings[userId] ?? {
+      friendRequests: true,
+      questionLikes: true,
+      messages: true,
+      groupUpdates: false,
+    }
+    return c.json({ settings })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// PATCH /users/me/settings - 通知設定更新（認証必要）
+app.patch('/me/settings', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const body = await c.req.json<{ settings: any }>()
+    mockSettings[userId] = body.settings
+    return c.json({ success: true, settings: mockSettings[userId] })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
 export default app

@@ -6,7 +6,7 @@ final groupsProvider = FutureProvider<List<DummyGroup>>((ref) {
   return ref.watch(groupRepositoryProvider).getGroups();
 });
 
-final directThreadsProvider = Provider<List<DummyDirectThread>>((ref) {
+final directThreadsProvider = FutureProvider<List<DummyDirectThread>>((ref) {
   return ref.watch(messageRepositoryProvider).getDirectThreads();
 });
 
@@ -29,17 +29,18 @@ class MessageActions {
   final Ref _ref;
   const MessageActions(this._ref);
 
-  void sendDirectMessage(String userId, String text) {
+  Future<void> sendDirectMessage(String userId, String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    _ref.read(messageRepositoryProvider).sendDirectMessage(userId, trimmed);
+    await _ref.read(messageRepositoryProvider).sendDirectMessage(userId, trimmed);
     _ref.invalidate(directMessagesProvider(userId));
+    _ref.invalidate(directThreadsProvider);
   }
 
-  void sendGroupMessage(String groupId, String text) {
+  Future<void> sendGroupMessage(String groupId, String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    _ref.read(messageRepositoryProvider).sendGroupMessage(groupId, trimmed);
+    await _ref.read(messageRepositoryProvider).sendGroupMessage(groupId, trimmed);
     _ref.invalidate(groupMessagesProvider(groupId));
   }
 }

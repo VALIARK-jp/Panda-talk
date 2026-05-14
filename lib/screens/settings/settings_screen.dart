@@ -45,25 +45,33 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            _SwitchRow(
-              title: '友達申請',
-              value: settings.friendRequests,
-              onChanged: controller.updateFriendRequests,
-            ),
-            _SwitchRow(
-              title: '質問へのいいね',
-              value: settings.questionLikes,
-              onChanged: controller.updateQuestionLikes,
-            ),
-            _SwitchRow(
-              title: 'DM・グループチャット',
-              value: settings.messages,
-              onChanged: controller.updateMessages,
-            ),
-            _SwitchRow(
-              title: 'グループ再編成',
-              value: settings.groupUpdates,
-              onChanged: controller.updateGroupUpdates,
+            settings.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Text('エラー: $e'),
+              data: (s) => Column(
+                children: [
+                  _SwitchRow(
+                    title: '友達申請',
+                    value: s.friendRequests,
+                    onChanged: controller.updateFriendRequests,
+                  ),
+                  _SwitchRow(
+                    title: '質問へのいいね',
+                    value: s.questionLikes,
+                    onChanged: controller.updateQuestionLikes,
+                  ),
+                  _SwitchRow(
+                    title: 'DM・グループチャット',
+                    value: s.messages,
+                    onChanged: controller.updateMessages,
+                  ),
+                  _SwitchRow(
+                    title: 'グループ再編成',
+                    value: s.groupUpdates,
+                    onChanged: controller.updateGroupUpdates,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             PandaOutlinedButton(

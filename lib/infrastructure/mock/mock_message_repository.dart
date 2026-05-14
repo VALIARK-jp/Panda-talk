@@ -1,6 +1,7 @@
+import '../message_repository.dart';
 import '../../core/dummy_data.dart';
 
-class MockMessageRepository {
+class MockMessageRepository implements MessageRepository {
   final Map<String, List<DummyMessage>> _directMessages = {
     'kotaro_123': [
       const DummyMessage(text: '今日の質問見た？俺らまた一致してたね', isMe: true, time: '12:20'),
@@ -42,7 +43,9 @@ class MockMessageRepository {
     ],
   };
 
-  List<DummyDirectThread> getDirectThreads() {
+  @override
+  Future<List<DummyDirectThread>> getDirectThreads() async {
+    await Future.delayed(const Duration(milliseconds: 300));
     return const [
       DummyDirectThread(
         user: DummyUser(name: 'こうたろう', id: 'kotaro_123', matchRate: 92),
@@ -58,19 +61,25 @@ class MockMessageRepository {
     ];
   }
 
+  @override
   Future<List<DummyMessage>> getGroupMessages(String groupId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     return List.unmodifiable(
       _groupMessages[groupId] ?? _defaultGroupMessages(),
     );
   }
 
+  @override
   Future<List<DummyMessage>> getDirectMessages(String userId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     return List.unmodifiable(
       _directMessages[userId] ?? _defaultDirectMessages(),
     );
   }
 
-  void sendDirectMessage(String userId, String text) {
+  @override
+  Future<void> sendDirectMessage(String userId, String text) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     final messages = _directMessages.putIfAbsent(
       userId,
       _defaultDirectMessages,
@@ -78,7 +87,9 @@ class MockMessageRepository {
     messages.add(DummyMessage(text: text, isMe: true, time: '今'));
   }
 
-  void sendGroupMessage(String groupId, String text) {
+  @override
+  Future<void> sendGroupMessage(String groupId, String text) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     final messages = _groupMessages.putIfAbsent(groupId, _defaultGroupMessages);
     messages.add(DummyMessage(text: text, isMe: true, time: '今'));
   }

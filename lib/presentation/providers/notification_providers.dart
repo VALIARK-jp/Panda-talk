@@ -2,43 +2,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dummy_data.dart';
 import '../../infrastructure/providers/repositories.dart';
 
-class NotificationState {
-  final List<DummyNotification> notifications;
+import 'dart:async';
 
-  const NotificationState({required this.notifications});
-
-  int get unreadCount =>
-      notifications.where((notification) => !notification.isRead).length;
-}
-
-class NotificationController extends StateNotifier<NotificationState> {
-  NotificationController(this._ref)
-    : super(const NotificationState(notifications: [])) {
-    _refresh();
+class NotificationController extends AsyncNotifier<List<DummyNotification>> {
+  @override
+  FutureOr<List<DummyNotification>> build() {
+    return _fetch();
   }
 
-  final Ref _ref;
-
-  void markAsRead(String id) {
-    _ref.read(notificationRepositoryProvider).markAsRead(id);
-    _refresh();
+  Future<List<DummyNotification>> _fetch() {
+    return ref.read(notificationRepositoryProvider).getNotifications();
   }
 
-  void markAllAsRead() {
-    _ref.read(notificationRepositoryProvider).markAllAsRead();
-    _refresh();
+  Future<void> markAsRead(String id) async {
+    await ref.read(notificationRepositoryProvider).markAsRead(id);
+    ref.invalidateSelf();
   }
 
-  void _refresh() {
-    state = NotificationState(
-      notifications: _ref
-          .read(notificationRepositoryProvider)
-          .getNotifications(),
-    );
+  Future<void> markAllAsRead() async {
+    await ref.read(notificationRepositoryProvider).markAllAsRead();
+    ref.invalidateSelf();
   }
 }
 
 final notificationControllerProvider =
-    StateNotifierProvider<NotificationController, NotificationState>((ref) {
-      return NotificationController(ref);
-    });
+    AsyncNotifierProvider<NotificationController, List<DummyNotification>>(() {
+  return NotificationController();
+});
+
+final unreadNotificationCountProvider = Provider<int>((ref) {
+  final notificationsAsync = ref.watch(notificationControllerProvider);
+  return notificationsAsync.maybeWhen(
+    data: (notifications) =>
+        notifications.where((n) => !n.isRead).length,
+    orElse: () => 0,
+  );
+});

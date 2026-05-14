@@ -10,6 +10,17 @@ type Variables = { userId: string }
 
 const app = new Hono<{ Variables: Variables }>()
 
+// GET /direct_messages/threads - DMスレッド一覧（認証必要）
+app.get('/threads', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const threads = await getDirectMessagesUseCase.getThreads(userId)
+    return c.json({ threads })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
 // GET /direct_messages/:userId - DM会話（認証必要）
 app.get('/:userId', authMiddleware, async (c) => {
   try {
