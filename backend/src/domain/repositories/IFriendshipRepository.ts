@@ -1,7 +1,7 @@
 import type { UUID, Friendship } from '../entities/index'
 
 export interface IFriendshipRepository {
-  sendRequest(userAId: UUID, userBId: UUID): Promise<Friendship>
+  sendRequest(userAId: UUID, userBId: UUID, requestedBy: UUID): Promise<Friendship>
   accept(userAId: UUID, userBId: UUID): Promise<Friendship>
   delete(userAId: UUID, userBId: UUID): Promise<void>
   findFriends(userId: UUID): Promise<Friendship[]>

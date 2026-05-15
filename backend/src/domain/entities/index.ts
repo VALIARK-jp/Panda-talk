@@ -66,6 +66,7 @@ export type Friendship = {
   id: UUID
   userAId: UUID
   userBId: UUID
+  requestedBy: UUID
   status: FriendshipStatus
   createdAt: ISODateString
 }
