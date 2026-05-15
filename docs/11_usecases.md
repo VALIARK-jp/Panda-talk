@@ -39,9 +39,9 @@
 
 | ID | ユースケース | アクター | 説明 |
 |---|---|---|---|
-| UC-Q01 | 質問を投稿する | ユーザー | 二択質問（text / optionA / optionB / category）を投稿する |
+| UC-Q01 | 質問を投稿する | ユーザー | 二択質問（text / optionA / optionB / category）を投稿する。textは100文字以内 |
 | UC-Q02 | 類似質問を検索する | ユーザー | 投稿前にキーワードで既存質問を検索して重複を防ぐ |
-| UC-Q03 | 質問を編集する | ユーザー | 自分が投稿した質問のtext/optionA/optionB/categoryを更新する |
+| UC-Q03 | 質問を編集する | ユーザー | 自分が投稿した質問のtext/optionA/optionB/categoryを更新する。textは100文字以内 |
 | UC-Q04 | 質問を削除する | ユーザー | 自分が投稿した質問を削除する。紐づくanswers/comments/likesも連鎖削除する |
 
 ---

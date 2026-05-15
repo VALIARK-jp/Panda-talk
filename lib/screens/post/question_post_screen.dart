@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/question_validation.dart';
 import '../../presentation/providers/post_providers.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/guest_login_button.dart';
@@ -20,6 +21,7 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
   final _optionAController = TextEditingController(text: '追う派');
   final _optionBController = TextEditingController(text: '追われる派');
   String _category = '恋愛';
+  String? _questionErrorText;
   final _categories = ['恋愛', '生活', '性格', '旅行', '仕事', '食べ物'];
 
   @override
@@ -31,21 +33,43 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
   }
 
   Future<void> _postQuestion() async {
-    await ref
-        .read(questionPostControllerProvider.notifier)
-        .postQuestion(
-          text: _questionController.text,
-          optionA: _optionAController.text,
-          optionB: _optionBController.text,
-          category: _category,
-        );
+    final validationMessage = validateQuestionText(_questionController.text);
+    if (validationMessage != null) {
+      setState(() => _questionErrorText = validationMessage);
+      _showSnackBar(validationMessage);
+      return;
+    }
+
+    try {
+      await ref
+          .read(questionPostControllerProvider.notifier)
+          .postQuestion(
+            text: _questionController.text,
+            optionA: _optionAController.text,
+            optionB: _optionBController.text,
+            category: _category,
+          );
+    } on ArgumentError catch (error) {
+      if (!mounted) return;
+      final message = error.message?.toString() ?? '質問を投稿できませんでした';
+      setState(() => _questionErrorText = message);
+      _showSnackBar(message);
+      return;
+    }
+
+    if (!mounted) return;
     _questionController.clear();
     _optionAController.clear();
     _optionBController.clear();
+    setState(() => _questionErrorText = null);
+    _showSnackBar('質問を投稿しました');
+  }
+
+  void _showSnackBar(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('質問を投稿しました')));
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -98,9 +122,16 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               AppTextField(
-                label: '質問文',
+                label: '質問文（100文字以内）',
                 controller: _questionController,
                 maxLines: 2,
+                maxLength: questionTextMaxLength,
+                errorText: _questionErrorText,
+                onChanged: (_) {
+                  if (_questionErrorText != null) {
+                    setState(() => _questionErrorText = null);
+                  }
+                },
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(label: '選択肢A', controller: _optionAController),
@@ -157,6 +188,7 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
     final optionAController = TextEditingController(text: question.optionA);
     final optionBController = TextEditingController(text: question.optionB);
     var category = question.category;
+    String? questionErrorText;
 
     showModalBottomSheet<void>(
       context: context,
@@ -185,9 +217,16 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(
-                    label: '質問文',
+                    label: '質問文（100文字以内）',
                     controller: questionController,
                     maxLines: 2,
+                    maxLength: questionTextMaxLength,
+                    errorText: questionErrorText,
+                    onChanged: (_) {
+                      if (questionErrorText != null) {
+                        setSheetState(() => questionErrorText = null);
+                      }
+                    },
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(label: '選択肢A', controller: optionAController),
@@ -203,15 +242,40 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
                   PandaButton(
                     label: '保存する',
                     onTap: () async {
-                      await ref
-                          .read(questionPostControllerProvider.notifier)
-                          .editQuestion(
-                            number: question.number,
-                            text: questionController.text,
-                            optionA: optionAController.text,
-                            optionB: optionBController.text,
-                            category: category,
-                          );
+                      final validationMessage = validateQuestionText(
+                        questionController.text,
+                      );
+                      if (validationMessage != null) {
+                        setSheetState(
+                          () => questionErrorText = validationMessage,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(validationMessage)),
+                        );
+                        return;
+                      }
+
+                      try {
+                        await ref
+                            .read(questionPostControllerProvider.notifier)
+                            .editQuestion(
+                              number: question.number,
+                              text: questionController.text,
+                              optionA: optionAController.text,
+                              optionB: optionBController.text,
+                              category: category,
+                            );
+                      } on ArgumentError catch (error) {
+                        if (!context.mounted) return;
+                        final message =
+                            error.message?.toString() ?? '質問を保存できませんでした';
+                        setSheetState(() => questionErrorText = message);
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                        return;
+                      }
+
                       if (context.mounted) Navigator.pop(context);
                     },
                   ),

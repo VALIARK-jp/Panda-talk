@@ -154,8 +154,8 @@ export interface IQuestionRepository {
 
 | メソッド | パス | 説明 |
 |---|---|---|
-| POST | /questions | 質問投稿 |
-| PATCH | /questions/:id | 質問を編集する（投稿者本人のみ） |
+| POST | /questions | 質問投稿（textは100文字以内） |
+| PATCH | /questions/:id | 質問を編集する（投稿者本人のみ、textは100文字以内） |
 | DELETE | /questions/:id | 質問を削除する（投稿者本人のみ・連鎖削除） |
 | POST | /answers | 回答送信（match_score更新を内包） |
 | POST | /users/migrate | ゲストデータ一括移行 |
