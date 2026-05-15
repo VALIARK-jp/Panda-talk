@@ -47,6 +47,29 @@ export class SupabaseRestClient {
     })
   }
 
+  async count(resource: string, query: Record<string, QueryValue> = {}): Promise<number> {
+    // PostgREST: Use count=exact header to get the total count
+    const response = await fetch(
+      `${this.restUrl}/${resource}?${new URLSearchParams(
+        Object.entries(query).filter(([_, v]) => v != null).map(([k, v]) => [k, String(v)])
+      ).toString()}`,
+      {
+        method: 'HEAD',
+        headers: {
+          apikey: this.serviceRoleKey,
+          Authorization: `Bearer ${this.serviceRoleKey}`,
+          Prefer: 'count=exact',
+        },
+      }
+    )
+    const range = response.headers.get('Content-Range')
+    if (range) {
+      const total = range.split('/')[1]
+      return parseInt(total, 10) || 0
+    }
+    return 0
+  }
+
   private async request<T>(
     resource: string,
     query: Record<string, QueryValue> = {},
