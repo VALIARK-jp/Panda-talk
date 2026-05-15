@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dummy_data.dart';
+import '../../core/question_validation.dart';
 import '../../infrastructure/providers/repositories.dart';
 import 'question_providers.dart';
 
@@ -20,10 +21,16 @@ class QuestionPostController extends StateNotifier<List<DummyQuestion>> {
     required String optionB,
     required String category,
   }) async {
+    final trimmedText = text.trim();
+    final validationMessage = validateQuestionText(trimmedText);
+    if (validationMessage != null) {
+      throw ArgumentError(validationMessage);
+    }
+
     await _ref
         .read(questionRepositoryProvider)
         .postQuestion(
-          text: text,
+          text: trimmedText,
           optionA: optionA,
           optionB: optionB,
           category: category,
@@ -39,11 +46,17 @@ class QuestionPostController extends StateNotifier<List<DummyQuestion>> {
     required String optionB,
     required String category,
   }) async {
+    final trimmedText = text.trim();
+    final validationMessage = validateQuestionText(trimmedText);
+    if (validationMessage != null) {
+      throw ArgumentError(validationMessage);
+    }
+
     await _ref
         .read(questionRepositoryProvider)
         .editQuestion(
           number: number,
-          text: text,
+          text: trimmedText,
           optionA: optionA,
           optionB: optionB,
           category: category,

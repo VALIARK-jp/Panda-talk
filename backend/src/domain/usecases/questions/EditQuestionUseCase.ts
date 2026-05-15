@@ -1,5 +1,6 @@
 import type { IQuestionRepository } from '../../repositories/IQuestionRepository'
 import type { Question } from '../../entities/index'
+import { validateQuestionText } from './validation'
 
 interface EditQuestionInput {
   id: string
@@ -21,8 +22,11 @@ export class EditQuestionUseCase {
     if (question.userId !== input.userId) {
       throw Object.assign(new Error('Forbidden'), { code: 'FORBIDDEN' })
     }
+    const text =
+      input.text === undefined ? undefined : validateQuestionText(input.text)
+
     return this.questionRepo.update(input.id, {
-      text: input.text,
+      text,
       optionA: input.optionA,
       optionB: input.optionB,
       category: input.category,
