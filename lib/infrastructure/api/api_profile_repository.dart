@@ -53,12 +53,11 @@ class ApiProfileRepository implements ProfileRepository {
       name: json['name'] as String? ?? '名無しさん',
       username: json['username'] as String? ?? 'unknown',
       bio: json['bio'] as String? ?? '',
-      // Dummy values for fields not returned by the basic User API
-      answerCount: 128,
-      postCount: 12,
-      friendCount: 23,
-      oddballScore: 26,
-      tags: const ['夜型', '外出派', '即レス派', '追う派', '計画派'],
+      answerCount: json['answerCount'] as int? ?? 0,
+      postCount: json['postCount'] as int? ?? 0,
+      friendCount: json['friendCount'] as int? ?? 0,
+      oddballScore: (json['oddballScore'] as num? ?? 0).toInt(),
+      tags: (json['tags'] as List<dynamic>?)?.cast<String>() ?? const [],
     );
   }
 

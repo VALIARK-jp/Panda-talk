@@ -16,6 +16,6 @@ export class SendFriendRequestUseCase {
       throw Object.assign(new Error('Friendship already exists'), { code: 'CONFLICT' })
     }
 
-    return this.friendshipRepo.sendRequest(userAId, userBId)
+    return this.friendshipRepo.sendRequest(userAId, userBId, senderId)
   }
 }

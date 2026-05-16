@@ -12,10 +12,18 @@ import { MockMessageRepository } from './mock/MockMessageRepository'
 import { MockDirectMessageRepository } from './mock/MockDirectMessageRepository'
 
 import { SupabaseRestClient } from './supabase/SupabaseRestClient'
+import { SupabaseUserRepository } from './supabase/repositories/SupabaseUserRepository'
 import { SupabaseQuestionRepository } from './supabase/repositories/SupabaseQuestionRepository'
 import { SupabaseAnswerRepository } from './supabase/repositories/SupabaseAnswerRepository'
 import { SupabaseMatchRepository } from './supabase/repositories/SupabaseMatchRepository'
-import { SupabaseUserRepository } from './supabase/repositories/SupabaseUserRepository'
+import { SupabaseFriendshipRepository } from './supabase/repositories/SupabaseFriendshipRepository'
+import { SupabaseCommentRepository } from './supabase/repositories/SupabaseCommentRepository'
+import { SupabaseQuestionLikeRepository } from './supabase/repositories/SupabaseQuestionLikeRepository'
+import { SupabaseCommentLikeRepository } from './supabase/repositories/SupabaseCommentLikeRepository'
+import { SupabaseNotificationRepository } from './supabase/repositories/SupabaseNotificationRepository'
+import { SupabaseGroupRepository } from './supabase/repositories/SupabaseGroupRepository'
+import { SupabaseMessageRepository } from './supabase/repositories/SupabaseMessageRepository'
+import { SupabaseDirectMessageRepository } from './supabase/repositories/SupabaseDirectMessageRepository'
 
 import { GetFeedUseCase } from '../domain/usecases/questions/GetFeedUseCase'
 import { GetHotFeedUseCase } from '../domain/usecases/questions/GetHotFeedUseCase'
@@ -68,14 +76,38 @@ export function createContainer(env?: Env) {
   const userRepo = supabaseClient
     ? new SupabaseUserRepository(supabaseClient)
     : new MockUserRepository()
-  const friendshipRepo = new MockFriendshipRepository()
-  const commentRepo = new MockCommentRepository()
-  const questionLikeRepo = new MockQuestionLikeRepository()
-  const commentLikeRepo = new MockCommentLikeRepository()
-  const notificationRepo = new MockNotificationRepository()
-  const groupRepo = new MockGroupRepository()
-  const messageRepo = new MockMessageRepository()
-  const dmRepo = new MockDirectMessageRepository()
+
+  const friendshipRepo = supabaseClient
+    ? new SupabaseFriendshipRepository(supabaseClient)
+    : new MockFriendshipRepository()
+
+  const commentRepo = supabaseClient
+    ? new SupabaseCommentRepository(supabaseClient)
+    : new MockCommentRepository()
+
+  const questionLikeRepo = supabaseClient
+    ? new SupabaseQuestionLikeRepository(supabaseClient)
+    : new MockQuestionLikeRepository()
+
+  const commentLikeRepo = supabaseClient
+    ? new SupabaseCommentLikeRepository(supabaseClient)
+    : new MockCommentLikeRepository()
+
+  const notificationRepo = supabaseClient
+    ? new SupabaseNotificationRepository(supabaseClient)
+    : new MockNotificationRepository()
+
+  const groupRepo = supabaseClient
+    ? new SupabaseGroupRepository(supabaseClient)
+    : new MockGroupRepository()
+
+  const messageRepo = supabaseClient
+    ? new SupabaseMessageRepository(supabaseClient)
+    : new MockMessageRepository()
+
+  const dmRepo = supabaseClient
+    ? new SupabaseDirectMessageRepository(supabaseClient)
+    : new MockDirectMessageRepository()
 
   const questionRepo = supabaseClient
     ? new SupabaseQuestionRepository(supabaseClient)

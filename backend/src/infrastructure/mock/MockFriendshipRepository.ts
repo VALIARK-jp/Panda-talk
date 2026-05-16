@@ -4,11 +4,12 @@ import type { IFriendshipRepository } from '../../domain/repositories/IFriendshi
 const friendships: Friendship[] = []
 
 export class MockFriendshipRepository implements IFriendshipRepository {
-  async sendRequest(userAId: UUID, userBId: UUID): Promise<Friendship> {
+  async sendRequest(userAId: UUID, userBId: UUID, requestedBy: UUID): Promise<Friendship> {
     const friendship: Friendship = {
       id: crypto.randomUUID(),
       userAId,
       userBId,
+      requestedBy,
       status: 'pending',
       createdAt: new Date().toISOString(),
     }
@@ -44,7 +45,10 @@ export class MockFriendshipRepository implements IFriendshipRepository {
 
   async findPendingReceived(userId: UUID): Promise<Friendship[]> {
     return friendships.filter(
-      (f) => f.status === 'pending' && f.userBId === userId
+      (f) =>
+        f.status === 'pending' &&
+        f.requestedBy !== userId &&
+        (f.userAId === userId || f.userBId === userId)
     )
   }
 

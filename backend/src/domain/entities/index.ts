@@ -9,6 +9,12 @@ export type User = {
   avatarUrl: string | null
   bio: string | null
   createdAt: ISODateString
+  // Statistics and scores
+  answerCount?: number
+  postCount?: number
+  friendCount?: number
+  oddballScore?: number
+  tags?: string[]
 }
 
 export type AnswerChoice = 'a' | 'b'
@@ -60,6 +66,7 @@ export type Friendship = {
   id: UUID
   userAId: UUID
   userBId: UUID
+  requestedBy: UUID
   status: FriendshipStatus
   createdAt: ISODateString
 }
