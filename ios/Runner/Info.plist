@@ -29,7 +29,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>line3rdp.com.pandatalk.panda-talk</string>
+				<string>line3rdp.com.valiark.pandaTalk</string>
 			</array>
 		</dict>
 		<dict>

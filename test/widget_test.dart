@@ -9,7 +9,7 @@ void main() {
       MaterialApp(
         home: OnboardingScreen(
           onStartGuest: () {},
-          onOpenLogin: (_) {},
+          onOpenAuth: ({required bool openSignup}) {},
         ),
       ),
     );

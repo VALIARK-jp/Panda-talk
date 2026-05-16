@@ -1,17 +1,13 @@
 # panda_talk
 
-A new Flutter project.
+質問・マッチ・トークなどの Flutter アプリ。
 
-## Getting Started
+## 開発を始める
 
-This project is a starting point for a Flutter application.
+- **秘密の配り方・Git に載せないもの（Valiark 共通）**: [docs/valiark_client_secrets_playbook.md](docs/valiark_client_secrets_playbook.md)
+- **認証（LINE / Apple）の手順**: [docs/05_auth.md](docs/05_auth.md)。LINE ログインには `.env` の `PANDA_TALK_LINE_CHANNEL_ID`（または `--dart-define`）が必要です。
+- **すぐに実行**: [.env.example](.env.example) を `.env` にコピーし、Supabase URL / anon / LINE チャンネル ID を埋める。初回は [scripts/flutter_run_dev.sh](scripts/flutter_run_dev.sh) が `.env` が無ければ `.env.example` から作成します。Cursor / VS Code の **Run and Debug** では **`panda_talk (prompt LINE ID)`** で LINE ID だけ dart-define 上書きも可能です。
 
-A few resources to get you started if this is your first Flutter project:
+## Getting Started (Flutter)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+See the [online documentation](https://docs.flutter.dev/) for tutorials and API reference.

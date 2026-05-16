@@ -16,3 +16,5 @@
 | [07_roadmap.md](./07_roadmap.md) | 開発ロードマップ・KPI |
 | [08_monetize.md](./08_monetize.md) | マネタイズ・グロース戦略 |
 | [09_screens.md](./09_screens.md) | 全画面仕様（14画面） |
+| [13_auth_flow_spec.md](./13_auth_flow_spec.md) | **認証フロー設計仕様**（セッション成立経路・正本）。[Mermaid 図のブラウザ表示](./preview/13_auth_flow_spec_diagrams.html) |
+| [05_auth.md](./05_auth.md) | Supabase / Edge の構築・運用・トラブルシュート |

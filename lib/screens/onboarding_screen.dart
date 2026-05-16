@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../core/design_tokens.dart';
 import '../widgets/panda_avatar.dart';
 import '../widgets/panda_button.dart';
-import 'auth/login_screen.dart';
 
 enum _OnboardingMode { start, login, signup }
 
@@ -11,11 +10,11 @@ class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({
     super.key,
     required this.onStartGuest,
-    required this.onOpenLogin,
+    required this.onOpenAuth,
   });
 
   final VoidCallback onStartGuest;
-  final void Function(LoginScreenMode mode) onOpenLogin;
+  final void Function({required bool openSignup}) onOpenAuth;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -126,14 +125,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return [
           PandaButton(
             label: 'ログイン画面へ',
-            onTap: () => widget.onOpenLogin(LoginScreenMode.login),
+            onTap: () => widget.onOpenAuth(openSignup: false),
           ),
         ];
       case _OnboardingMode.signup:
         return [
           PandaButton(
             label: '新規登録画面へ',
-            onTap: () => widget.onOpenLogin(LoginScreenMode.signup),
+            onTap: () => widget.onOpenAuth(openSignup: true),
           ),
         ];
       case _OnboardingMode.start:
@@ -142,7 +141,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: AppSpacing.md),
           PandaOutlinedButton(
             label: 'ログイン',
-            onTap: () => widget.onOpenLogin(LoginScreenMode.login),
+            onTap: () => widget.onOpenAuth(openSignup: false),
           ),
         ];
     }

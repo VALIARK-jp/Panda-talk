@@ -30,3 +30,19 @@ class AppFontSize {
   static const xxl = 28.0;
   static const xxxl = 40.0;
 }
+
+/// ログイン・登録フロー（メール / LINE / Apple のボタン配置など）用。パンダトークの白黒ベース。
+class AuthColors {
+  static const gradientTop = Color(0xFF4A4A4A);
+  static const gradientBottom = AppColors.black;
+
+  /// メールでログイン／登録（白ボタン＋黒ラベル）
+  static const emailButtonBg = AppColors.white;
+  static const emailButtonFg = AppColors.black;
+
+  /// フォーム画面の AppBar・主ボタン
+  static const chrome = AppColors.black;
+  static const formScaffoldBg = AppColors.softGray;
+  static const bodyText = AppColors.black;
+  static const mutedOnForm = AppColors.textGray;
+}

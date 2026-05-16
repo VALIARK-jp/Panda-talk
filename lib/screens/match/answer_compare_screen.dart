@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api_error_messages.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/match_providers.dart';
@@ -91,7 +92,12 @@ class AnswerCompareScreen extends ConsumerWidget {
             Expanded(
               child: compareAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('エラー: $e')),
+                error: (e, _) => Center(
+                  child: Text(
+                    'エラー: ${formatApiUserFacingError(e)}',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
                 data: (compareAnswers) => ListView.builder(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,

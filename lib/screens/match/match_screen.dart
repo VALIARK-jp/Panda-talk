@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/api_error_messages.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/friend_providers.dart';
@@ -158,13 +159,21 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                           child: CircularProgressIndicator(color: AppColors.black),
                         ),
                         error: (e, st) => Center(
-                          child: Text('エラーが発生しました\n$e', textAlign: TextAlign.center),
+                          child: Text(
+                            'エラーが発生しました\n${formatApiUserFacingError(e)}',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       )
                     : _usersAsync.when(
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => Center(child: Text('エラー: $e')),
+                        error: (e, _) => Center(
+                          child: Text(
+                            'エラー: ${formatApiUserFacingError(e)}',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                         data: (users) => ListView.builder(
                           itemCount: users.length,
                           itemBuilder: (context, i) {

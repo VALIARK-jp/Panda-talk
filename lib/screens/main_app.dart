@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/design_tokens.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'home/question_feed_screen.dart';
 import 'match/match_screen.dart';
@@ -27,6 +28,7 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.softGray,
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,

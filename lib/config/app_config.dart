@@ -1,35 +1,78 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+/// Build-time `--dart-define` overrides [dotenv] values from bundled `.env`.
 class AppConfig {
-  static const apiBaseUrl = String.fromEnvironment(
-    'PANDA_TALK_API_BASE_URL',
-    defaultValue: 'http://localhost:8787',
-  );
+  static String get apiBaseUrl {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_API_BASE_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    final fromFile = dotenv.env['PANDA_TALK_API_BASE_URL']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    return 'http://localhost:8787';
+  }
 
-  /// valiark-dev: set via `--dart-define=PANDA_TALK_SUPABASE_URL=https://<ref>.supabase.co`
-  static const supabaseUrl = String.fromEnvironment(
-    'PANDA_TALK_SUPABASE_URL',
-    defaultValue: 'https://rothadmykmuxncagbwqd.supabase.co',
-  );
+  static String get supabaseUrl {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_SUPABASE_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return dotenv.env['PANDA_TALK_SUPABASE_URL']?.trim() ?? '';
+  }
 
-  static const supabaseAnonKey = String.fromEnvironment(
-    'PANDA_TALK_SUPABASE_ANON_KEY',
-    defaultValue:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvdGhhZG15a211eG5jYWdid3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTE0NjEsImV4cCI6MjA5NDIyNzQ2MX0.tOx_XbfZXvgzDJEA4s2fqSh73IIKwZLKJI0-QGHPro0',
-  );
+  static String get supabaseAnonKey {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_SUPABASE_ANON_KEY',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return dotenv.env['PANDA_TALK_SUPABASE_ANON_KEY']?.trim() ?? '';
+  }
 
-  /// Shared valiark-dev Auth redirect (same Supabase project for all Valiark apps).
   /// Dashboard → Authentication → Redirect URLs must include this exact URI.
-  /// Override per build with `--dart-define=VALIARK_AUTH_REDIRECT_URL=...` if needed.
-  static const authRedirectUrl = String.fromEnvironment(
-    'VALIARK_AUTH_REDIRECT_URL',
-    defaultValue: 'io.valiark.auth://callback',
-  );
+  static String get authRedirectUrl {
+    const fromDefine = String.fromEnvironment(
+      'VALIARK_AUTH_REDIRECT_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    final fromFile = dotenv.env['VALIARK_AUTH_REDIRECT_URL']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    return 'io.valiark.auth://callback';
+  }
 
-  static const lineChannelId = String.fromEnvironment(
-    'PANDA_TALK_LINE_CHANNEL_ID',
-    defaultValue: '',
-  );
+  static String get lineChannelId {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_LINE_CHANNEL_ID',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return dotenv.env['PANDA_TALK_LINE_CHANNEL_ID']?.trim() ?? '';
+  }
 
   static String get supabaseFunctionsUrl {
     return supabaseUrl.replaceFirst('.supabase.co', '.functions.supabase.co');
+  }
+
+  /// 利用規約（HTTPS）。空のときはアプリ内リンクを出さない／タップで準備中。
+  static String get termsOfServiceUrl {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_TERMS_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return dotenv.env['PANDA_TALK_TERMS_URL']?.trim() ?? '';
+  }
+
+  /// プライバシーポリシー（HTTPS）。
+  static String get privacyPolicyUrl {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_PRIVACY_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return dotenv.env['PANDA_TALK_PRIVACY_URL']?.trim() ?? '';
   }
 }

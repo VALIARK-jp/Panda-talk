@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,15 +8,27 @@ import 'config/app_config.dart';
 import 'core/design_tokens.dart';
 import 'presentation/auth_gate.dart';
 import 'presentation/providers/auth_providers.dart';
+import 'presentation/providers/profile_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
+
+  if (AppConfig.supabaseUrl.isEmpty || AppConfig.supabaseAnonKey.isEmpty) {
+    throw StateError(
+      'Supabase が未設定です。.env.example を .env にコピーし、PANDA_TALK_SUPABASE_URL と '
+      'PANDA_TALK_SUPABASE_ANON_KEY を設定するか、--dart-define で渡してください。',
+    );
+  }
+
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
     authOptions: const FlutterAuthClientOptions(
       authFlowType: AuthFlowType.pkce,
-      detectSessionInUri: true,
+      // [ValiarkDeeplinkHandler] だけが getSessionFromUrl する。true だと supabase_flutter 内蔵の
+      // AppLinks リスナーと二重実行され、PKCE の code verifier が消えて認証完了に失敗する。
+      detectSessionInUri: false,
     ),
   );
   if (AppConfig.lineChannelId.isNotEmpty) {
@@ -50,6 +63,7 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
             await ref
                 .read(authServiceProvider)
                 .ensureBackendProfile(provider: provider);
+            ref.invalidate(profileControllerProvider);
           } catch (e, st) {
             assert(() {
               debugPrint('ensureBackendProfile: $e $st');
@@ -65,7 +79,11 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
       title: 'パンダトーク',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.black),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.black,
+          brightness: Brightness.light,
+        ).copyWith(surface: AppColors.white),
         scaffoldBackgroundColor: AppColors.white,
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.white,

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>13_auth_flow_spec — Mermaid 図・ユーザーフロー</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      flowchart: { useMaxWidth: true, htmlLabels: true },
+      sequence: { useMaxWidth: true },
+    });
+  </script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      max-width: 1100px;
+      margin: 2rem auto;
+      padding: 0 1rem 3rem;
+      line-height: 1.55;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+    h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 2.25rem 0 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid #c4a000;
+    }
+    h3 {
+      font-size: 0.98rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.5rem;
+      color: #333;
+    }
+    .mermaid {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .note {
+      color: #444;
+      font-size: 0.9rem;
+      margin: 0.5rem 0 1rem;
+    }
+    .prose {
+      font-size: 0.95rem;
+      margin: 0.4rem 0 0.9rem;
+    }
+    nav.toc {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 0.75rem 1rem 0.85rem;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.92rem;
+    }
+    nav.toc strong {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+    nav.toc ol {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+    nav.toc a {
+      text-decoration: none;
+    }
+    nav.toc a:hover {
+      text-decoration: underline;
+    }
+    a {
+      color: #0b57d0;
+    }
+    code {
+      font-size: 0.88em;
+      background: #eee;
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>認証フロー設計 — Mermaid 図・ユーザーフロー集</h1>
+  <p class="note">
+    正本の文章は <code>docs/13_auth_flow_spec.md</code>。マルチアプリ運用の前提は
+    <code>docs/12_multi_app_supabase.md</code>。
+    この HTML は初回表示時に CDN から Mermaid を読み込みます（オフラインでは描画できません）。
+  </p>
+
+  <nav class="toc" aria-label="目次">
+    <strong>目次</strong>
+    <ol>
+      <li><a href="#s2">§2 コンポーネント構成</a></li>
+      <li><a href="#s51">§5.1 メール・Google（PKCE）</a></li>
+      <li><a href="#s52">§5.2 LINE／Apple（ネイティブ）</a></li>
+      <li><a href="#multi">マルチアプリ前提とデータの分け方</a></li>
+      <li><a href="#sc-line2app">シナリオ: 同一 LINE でアプリA→アプリB</a></li>
+      <li><a href="#sc-gate">シナリオ: AuthGate（ログイン／ゲスト／未ログイン）</a></li>
+      <li><a href="#sc-login404">シナリオ: ログイン画面で未登録 LINE</a></li>
+      <li><a href="#sc-conflict">シナリオ: identity_conflict</a></li>
+      <li><a href="#sc-email2app">シナリオ: 同一メールで別アプリ新規（衝突）</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="s2">§2 コンポーネント構成</h2>
+  <div class="mermaid">
+flowchart LR
+  subgraph client [Flutter App]
+    AG[AuthGate]
+    DL[ValiarkDeeplinkHandler]
+    AS[AuthService]
+  end
+  subgraph supabase [Supabase]
+    GT[GoTrue Auth]
+    EF[Edge Functions]
+    DB[(auth.users / RPC)]
+  end
+  subgraph worker [Backend API]
+    API["/users/me 等"]
+  end
+  AS -->|email password OAuth| GT
+  AS -->|HTTP JSON anon+apikey| EF
+  EF -->|service_role admin API| GT
+  EF -->|RPC| DB
+  DL -->|getSessionFromUrl PKCE| GT
+  AS -->|verifyOTP token_hash| GT
+  AS -->|Bearer JWT| API
+  </div>
+
+  <h2 id="s51">§5.1 メール・Google（PKCE）</h2>
+  <div class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant App as Flutter App
+  participant B as Browser or Mail
+  participant GT as GoTrue
+  App->>GT: signUp / resetPasswordForEmail / signInWithOAuth
+  GT->>U: メール or OAuth 続行
+  U->>B: リンクを開く
+  B->>App: deep link code=...
+  App->>GT: ValiarkDeeplinkHandler getSessionFromUrl
+  GT->>App: session 確立
+  </div>
+
+  <h2 id="s52">§5.2 LINE／Apple（ネイティブ）</h2>
+  <div class="mermaid">
+sequenceDiagram
+  participant App as Flutter App
+  participant IdP as LINE or Apple
+  participant EF as Edge Function
+  participant GT as GoTrue
+  App->>IdP: SDK でトークン取得
+  App->>EF: POST JSON flow + token
+  EF->>GT: Admin API createUser / updateUser / generateLink 等
+  EF->>App: hashed_token otp_type email 等
+  App->>GT: verifyOTP tokenHash + type のみ
+  GT->>App: session 確立
+  </div>
+
+  <h2 id="multi">マルチアプリ前提とデータの分け方</h2>
+  <p class="prose">
+    Valiark では<strong>1 Supabase プロジェクト</strong>に複数アプリ（Panda Talk、Who eats など）を載せます。
+    <strong><code>auth.users</code> は全アプリで共有</strong>し、「同じ人」は原則<strong>同じ UUID（<code>auth.users.id</code>）の1行</strong>に収めます（LINE は共通チャンネル・同一 <code>line-auth-native</code> 解決ルールなど）。
+    アプリ固有の名前・アバター・ドメイン進行は<strong>アプリ別プロフィール表</strong>（例: <code>panda_profiles</code>、<code>whoeats_profiles</code>）に <code>id = auth.users.id</code> でぶら下げます。
+  </p>
+  <div class="mermaid">
+flowchart TB
+  subgraph shared [共有 Supabase 1 プロジェクト]
+    AU[(auth.users)]
+  end
+  subgraph profiles [アプリ別テーブル例]
+    PP[panda_profiles]
+    WP[whoeats_profiles]
+  end
+  AU -->|PK 同一 UUID| PP
+  AU -->|PK 同一 UUID| WP
+  </div>
+  <p class="note">
+    実際のテーブル名・migration は各アプリ／<code>docs/12_multi_app_supabase.md</code> に従う。
+  </p>
+
+  <h2 id="sc-line2app">シナリオ: 同一 LINE アカウントでアプリA → アプリB</h2>
+  <p class="prose">
+    前提: 両アプリが<strong>同じ Supabase URL・anon key</strong>、<strong>同じ LINE チャンネル</strong>、<strong>同じ <code>line-auth-native</code></strong> を参照している（運用違反で別チャンネル／別 Edge ロジックにすると、同じ人で <code>auth.users</code> が二重化しうる）。
+  </p>
+  <h3>ふつうに期待される流れ（1人1 auth 行・プロフィールだけアプリ別）</h3>
+  <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant U as 利用者
+  participant PA as アプリA Panda Talk
+  participant PB as アプリB Who eats
+  participant LN as LINE
+  participant EF as line-auth-native
+  participant GT as GoTrue
+  Note over U,GT: 1) アプリAで初回（新規登録 flow=signup）
+  U->>PA: LINE 新規登録
+  PA->>LN: ログイン
+  LN->>PA: accessToken
+  PA->>EF: flow signup + token
+  EF->>GT: line_id 未登録なら createUser 等
+  EF->>PA: hashed_token + otp
+  PA->>GT: verifyOTP
+  GT->>PA: session 確立 auth UUID 例 X
+  PA->>PA: POST users/me 等で panda_profiles 用レコード
+
+  Note over U,GT: 2) 同じLINEでアプリBへ（同じUUID X でセッション）
+  U->>PB: LINE ログイン or 新規
+  PB->>LN: ログイン
+  LN->>PB: accessToken 同一 LINE UID
+  PB->>EF: flow login or signup + token
+  EF->>GT: get_user_by_line_id ヒット UUID X
+  EF->>PB: hashed_token
+  PB->>GT: verifyOTP
+  GT->>PB: session 同じ UUID X
+  PB->>PB: ensure users/me whoeats_profiles 行を別途作成
+  </div>
+  <p class="note">
+    アプリB の画面で「新規登録」を押しても、Edge 上では既に <code>line_id</code> が紐づいていれば<strong>新しい auth 行は作らず</strong>、同じ <code>auth.users</code> に対してマジックリンク検証だけ行う想定。初回だけ <code>whoeats_profiles</code> が無ければバックエンドが作る。
+  </p>
+
+  <h2 id="sc-gate">シナリオ: AuthGate（アプリ内ルート）</h2>
+  <p class="prose">
+    セッションの有無とゲストモードで、オンボーディング／メイン画面を切り替える（実装: <code>lib/presentation/auth_gate.dart</code>）。
+  </p>
+  <div class="mermaid">
+flowchart TD
+  START([アプリ起動]) --> Q1{Supabase session あり?}
+  Q1 -->|はい| MAIN1[MainApp ログイン済み]
+  Q1 -->|いいえ| Q2{ゲストモード?}
+  Q2 -->|はい| MAIN2[MainApp ゲスト]
+  Q2 -->|いいえ| ONB[Onboarding → Login / Signup push]
+  </div>
+
+  <h2 id="sc-login404">シナリオ: ログイン画面から LINE・未だ auth にいない</h2>
+  <p class="prose">
+    <code>flow=login</code> のとき、LINE UID が <code>auth.users</code> 側にまだ無いと Edge は<strong>ユーザーを作らず</strong> 404 <code>account_not_found</code> を返す。画面は「新規登録から同じ方法で」と案内する。
+  </p>
+  <div class="mermaid">
+sequenceDiagram
+  participant U as 利用者
+  participant App as アプリ ログイン画面
+  participant EF as line-auth-native
+  U->>App: LINE ログイン
+  App->>EF: flow login + token
+  EF->>EF: get_user_by_line_id なし
+  EF->>App: 404 account_not_found
+  App->>U: 新規登録へ誘導メッセージ
+  </div>
+
+  <h2 id="sc-conflict">シナリオ: identity_conflict（別の LINE ID が既に同じメールユーザーに）</h2>
+  <p class="prose">
+    メールで既存ユーザーを引き当てて LINE を紐づけようとしたが、<strong>すでに別の <code>line_id</code></strong> が <code>app_metadata</code> に付いている場合は 409。なりすまし連結を拒否する。
+  </p>
+  <div class="mermaid">
+sequenceDiagram
+  participant App as アプリ
+  participant EF as line-auth-native
+  EF->>EF: get_user_by_email ヒット
+  EF->>EF: 既存 line_id と今回の UID が不一致
+  EF->>App: 409 identity_conflict + details
+  App->>App: details を画面表示
+  </div>
+
+  <h2 id="sc-email2app">シナリオ: メールでアプリA登録済み → アプリBで同じメール「新規」</h2>
+  <p class="prose">
+    <code>auth.users</code> はプロジェクト横断でメール一意。アプリB のメール新規フォームで同じアドレスを使うと GoTrue が<strong>既に登録</strong>と返す。Panda Talk クライアントは <code>EmailAlreadyRegisteredException</code> などで<strong>ログイン画面へ誘導</strong>する想定（プロバイダが違っても同じアカウント基盤）。
+  </p>
+  <div class="mermaid">
+flowchart LR
+  A1[アプリAでメール新規] --> AU[(auth.users に1行)]
+  AU --> A2[アプリBで同メール新規試行]
+  A2 --> GT[GoTrue 重複エラー]
+  GT --> UI[UI: ログインへ誘導]
+  </div>
+
+  <p class="note" style="margin-top:2rem">
+    §2・§5 の図を変更したら <code>13_auth_flow_spec.md</code> の該当コードブロックと揃えること。
+    マルチアプリシナリオの図は主にこの HTML に集約している。
+  </p>
+</body>
+</html>

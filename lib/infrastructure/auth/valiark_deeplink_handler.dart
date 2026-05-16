@@ -2,35 +2,54 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Same idea as `pedal_share/lib/shared/services/deeplink_handler.dart`:
-/// cold-start + foreground links for Supabase email confirmation / password-reset (PKCE).
+/// Cold-start + foreground links for Supabase email confirmation / password-reset (PKCE).
 ///
-/// [supabase_flutter] also observes [AppLinks]; this duplicates handling intentionally
-/// so initial links are less likely to be missed on some devices (pedal_share pattern).
+/// [Supabase.initialize] では `detectSessionInUri: false` にすること。`true` の場合、
+/// パッケージ内蔵のリスナーとここが同じ URI で [AuthClient.getSessionFromUrl] を二度呼び、
+/// 「Code verifier could not be found in local storage」になる。
 class ValiarkDeeplinkHandler {
   ValiarkDeeplinkHandler._();
 
   static bool _started = false;
 
-  /// valiark-dev shared redirect ([AppConfig.authRedirectUrl]) and legacy path names.
-  static bool isAuthCallbackUri(Uri? uri) {
+  /// 同一 URI を二重に処理しない（initialLink と uriLinkStream の両方が届く端末対策）。
+  static final Set<String> _sessionUrlHandled = {};
+
+  /// [supabase_flutter] の PKCE / エラー戻り判定に合わせる（無関係な deep link を除外）。
+  static bool isAuthSessionUri(Uri? uri) {
     if (uri == null) return false;
-    final s = uri.toString();
+    if (!_isOurAuthHost(uri)) return false;
+    final hasPkceCode = uri.queryParameters.containsKey('code');
+    final hasImplicitToken =
+        uri.fragment.contains('access_token') ||
+        uri.fragment.contains('error_description');
+    return hasPkceCode || hasImplicitToken;
+  }
+
+  static bool _isOurAuthHost(Uri uri) {
     if (uri.scheme == 'io.valiark.auth') return true;
-    if (s.contains('login-callback')) return true;
-    return false;
+    return uri.toString().contains('login-callback');
   }
 
   static Future<void> _consumeAuthUri(Uri uri) async {
+    if (!isAuthSessionUri(uri)) return;
+
+    final key = uri.toString();
+    if (!_sessionUrlHandled.add(key)) {
+      debugPrint('[ValiarkDeeplink] skip duplicate session uri');
+      return;
+    }
+
     try {
       await Supabase.instance.client.auth.getSessionFromUrl(uri);
       debugPrint('[ValiarkDeeplink] getSessionFromUrl ok');
     } catch (e, st) {
+      _sessionUrlHandled.remove(key);
       debugPrint('[ValiarkDeeplink] getSessionFromUrl failed: $e\n$st');
     }
   }
 
-  /// Call once from a [StatefulWidget] `didChangeDependencies` (e.g. [AuthGate]).
+  /// Call once after first frame (e.g. from [AuthGate]).
   static void handleOnce() {
     if (_started) return;
     _started = true;
@@ -38,12 +57,12 @@ class ValiarkDeeplinkHandler {
     final appLinks = AppLinks();
 
     appLinks.getInitialLink().then((Uri? uri) async {
-      if (!isAuthCallbackUri(uri)) return;
+      if (!isAuthSessionUri(uri)) return;
       await _consumeAuthUri(uri!);
     });
 
     appLinks.uriLinkStream.listen((Uri? uri) async {
-      if (!isAuthCallbackUri(uri)) return;
+      if (!isAuthSessionUri(uri)) return;
       await _consumeAuthUri(uri!);
     });
   }

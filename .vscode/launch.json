@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "panda_talk (LINE from env)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define=PANDA_TALK_LINE_CHANNEL_ID=${env:PANDA_TALK_LINE_CHANNEL_ID}"
+      ]
+    },
+    {
+      "name": "panda_talk (prompt LINE ID)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define=PANDA_TALK_LINE_CHANNEL_ID=${input:lineChannelId}"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "lineChannelId",
+      "type": "promptString",
+      "description": "LINE Login channel ID (Valiark shared; same as Supabase LINE_CHANNEL_ID)"
+    }
+  ]
+}

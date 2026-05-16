@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/design_tokens.dart';
 import '../presentation/providers/auth_providers.dart';
-import '../screens/auth/login_screen.dart';
+import '../features/auth/screens/auth/login_screen.dart';
 
 class GuestLoginButton extends ConsumerWidget {
   const GuestLoginButton({super.key});
@@ -16,7 +16,7 @@ class GuestLoginButton extends ConsumerWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const LoginScreen(initialMode: LoginScreenMode.login),
+          builder: (_) => const LoginScreen(),
         ),
       ),
       child: Container(

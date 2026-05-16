@@ -12,15 +12,9 @@ class ApiMatchRepository implements MatchRepository {
 
   final http.Client _client;
 
-  static const _apiBaseUrl = AppConfig.apiBaseUrl;
-  static const _supabaseUrl = String.fromEnvironment(
-    'PANDA_TALK_SUPABASE_URL',
-    defaultValue: AppConfig.supabaseUrl,
-  );
-  static const _supabaseAnonKey = String.fromEnvironment(
-    'PANDA_TALK_SUPABASE_ANON_KEY',
-    defaultValue: AppConfig.supabaseAnonKey,
-  );
+  static String get _apiBaseUrl => AppConfig.apiBaseUrl;
+  static String get _supabaseUrl => AppConfig.supabaseUrl;
+  static String get _supabaseAnonKey => AppConfig.supabaseAnonKey;
   static const _devEmail = String.fromEnvironment(
     'PANDA_TALK_DEV_EMAIL',
     defaultValue: 'alice.dev@panda-talk.local',
