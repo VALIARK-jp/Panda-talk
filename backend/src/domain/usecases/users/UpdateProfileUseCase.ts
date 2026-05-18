@@ -4,6 +4,7 @@ import type { User } from '../../entities/index'
 interface UpdateProfileInput {
   userId: string
   name?: string
+  username?: string
   avatarUrl?: string | null
   bio?: string | null
 }
@@ -18,6 +19,7 @@ export class UpdateProfileUseCase {
     }
     return this.userRepo.update(input.userId, {
       name: input.name,
+      username: input.username,
       avatarUrl: input.avatarUrl,
       bio: input.bio,
     })

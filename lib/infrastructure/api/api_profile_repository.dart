@@ -48,11 +48,55 @@ class ApiProfileRepository implements ProfileRepository {
     );
   }
 
+  @override
+  Future<bool> isUsernameAvailable(String username) async {
+    final normalized = username.trim().toLowerCase();
+    if (!_isValidUsername(normalized)) return false;
+    final data = await _getJson(
+      Uri.parse('$_apiBaseUrl/users/search?q=$normalized&limit=5'),
+      auth: true,
+    );
+    final users = (data['users'] as List<dynamic>?) ?? const [];
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    for (final raw in users) {
+      final map = raw as Map<String, dynamic>;
+      if ((map['username'] as String?)?.toLowerCase() == normalized &&
+          map['id'] != userId) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  Future<void> completeProfileSetup({
+    required String name,
+    required String username,
+    required String bio,
+    String? avatarUrl,
+  }) async {
+    await _patchJson(
+      Uri.parse('$_apiBaseUrl/users/me'),
+      body: {
+        'name': name.trim(),
+        'username': username.trim().toLowerCase(),
+        'bio': bio.trim(),
+        if (avatarUrl != null) 'avatarUrl': avatarUrl,
+      },
+      auth: true,
+    );
+  }
+
+  bool _isValidUsername(String username) {
+    return RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(username);
+  }
+
   DummyProfile _profileFromJson(Map<String, dynamic> json) {
     return DummyProfile(
       name: json['name'] as String? ?? '名無しさん',
       username: json['username'] as String? ?? 'unknown',
       bio: json['bio'] as String? ?? '',
+      avatarUrl: json['avatarUrl'] as String?,
       answerCount: json['answerCount'] as int? ?? 0,
       postCount: json['postCount'] as int? ?? 0,
       friendCount: json['friendCount'] as int? ?? 0,

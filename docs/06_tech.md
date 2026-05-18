@@ -34,6 +34,10 @@ Supabase（PostgreSQL + Auth）
 
 SupabaseはDBとAuthの基盤としてのみ使う。ビジネスロジックはHono側のUseCase層で書く。
 
+**Flutter からの向き先・シミュレータ vs 実機・deploy / ngrok** は [14_development_api_and_devices.md](./14_development_api_and_devices.md) を正本とする（README からもリンク）。
+
+**例外:** `PANDA_TALK_API_BASE_URL=localhost` かつ実機救済として、プロフィールのみ `panda_profiles` を Supabase 直読みする経路がある（本線は BFF 経由）。
+
 ---
 
 ## クリーンアーキテクチャ 4層構成

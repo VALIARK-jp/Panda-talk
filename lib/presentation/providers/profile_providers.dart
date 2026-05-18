@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,9 +13,15 @@ class ProfileController extends AsyncNotifier<DummyProfile> {
     if (session != null) {
       final provider =
           session.user.appMetadata['provider'] as String? ?? 'email';
-      await ref.read(authServiceProvider).ensureBackendProfile(
-            provider: provider,
-          );
+      try {
+        await ref.read(authServiceProvider).ensureBackendProfile(
+              provider: provider,
+            );
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('ensureBackendProfile: $e\n$st');
+        }
+      }
     }
     return ref.read(profileRepositoryProvider).getProfile();
   }
@@ -23,6 +30,28 @@ class ProfileController extends AsyncNotifier<DummyProfile> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await ref.read(profileRepositoryProvider).updateProfile(name: name, bio: bio);
+      return ref.read(profileRepositoryProvider).getProfile();
+    });
+  }
+
+  Future<bool> isUsernameAvailable(String username) {
+    return ref.read(profileRepositoryProvider).isUsernameAvailable(username);
+  }
+
+  Future<void> completeProfileSetup({
+    required String name,
+    required String username,
+    required String bio,
+    String? avatarUrl,
+  }) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(profileRepositoryProvider).completeProfileSetup(
+        name: name,
+        username: username,
+        bio: bio,
+        avatarUrl: avatarUrl,
+      );
       return ref.read(profileRepositoryProvider).getProfile();
     });
   }

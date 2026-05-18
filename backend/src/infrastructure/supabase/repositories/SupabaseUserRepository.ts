@@ -97,7 +97,7 @@ export class SupabaseUserRepository implements IUserRepository {
 
   async update(
     id: UUID,
-    data: Partial<Pick<User, 'name' | 'avatarUrl' | 'bio'>>
+    data: Partial<Pick<User, 'name' | 'username' | 'avatarUrl' | 'bio'>>
   ): Promise<User> {
     const rows = await this.client.update<UserRow>(
       this.resource,

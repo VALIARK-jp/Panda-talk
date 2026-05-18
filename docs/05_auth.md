@@ -11,9 +11,10 @@ Panda Talk のログイン方式:
 - LINE native login via `flutter_line_sdk` and a Supabase Edge Function
 - Apple native login via `sign_in_with_apple` and a Supabase Edge Function
 
-Supabase Auth is treated as a shared account base for future apps. Panda Talk
-stores app-specific profile data in `panda_profiles`, not in a generic `users`
-table.
+Supabase Auth is a **shared identity layer** (one `auth.users` row per person across Valiark apps).
+Panda Talk keeps **all app-facing profile fields** in `panda_profiles` (`name`, `username`, `avatar_url`, `bio`, …).
+
+**Dashboard note:** With `line-auth-native` / `apple-auth-native`, Users → **Providers** often shows **Email** for everyone; **Provider type** can stay empty. **Display name** in Auth is not the product source of truth—use per-app profile tables and onboarding (see [12_multi_app_supabase.md](./12_multi_app_supabase.md#authusers-と-dashboard-の見え方edge-function-認証)).
 
 ## Supabase
 
@@ -45,14 +46,23 @@ supabase functions deploy line-auth-native
 supabase functions deploy apple-auth-native
 ```
 
-モバイルから `fetch` / `http.post` で呼ぶときは **Supabase の JWT 検証**（Functions の既定）を通すため、`Authorization: Bearer <anon key>` と `apikey: <anon key>` が必要（[AuthService](../lib/infrastructure/auth/auth_service.dart) で付与済み）。`verify_jwt = false` にした公開 Function だけヘッダーなしでも動くが、既定では付けないと 401 になる。
+**クライアント:** [AuthService](../lib/infrastructure/auth/auth_service.dart) は `line-auth-native` / `apple-auth-native` 呼び出しに **`Authorization: Bearer <anon>` と `apikey`** を付与する（Supabase Edge の既定 `verify_jwt` 用）。
 
-Set function secrets:
+**デプロイ（どちらかで可）:**
+
+- **A（推奨・そのまま動く）:** 通常の `supabase functions deploy` + 上記ヘッダー（リモートが JWT 検証 ON でも 401 にならない）
+- **B（pedal_share 同型）:** `--no-verify-jwt` でデプロイし、ヘッダーなし POST でも可
+
+Set function secrets（**Flutter `.env` には書かない**）:
 
 ```sh
-supabase secrets set LINE_CHANNEL_ID=<line-channel-id>
+supabase secrets set LINE_CHANNEL_ID="2010102462"
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+supabase functions deploy line-auth-native --no-verify-jwt
+supabase functions deploy apple-auth-native --no-verify-jwt
 ```
+
+`LINE_CHANNEL_ID` は [valiark_auth_config.dart](../lib/features/auth/valiark_auth_config.dart) の `valiarkLineChannelId`（**`2010102462`**、valiark-dev 共通。**pedal_share のチャンネルとは別**）と同じ値に揃える。
 
 ### URL Configuration (Dashboard checklist)
 
@@ -62,10 +72,12 @@ In **Supabase Dashboard → Authentication → URL Configuration**, do the follo
    Add **exactly** (including scheme and path):
 
    ```text
-   io.valiark.auth://callback
+   io.valiark.pandatalk://callback
    ```
 
-   If you override the build with `--dart-define=VALIARK_AUTH_REDIRECT_URL=...`, add **that URL** here as well.
+   （他 Valiark アプリは別スキームを追加。例: `io.valiark.whoeats://callback`）
+
+   If you override the build with `--dart-define=PANDA_TALK_AUTH_REDIRECT_URL=...`, add **that URL** here as well.
 
 2. **Site URL**  
    If this is left as `http://localhost:3000` (common for local Next.js), then **when `redirect_to` is rejected or missing**, the confirmation flow falls back to Site URL. On a **physical phone**, `localhost` is the device itself, so the browser shows “cannot reach this site”.  
@@ -76,7 +88,7 @@ In **Supabase Dashboard → Authentication → URL Configuration**, do the follo
 ### Troubleshooting: email opens `localhost:3000`
 
 - **Cause:** Supabase did not accept the app’s `redirect_to` (not in Redirect URLs), so the user is sent to **Site URL** (often `http://localhost:3000`).  
-- **Fix:** Add `io.valiark.auth://callback` to **Redirect URLs**, fix **Site URL** as above, resend the email.  
+- **Fix:** Add `io.valiark.pandatalk://callback` to **Redirect URLs**, fix **Site URL** as above, resend the email.  
 - **Verify:** In debug builds, check the console for `[AuthService] … authRedirectUrl=…` and confirm it matches a Dashboard entry.
 
 ### Troubleshooting: `Code verifier could not be found in local storage`
@@ -85,7 +97,7 @@ In **Supabase Dashboard → Authentication → URL Configuration**, do the follo
 - **Cause (別端末):** メールのリンクを **別の端末のメールアプリ** から開くと、その端末に verifier が無い。
 - **Fix:** 同じ iPhone でサインアップ→同じ端末でメールのリンクを開く。必要なら `supabase db push` 後にアプリを再ビルドして再試行。
 
-Each mobile app that handles signup confirmation or password-reset deep links must register the same URL scheme (`io.valiark.auth`) in its Android intent filter and iOS URL types, as in this repo.
+Each Valiark app uses its **own** redirect URL (`PANDA_TALK_AUTH_REDIRECT_URL` for Panda Talk). Register the **same** scheme in that app’s Android intent filter and iOS URL types (see `ios/Runner/Info.plist`, `android/app/src/main/AndroidManifest.xml`).
 
 ### Client behaviour (deeplinks and auth)
 
@@ -103,33 +115,26 @@ Each mobile app that handles signup confirmation or password-reset deep links mu
 - **初回:** `cp .env.example .env` でテンプレを作り、`PANDA_TALK_SUPABASE_URL` / `PANDA_TALK_SUPABASE_ANON_KEY` を必ず設定する（未設定だと起動時にエラー）。
 - **CI / 本番:** 空の `.env` を置き、秘密は `--dart-define` のみ渡す運用でもよい。
 
-### LINE channel ID (required for LINE login)
+### LINE（実装パターンは pedal_share 同型・チャンネルは valiark-dev 共通）
 
-`PANDA_TALK_LINE_CHANNEL_ID` は `.env` または **`--dart-define`**（`lib/config/app_config.dart`）。空のとき LINE ログインは *「LINEチャンネルIDが設定されていません」*。
+- **クライアント:** 既定は `valiarkLineChannelId`（`2010102462`）。上書きする場合のみ `.env` の `PANDA_TALK_LINE_CHANNEL_ID` または dart-define。
+- **Edge:** Supabase Secret `LINE_CHANNEL_ID`（Dashboard 設定済みならそのまま）。チャンネル **シークレット**はクライアントに載せない。
+- **Android:** `local.properties` の `lineChannelId` は省略可（未設定時 `2010102462`）。
 
-**Option A — `.env`**
+### 実機での認証と「localhost」
 
-1. `.env` に `PANDA_TALK_LINE_CHANNEL_ID=...` を書く。
-
-**Option B — Cursor / VS Code**
-
-1. Launch config **`panda_talk (prompt LINE ID)`** — Run 時にチャンネル ID を聞かれる（ディスクには保存されない）。
-2. **`panda_talk (LINE from env)`** — `${env:PANDA_TALK_LINE_CHANNEL_ID}` を dart-define に渡す（シェルで export してからデバッグ開始）。
-
-**Option C — terminal**
-
-```sh
-cp .env.example .env
-# edit .env, then:
-./scripts/flutter_run_dev.sh
-```
+- **メール / LINE / Apple / Google の認証**は `PANDA_TALK_SUPABASE_URL`（`https://….supabase.co`）向け。**実機からもそのまま届く**（Mac の LAN IP は不要）。
+- メールリンクが **ブラウザで `localhost` に飛ぶ**のは、多くの場合 **Supabase Dashboard の Site URL が `http://localhost:3000` など**で、Redirect URLs に `io.valiark.pandatalk://callback` が無い／一致しないため（[URL Configuration](#url-configuration-dashboard-checklist)）。アプリの `emailRedirectTo` は `.env` の `PANDA_TALK_AUTH_REDIRECT_URL` と一致させる。
+- **API（マッチ・質問・プロフィール等）** は baselink と同様、`.env` の **`PANDA_TALK_API_BASE_URL` にチームの dev 用 HTTPS** を入れる（例: `https://panda-talk-backend….workers.dev`）。**実機でスマホの IP に書き換える運用はしない。**
+- `.env.example` の `localhost:8787` は **シミュレータ + Mac 上 wrangler dev** 専用。実機の `.env` が localhost のままだと API だけ届かない（認証の Supabase は届く）。
+- **`localhost` のときだけ** プロフィールは Supabase 直にフォールバック。RLS: `20260518100000_panda_profiles_rls_self.sql` を `supabase db push`。
 
 ### Sign in with Google
 
 1. **Google Cloud Console** で OAuth 同意画面を構成し、**OAuth 2.0 クライアント**（種類 **Web アプリケーション**）を作成する。取得した **Client ID と Client Secret** を控える。
 2. 同じクライアントの **承認済みのリダイレクト URI** に、Supabase のコールバックを追加する（Dashboard の Google プロバイダー画面に表示される **`https://<project-ref>.supabase.co/auth/v1/callback`** 形式。プロジェクトごとに違う）。
 3. **Supabase Dashboard → Authentication → Providers → Google** をオンにし、**Client ID / Client Secret** を設定する（秘密は Supabase 側のみ。Flutter の `.env` には **不要**）。
-4. **Redirect URLs** に `io.valiark.auth://callback` が含まれていること（[URL Configuration](#url-configuration-dashboard-checklist) と同じ）。
+4. **Redirect URLs** に `io.valiark.pandatalk://callback` が含まれていること（[URL Configuration](#url-configuration-dashboard-checklist) と同じ）。
 
 アプリは `AuthService.signInWithGoogle` → `signInWithOAuth(OAuthProvider.google, redirectTo: …)` で外部ブラウザを開く。Android では `supabase_flutter` が **外部ブラウザ** で開く実装になっている。認証後の戻りはメールの PKCE と同様に **`ValiarkDeeplinkHandler` が `getSessionFromUrl` で処理**する。
 
@@ -141,7 +146,7 @@ If the app shows *「Apple認証に失敗しました」*, that is `Authorizatio
 
 ### LINE / Apple: ネイティブは成功するがアプリに入れない
 
-Edge Function `line-auth-native` / `apple-auth-native` は `hashed_token` と **`otp_type: "magiclink"`** を返す。[AuthService](../lib/infrastructure/auth/auth_service.dart) の `verifyOTP` は **`OtpType.magiclink`** と **`tokenHash`** のみ送る（GoTrue の `/verify` は **`token_hash` 利用時に `email` / `phone` / `redirect_to` が付いていると** `Only the token_hash and type should be provided` で拒否する）。
+Edge Function `line-auth-native` / `apple-auth-native` は `hashed_token` と **`otp_type: "magiclink"`** を返す。[AuthService](../lib/infrastructure/auth/auth_service.dart) は pedal_share と同様 **`verifyOTP(tokenHash:, type: OtpType.email)`**（signup 時のみ `OtpType.signup`）。**`email` / `redirect_to` は付けない**（`Only the token_hash and type should be provided` 回避）。
 
 ### LINE / Apple: 既存メールなのに `createUser` で「already registered」
 
@@ -171,25 +176,14 @@ Apple は **JWT のメール表現が変わる**などがあり、**メールだ
 
 未設定のとき、画面上の「読む」は **掲載準備中** のスナックバーになる。
 
-For LINE on Android, add this to `android/local.properties`:
+Android でチャンネル ID を上書きする場合のみ `android/local.properties`:
 
 ```properties
-lineChannelId=<line-channel-id>
+lineChannelId=2010102462
 ```
 
-Run the app with the same channel id for Dart-side SDK setup (prefer `.env`; dart-define also works):
+Flutter 起動（`.env` に Supabase URL / anon を書いたうえで）:
 
 ```sh
-flutter run --dart-define=PANDA_TALK_LINE_CHANNEL_ID=<line-channel-id>
-```
-
-Supabase / API は `.env` で設定するか、dart-define で上書きする:
-
-```sh
-flutter run \
-  --dart-define=PANDA_TALK_API_BASE_URL=http://localhost:8787 \
-  --dart-define=PANDA_TALK_SUPABASE_URL=<supabase-url> \
-  --dart-define=PANDA_TALK_SUPABASE_ANON_KEY=<anon-key> \
-  --dart-define=VALIARK_AUTH_REDIRECT_URL=io.valiark.auth://callback \
-  --dart-define=PANDA_TALK_LINE_CHANNEL_ID=<line-channel-id>
+./scripts/flutter_run_dev.sh
 ```

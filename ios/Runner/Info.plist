@@ -36,10 +36,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>Valiark shared Auth (valiark-dev)</string>
+			<string>Panda Talk Auth (valiark-dev)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>io.valiark.auth</string>
+				<string>io.valiark.pandatalk</string>
 			</array>
 		</dict>
 	</array>
@@ -47,6 +47,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>プロフィール写真を選ぶために写真ライブラリへのアクセスが必要です。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>プロフィール写真を撮影するためにカメラへのアクセスが必要です。</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

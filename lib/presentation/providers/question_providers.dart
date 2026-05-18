@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../infrastructure/providers/repositories.dart';
+import '../../infrastructure/question_progress_store.dart';
 import '../../core/dummy_data.dart';
 
 final currentQuestionProvider = FutureProvider<DummyQuestion>((ref) {
@@ -62,12 +63,60 @@ class QuestionFeedState {
       likedQuestionNumbers: likedQuestionNumbers ?? this.likedQuestionNumbers,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'questionIndex': questionIndex,
+    'answeredCount': answeredCount,
+    'minorityCount': minorityCount,
+    'selectedOptionsByQuestion': selectedOptionsByQuestion.map(
+      (k, v) => MapEntry(k.toString(), v),
+    ),
+    'percentAByQuestion': percentAByQuestion.map(
+      (k, v) => MapEntry(k.toString(), v),
+    ),
+    'likedQuestionNumbers': likedQuestionNumbers.map((n) => n.toString()).toList(),
+  };
+
+  static QuestionFeedState fromJson(Map<String, dynamic> json) {
+    final selectedRaw =
+        json['selectedOptionsByQuestion'] as Map<String, dynamic>? ?? {};
+    final percentRaw =
+        json['percentAByQuestion'] as Map<String, dynamic>? ?? {};
+    final likedRaw = json['likedQuestionNumbers'] as List<dynamic>? ?? [];
+
+    return QuestionFeedState(
+      questionIndex: json['questionIndex'] as int? ?? 0,
+      answeredCount: json['answeredCount'] as int? ?? 0,
+      minorityCount: json['minorityCount'] as int? ?? 0,
+      selectedOptionsByQuestion: {
+        for (final e in selectedRaw.entries)
+          int.parse(e.key): e.value as String,
+      },
+      percentAByQuestion: {
+        for (final e in percentRaw.entries) int.parse(e.key): e.value as int,
+      },
+      likedQuestionNumbers: likedRaw.map((e) => int.parse(e as String)).toSet(),
+    );
+  }
 }
 
 class QuestionFeedController extends StateNotifier<QuestionFeedState> {
-  QuestionFeedController(this._ref) : super(const QuestionFeedState());
+  QuestionFeedController(this._ref) : super(const QuestionFeedState()) {
+    _restoreProgress();
+  }
 
   final Ref _ref;
+
+  Future<void> _restoreProgress() async {
+    final saved = await QuestionProgressStore.load();
+    if (saved != null) {
+      state = QuestionFeedState.fromJson(saved);
+    }
+  }
+
+  void _persistProgress() {
+    QuestionProgressStore.save(state.toJson());
+  }
 
   Future<void> answer(DummyQuestion question, String selected) async {
     if (state.selectedOptionsByQuestion.containsKey(question.number)) return;
@@ -90,24 +139,29 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
       answeredCount: state.answeredCount + 1,
       minorityCount: state.minorityCount + (isMinority ? 1 : 0),
     );
+    _persistProgress();
   }
 
   void nextQuestion(int total) {
     state = state.copyWith(questionIndex: (state.questionIndex + 1) % total);
+    _persistProgress();
   }
 
   void previousQuestion(int total) {
     state = state.copyWith(
       questionIndex: (state.questionIndex - 1 + total) % total,
     );
+    _persistProgress();
   }
 
   void setQuestionIndex(int index) {
     state = state.copyWith(questionIndex: index);
+    _persistProgress();
   }
 
   void resetForTab() {
     state = state.copyWith(questionIndex: 0);
+    _persistProgress();
   }
 
   void toggleQuestionLike(int questionNumber) {
@@ -118,6 +172,7 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
       liked.add(questionNumber);
     }
     state = state.copyWith(likedQuestionNumbers: liked);
+    _persistProgress();
   }
 }
 

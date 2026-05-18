@@ -1,0 +1,306 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/design_tokens.dart';
+import '../../infrastructure/profile_onboarding_store.dart';
+import '../../infrastructure/post_login_onboarding_store.dart';
+import '../../infrastructure/supabase/avatar_upload_service.dart';
+import '../../infrastructure/providers/repositories.dart';
+import '../../presentation/providers/auth_providers.dart';
+import '../../presentation/providers/profile_providers.dart';
+import '../../widgets/app_text_field.dart';
+import '../../widgets/panda_avatar.dart';
+import '../../widgets/panda_button.dart';
+
+/// 初回ログイン後のプロフィール入力（名前・ユーザーコード・アイコン・一言）。
+class ProfileSetupScreen extends ConsumerStatefulWidget {
+  const ProfileSetupScreen({super.key, required this.onComplete});
+
+  final Future<void> Function() onComplete;
+
+  @override
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+}
+
+class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
+  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _picker = ImagePicker();
+
+  File? _pickedAvatar;
+  String? _remoteAvatarUrl;
+  bool _submitting = false;
+  String? _errorMessage;
+
+  static final _usernamePattern = RegExp(r'^[a-zA-Z0-9_]{3,30}$');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _prefill());
+  }
+
+  Future<void> _prefill() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+
+    await Supabase.instance.client.auth.refreshSession();
+    final refreshed = Supabase.instance.client.auth.currentUser ?? user;
+    final metadata = refreshed.userMetadata ?? const <String, dynamic>{};
+    final provider = refreshed.appMetadata['provider'] as String? ?? 'email';
+    final isLine = provider == 'line';
+
+    final displayName = metadata['displayName'] as String? ??
+        metadata['name'] as String? ??
+        '';
+
+    if (displayName.isNotEmpty && _nameController.text.isEmpty) {
+      _nameController.text = displayName;
+    }
+
+    final linePhoto = metadata['photoURL'] as String?;
+    if (isLine && linePhoto != null && linePhoto.isNotEmpty) {
+      setState(() => _remoteAvatarUrl = linePhoto);
+    }
+
+    try {
+      await ref.read(authServiceProvider).ensureBackendProfile(
+        provider: provider,
+        displayName: displayName.isEmpty ? null : displayName,
+        avatarUrl: isLine ? linePhoto : null,
+      );
+      final profile = await ref.read(profileRepositoryProvider).getProfile();
+      if (!mounted) return;
+      if (_nameController.text.isEmpty && profile.name.isNotEmpty) {
+        _nameController.text = profile.name;
+      }
+      if (_usernameController.text.isEmpty &&
+          profile.username.isNotEmpty &&
+          profile.username != 'unknown') {
+        _usernameController.text = profile.username;
+      }
+      if (_bioController.text.isEmpty && profile.bio.isNotEmpty) {
+        _bioController.text = profile.bio;
+      }
+      final avatar = profile.avatarUrl;
+      if (_pickedAvatar == null &&
+          avatar != null &&
+          avatar.isNotEmpty &&
+          (_remoteAvatarUrl == null || _remoteAvatarUrl!.isEmpty)) {
+        setState(() => _remoteAvatarUrl = avatar);
+      } else if (isLine &&
+          _pickedAvatar == null &&
+          linePhoto != null &&
+          linePhoto.isNotEmpty) {
+        setState(() => _remoteAvatarUrl = linePhoto);
+      }
+    } catch (_) {
+      // プロフィール行がまだ無くてもフォームは続行
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _usernameController.dispose();
+    _bioController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickAvatar() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+    setState(() {
+      _pickedAvatar = File(file.path);
+      _remoteAvatarUrl = null;
+    });
+  }
+
+  Future<void> _submit() async {
+    final name = _nameController.text.trim();
+    final username = _usernameController.text.trim().toLowerCase();
+    final bio = _bioController.text.trim();
+
+    if (name.isEmpty) {
+      setState(() => _errorMessage = 'ユーザー名を入力してください');
+      return;
+    }
+    if (!_usernamePattern.hasMatch(username)) {
+      setState(() => _errorMessage = 'ユーザーコードは英数字と_のみ、3〜30文字です');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final available =
+          await ref.read(profileControllerProvider.notifier).isUsernameAvailable(
+            username,
+          );
+      if (!available) {
+        setState(() {
+          _submitting = false;
+          _errorMessage = 'このユーザーコードは既に使われています';
+        });
+        return;
+      }
+
+      String? avatarUrl = _remoteAvatarUrl;
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (_pickedAvatar != null && userId != null) {
+        avatarUrl = await AvatarUploadService().upload(_pickedAvatar!, userId);
+      }
+
+      await ref.read(profileControllerProvider.notifier).completeProfileSetup(
+        name: name,
+        username: username,
+        bio: bio,
+        avatarUrl: avatarUrl,
+      );
+
+      if (userId != null) {
+        await ProfileOnboardingStore.setCompleted(userId);
+        await PostLoginOnboardingStore.setWelcomeCompleted();
+      }
+
+      if (!mounted) return;
+      await widget.onComplete();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _errorMessage = '保存に失敗しました。もう一度お試しください';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.white,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'プロフィールをつくろう',
+              style: TextStyle(
+                fontSize: AppFontSize.xxl,
+                fontWeight: FontWeight.w900,
+                color: AppColors.black,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'あとから変更できます。まずはあなたらしいプロフィールを登録しましょう。',
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                color: AppColors.textGray,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Center(
+              child: GestureDetector(
+                onTap: _submitting ? null : _pickAvatar,
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    _buildAvatarPreview(),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: AppColors.black,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.photo_camera_outlined,
+                        color: AppColors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Center(
+              child: Text(
+                'タップしてアイコンを選ぶ',
+                style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppTextField(label: 'ユーザー名', controller: _nameController),
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              label: 'ユーザーコード',
+              controller: _usernameController,
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                '@ユーザーコード として表示されます（英数字と _ のみ）',
+                style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppTextField(
+              label: '一言',
+              controller: _bioController,
+              maxLines: 3,
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red, fontSize: AppFontSize.md),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xl),
+            PandaButton(
+              label: _submitting ? '保存中…' : 'はじめる',
+              onTap: _submitting ? null : _submit,
+            ),
+            SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPreview() {
+    if (_pickedAvatar != null) {
+      return ClipOval(
+        child: Image.file(_pickedAvatar!, width: 88, height: 88, fit: BoxFit.cover),
+      );
+    }
+    if (_remoteAvatarUrl != null && _remoteAvatarUrl!.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          _remoteAvatarUrl!,
+          width: 88,
+          height: 88,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const PandaAvatar(size: 88),
+        ),
+      );
+    }
+    return const PandaAvatar(size: 88);
+  }
+}

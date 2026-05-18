@@ -6,6 +6,7 @@ class MockProfileRepository implements ProfileRepository {
     name: 'ぱんだちゃん',
     username: 'panda_123',
     bio: 'パンダが大好きです',
+    avatarUrl: null,
     answerCount: 128,
     postCount: 12,
     friendCount: 23,
@@ -23,5 +24,32 @@ class MockProfileRepository implements ProfileRepository {
   Future<void> updateProfile({required String name, required String bio}) async {
     await Future.delayed(const Duration(milliseconds: 500));
     _profile = _profile.copyWith(name: name, bio: bio);
+  }
+
+  @override
+  Future<bool> isUsernameAvailable(String username) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return username != 'taken';
+  }
+
+  @override
+  Future<void> completeProfileSetup({
+    required String name,
+    required String username,
+    required String bio,
+    String? avatarUrl,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _profile = DummyProfile(
+      name: name,
+      username: username,
+      bio: bio,
+      avatarUrl: avatarUrl ?? _profile.avatarUrl,
+      answerCount: _profile.answerCount,
+      postCount: _profile.postCount,
+      friendCount: _profile.friendCount,
+      oddballScore: _profile.oddballScore,
+      tags: _profile.tags,
+    );
   }
 }

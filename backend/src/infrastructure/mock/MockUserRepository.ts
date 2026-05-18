@@ -78,7 +78,7 @@ export class MockUserRepository implements IUserRepository {
 
   async update(
     id: UUID,
-    data: Partial<Pick<User, 'name' | 'avatarUrl' | 'bio'>>
+    data: Partial<Pick<User, 'name' | 'username' | 'avatarUrl' | 'bio'>>
   ): Promise<User> {
     const idx = users.findIndex((u) => u.id === id)
     if (idx === -1) throw new Error('User not found')

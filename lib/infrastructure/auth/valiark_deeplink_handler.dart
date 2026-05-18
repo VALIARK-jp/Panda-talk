@@ -2,6 +2,8 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../config/app_config.dart';
+
 /// Cold-start + foreground links for Supabase email confirmation / password-reset (PKCE).
 ///
 /// [Supabase.initialize] では `detectSessionInUri: false` にすること。`true` の場合、
@@ -27,7 +29,12 @@ class ValiarkDeeplinkHandler {
   }
 
   static bool _isOurAuthHost(Uri uri) {
-    if (uri.scheme == 'io.valiark.auth') return true;
+    final configured = Uri.tryParse(AppConfig.authRedirectUrl);
+    if (configured != null &&
+        uri.scheme == configured.scheme &&
+        (configured.host.isEmpty || uri.host == configured.host)) {
+      return true;
+    }
     return uri.toString().contains('login-callback');
   }
 

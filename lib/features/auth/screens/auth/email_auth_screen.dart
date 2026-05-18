@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
+import '../../../../infrastructure/profile_onboarding_store.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
@@ -441,6 +442,10 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
       if (!mounted) return;
 
       if (response.session != null) {
+        final userId = response.user?.id;
+        if (userId != null) {
+          await ProfileOnboardingStore.requireSetup(userId);
+        }
         ref.invalidate(authUserProvider);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           WidgetsBinding.instance.addPostFrameCallback((_) {

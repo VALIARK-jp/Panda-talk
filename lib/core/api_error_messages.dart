@@ -1,7 +1,6 @@
 import '../config/app_config.dart';
 
-/// API 呼び出し失敗時に画面へ出す文言。[AppConfig.apiBaseUrl] がループバックで
-/// 接続エラーのときは、実機開発向けのヒントを付与する。
+/// API 呼び出し失敗時に画面へ出す文言。
 String formatApiUserFacingError(Object error) {
   final msg = error.toString();
   final base = AppConfig.apiBaseUrl.toLowerCase();
@@ -17,10 +16,9 @@ String formatApiUserFacingError(Object error) {
   if (!networkish) return msg;
 
   return '接続できません。\n'
-      '・ローカル API（Worker）が起動しているか確認してください。\n'
-      '・実機では localhost はこの端末自身を指します。`.env` の '
-      'PANDA_TALK_API_BASE_URL を Mac の LAN IP（例: http://192.168.0.12:8787）'
-      'にしてください。Worker は `WRANGLER_DEV_IP=0.0.0.0` で待ち受けると '
-      'LAN から届きやすいです（backend の dev スクリプト参照）。\n\n'
+      '・認証（Supabase）は `https://….supabase.co` で、これとは別の API です。\n'
+      '・`.env` の `PANDA_TALK_API_BASE_URL` が `localhost` のままだと、'
+      '実機では届きません（baselink などと同様、チーム配布の **dev 用 HTTPS URL** を入れる）。\n'
+      '・シミュレータで Mac 上の wrangler dev だけ使うときだけ `localhost:8787` でよい。\n\n'
       '詳細: $msg';
 }

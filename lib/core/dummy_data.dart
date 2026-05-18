@@ -194,6 +194,7 @@ class DummyProfile {
   final String name;
   final String username;
   final String bio;
+  final String? avatarUrl;
   final int answerCount;
   final int postCount;
   final int friendCount;
@@ -204,6 +205,7 @@ class DummyProfile {
     required this.name,
     required this.username,
     required this.bio,
+    this.avatarUrl,
     required this.answerCount,
     required this.postCount,
     required this.friendCount,

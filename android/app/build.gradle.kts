@@ -36,7 +36,9 @@ android {
         if (localPropertiesFile.exists()) {
             localPropertiesFile.inputStream().use { localProperties.load(it) }
         }
-        manifestPlaceholders["lineChannelId"] = localProperties.getProperty("lineChannelId") ?: ""
+        val lineId =
+            localProperties.getProperty("lineChannelId") ?: "2010102462"
+        manifestPlaceholders["lineChannelId"] = lineId
     }
 
     buildTypes {

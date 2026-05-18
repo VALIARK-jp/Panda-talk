@@ -8,6 +8,8 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
+import '../profile_onboarding_store.dart';
+import '../supabase/panda_profile_sync.dart';
 
 /// LINE / Apple ネイティブ認証をどの画面から開いたか（Edge で新規作成可否を分岐）。
 enum NativeAuthFlow {
@@ -17,20 +19,10 @@ enum NativeAuthFlow {
   signup,
 }
 
+/// pedal_share と同様: Edge が `otp_type: magiclink` を返しても verify は [OtpType.email]。
 OtpType _nativeOtpType(dynamic raw) {
-  final s = raw?.toString();
-  switch (s) {
-    case 'signup':
-      return OtpType.signup;
-    case 'magiclink':
-      return OtpType.magiclink;
-    case 'recovery':
-      return OtpType.recovery;
-    case 'email_change':
-      return OtpType.emailChange;
-    default:
-      return OtpType.email;
-  }
+  if (raw?.toString() == 'signup') return OtpType.signup;
+  return OtpType.email;
 }
 
 /// Email is already registered on this Supabase project (e.g. another app).
@@ -65,8 +57,8 @@ class AuthService {
     }
   }
 
-  /// Supabase Edge Functions（Dashboard 既定の JWT 検証）呼び出し用。
-  Map<String, String> get _supabaseInvokeHeaders => {
+  /// Supabase Edge（`verify_jwt` 既定）通過用。`--no-verify-jwt` デプロイ時は不要だが付与しても害はない。
+  Map<String, String> get _edgeFunctionHeaders => {
     'Content-Type': 'application/json',
     'Authorization': 'Bearer ${AppConfig.supabaseAnonKey}',
     'apikey': AppConfig.supabaseAnonKey,
@@ -121,7 +113,12 @@ class AuthService {
         },
         emailRedirectTo: AppConfig.authRedirectUrl,
       );
-      // panda_profiles sync runs from PandaTalkApp ref.listen when session appears.
+      final userId = response.user?.id;
+      if (userId != null) {
+        await ProfileOnboardingStore.requireSetup(userId);
+      } else {
+        await ProfileOnboardingStore.markPendingEmailSignup(email);
+      }
       return response;
     } on http.ClientException catch (e) {
       debugPrint('signUpWithEmail network: $e');
@@ -139,10 +136,6 @@ class AuthService {
   Future<NativeAuthResponse> signInWithLine({
     NativeAuthFlow flow = NativeAuthFlow.login,
   }) async {
-    if (AppConfig.lineChannelId.isEmpty) {
-      throw Exception('LINEチャンネルIDが設定されていません');
-    }
-
     try {
       final result = await LineSDK.instance.login();
       final accessToken = result.accessToken.value;
@@ -157,7 +150,7 @@ class AuthService {
 
       final response = await _client.post(
         Uri.parse('${AppConfig.supabaseFunctionsUrl}/line-auth-native'),
-        headers: _supabaseInvokeHeaders,
+        headers: _edgeFunctionHeaders,
         body: jsonEncode({
           'accessToken': accessToken,
           'flow': flowParam,
@@ -184,6 +177,13 @@ class AuthService {
           );
           return true;
         }());
+      }
+
+      if (flow == NativeAuthFlow.signup) {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId != null) {
+          await ProfileOnboardingStore.requireSetup(userId);
+        }
       }
 
       return nativeResponse;
@@ -226,7 +226,7 @@ class AuthService {
 
       final response = await _client.post(
         Uri.parse('${AppConfig.supabaseFunctionsUrl}/apple-auth-native'),
-        headers: _supabaseInvokeHeaders,
+        headers: _edgeFunctionHeaders,
         body: jsonEncode({
           'flow': flowParam,
           'identityToken': identityToken,
@@ -258,6 +258,13 @@ class AuthService {
             );
             return true;
           }());
+        }
+      }
+
+      if (flow == NativeAuthFlow.signup) {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId != null) {
+          await ProfileOnboardingStore.requireSetup(userId);
         }
       }
 
@@ -403,13 +410,20 @@ class AuthService {
     if (session == null || user == null) return;
 
     final metadata = user.userMetadata ?? const <String, dynamic>{};
-    final metadataDisplayName = metadata['displayName'] as String?;
-    final metadataName = metadata['name'] as String?;
     final name = displayName ??
-        metadataDisplayName ??
-        metadataName ??
+        metadata['displayName'] as String? ??
+        metadata['name'] as String? ??
         user.email?.split('@').first ??
         'panda user';
+
+    if (AppConfig.usesLocalApiHost) {
+      await ensurePandaProfileRow(
+        client: _supabase,
+        displayName: name,
+        avatarUrl: avatarUrl ?? metadata['photoURL'] as String?,
+      );
+      return;
+    }
 
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
@@ -429,6 +443,22 @@ class AuthService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(response.body);
     }
+  }
+
+  String _usernameFrom(String name, String userId) {
+    final base = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    final normalized = base.length >= 3 ? base : 'panda';
+    final compactId = userId.replaceAll('-', '');
+    final suffix = compactId.substring(0, compactId.length < 6 ? compactId.length : 6);
+    final maxBaseLength = 30 - suffix.length - 1;
+    final baseLength = normalized.length < maxBaseLength
+        ? normalized.length
+        : maxBaseLength;
+    return '${normalized.substring(0, baseLength)}_$suffix';
   }
 
   Future<NativeAuthResponse> _verifyNativeOtp(http.Response response) async {
@@ -561,19 +591,4 @@ class AuthService {
     return credential.familyName ?? credential.givenName;
   }
 
-  String _usernameFrom(String name, String userId) {
-    final base = name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9_]'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-    final normalized = base.length >= 3 ? base : 'panda';
-    final compactId = userId.replaceAll('-', '');
-    final suffix = compactId.substring(0, compactId.length < 6 ? compactId.length : 6);
-    final maxBaseLength = 30 - suffix.length - 1;
-    final baseLength = normalized.length < maxBaseLength
-        ? normalized.length
-        : maxBaseLength;
-    return '${normalized.substring(0, baseLength)}_$suffix';
-  }
 }

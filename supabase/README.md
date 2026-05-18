@@ -50,8 +50,8 @@ supabase link --project-ref <valiark-dev の project ref>
    curl -sS "http://localhost:8787/questions/hot?limit=2"
    ```
 5. **Flutter**（Supabase 直ではなく **API URL** が主）
-   - デフォルトは `PANDA_TALK_API_BASE_URL=http://localhost:8787`。
-   - 端末から Mac の API に繋ぐ場合は `--dart-define=PANDA_TALK_API_BASE_URL=http://<あなたのLAN IP>:8787` など。
+   - 実機・通常開発: `.env` の `PANDA_TALK_API_BASE_URL` は **デプロイ済み HTTPS**（baselink の dev API URL と同じ運用）。チームから配布。
+   - `localhost:8787` は **シミュレータ + Mac で wrangler dev** するときだけ。
    - Supabase Auth / Edge Functions をアプリから使う場合だけ、`PANDA_TALK_SUPABASE_URL` と `PANDA_TALK_SUPABASE_ANON_KEY` を **Dashboard と同じ valiark-dev** に合わせる。
 
 **共有 DB（valiark-dev）の注意**: Who eats / Terravera も同じプロジェクトに `db push` 済みだと、`panda_talk` だけで `supabase db push` を叩くと「remote にあって local にない migration」エラーになることがあります。対策として、このリポジトリの `supabase/migrations/` に **他アプリ由来の migration と同じファイル名の stub**（`select 1` のみ）を置き、履歴を揃えています。Panda だけの**新規** Supabase プロジェクトを `panda_talk` から作る場合は、それら stub を削除してから `db push` するか、先に Panda 用 4 本だけを適用する運用にしてください。
@@ -122,8 +122,10 @@ npm run seed:dev
 
 ```sh
 cd /path/to/panda_talk
-supabase functions deploy apple-auth-native
-supabase functions deploy line-auth-native
+supabase secrets set LINE_CHANNEL_ID="2010102462"
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY="<service-role>"
+supabase functions deploy line-auth-native --no-verify-jwt
+supabase functions deploy apple-auth-native --no-verify-jwt
 ```
 
-デプロイ先は `supabase link` したプロジェクト。シークレット（`SUPABASE_SERVICE_ROLE_KEY` 等）は Dashboard の Functions 設定で valiark-dev に合わせる。
+pedal_share と同型: **LINE / Apple の秘密は Supabase Secrets のみ**。Flutter `.env` には載せない。`--no-verify-jwt` でクライアントは `Content-Type` のみで POST する。

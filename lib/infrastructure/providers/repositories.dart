@@ -19,8 +19,10 @@ import '../settings_repository.dart';
 import '../api/api_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
-import '../profile_repository.dart';
 import '../api/api_profile_repository.dart';
+import '../../config/app_config.dart';
+import '../profile_repository.dart';
+import '../supabase/supabase_profile_repository.dart';
 import '../match_repository.dart';
 import '../api/api_match_repository.dart';
 import '../question_repository.dart';
@@ -73,6 +75,10 @@ final commentRepositoryProvider = Provider<CommentRepository>((ref) {
 });
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  if (_useApiRepositories) return ApiProfileRepository();
-  return MockProfileRepository();
+  if (!_useApiRepositories) return MockProfileRepository();
+  // デプロイ済み API（https）なら他機能と同じ Worker 経由。localhost のみ Supabase 直（実機救済）。
+  if (AppConfig.usesLocalApiHost) {
+    return SupabaseProfileRepository();
+  }
+  return ApiProfileRepository();
 });

@@ -1,5 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../features/auth/valiark_auth_config.dart';
+
 /// Build-time `--dart-define` overrides [dotenv] values from bundled `.env`.
 class AppConfig {
   static String get apiBaseUrl {
@@ -11,6 +13,12 @@ class AppConfig {
     final fromFile = dotenv.env['PANDA_TALK_API_BASE_URL']?.trim();
     if (fromFile != null && fromFile.isNotEmpty) return fromFile;
     return 'http://localhost:8787';
+  }
+
+  /// `localhost` / `127.0.0.1` 向け（Mac 上の wrangler dev）。実機からは届かない。
+  static bool get usesLocalApiHost {
+    final base = apiBaseUrl.toLowerCase();
+    return base.contains('localhost') || base.contains('127.0.0.1');
   }
 
   static String get supabaseUrl {
@@ -34,22 +42,25 @@ class AppConfig {
   /// Dashboard → Authentication → Redirect URLs must include this exact URI.
   static String get authRedirectUrl {
     const fromDefine = String.fromEnvironment(
-      'VALIARK_AUTH_REDIRECT_URL',
+      pandaTalkAuthRedirectEnvKey,
       defaultValue: '',
     );
     if (fromDefine.isNotEmpty) return fromDefine;
-    final fromFile = dotenv.env['VALIARK_AUTH_REDIRECT_URL']?.trim();
+    final fromFile = dotenv.env[pandaTalkAuthRedirectEnvKey]?.trim();
     if (fromFile != null && fromFile.isNotEmpty) return fromFile;
-    return 'io.valiark.auth://callback';
+    return pandaTalkAuthRedirectUrl;
   }
 
+  /// LINE SDK 用（公開 ID）。未設定時は [valiarkLineChannelId]（valiark-dev 共通）。
   static String get lineChannelId {
     const fromDefine = String.fromEnvironment(
       'PANDA_TALK_LINE_CHANNEL_ID',
       defaultValue: '',
     );
     if (fromDefine.isNotEmpty) return fromDefine;
-    return dotenv.env['PANDA_TALK_LINE_CHANNEL_ID']?.trim() ?? '';
+    final fromFile = dotenv.env['PANDA_TALK_LINE_CHANNEL_ID']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    return valiarkLineChannelId;
   }
 
   static String get supabaseFunctionsUrl {

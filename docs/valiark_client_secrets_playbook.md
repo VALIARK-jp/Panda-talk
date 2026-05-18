@@ -11,8 +11,10 @@
 
 | 区分 | 例 | クライアントに渡す | Git にコミット |
 |------|-----|-------------------|----------------|
-| **公開してよいクライアント用** | Supabase **anon** key、公開 API の base URL、LINE **チャンネル ID**（Login 用）、アプリの redirect URL（スキーム含む） | メール / 1Password / オンボーディング手順で **可** | **原則不可**（`.env.example` には **キー名のみ**、値は空） |
-| **サーバー・CI のみ** | Supabase **service_role**、LINE **チャンネルシークレット**、Webhook の署名秘密、決済の秘密鍵 | **クライアント開発者に渡さない** | **絶対不可** |
+| **公開してよいクライアント用** | Supabase **anon** key、公開 API の base URL、アプリの redirect URL（スキーム含む） | メール / 1Password / オンボーディング手順で **可** | **原則不可**（`.env.example` には **キー名のみ**、値は空） |
+| **ソースに固定（valiark-dev 共通）** | LINE **チャンネル ID** `2010102462`（Login SDK 用・pedal_share とは別） | リポジトリにコミット可 | `lib/features/auth/valiark_auth_config.dart` |
+| **Supabase Edge Secrets のみ** | `LINE_CHANNEL_ID`（Edge 検証用・上記と同値）、`SUPABASE_SERVICE_ROLE_KEY`、LINE **チャンネルシークレット**（必要なら）、Apple サーバー鍵（将来 JWT 検証を厳格化する場合） | **Dashboard / `supabase secrets set` のみ** | **絶対不可** |
+| **サーバー・CI のみ** | Webhook 署名、決済秘密鍵など | **クライアント開発者に渡さない** | **絶対不可** |
 | **個人・端末ローカル** | 上記「公開してよい」値のコピーを開発者が **`.env`**（gitignore）に置く | 各自のマシンのみ | `.gitignore` で除外 |
 
 **anon と service_role:** anon は Row Level Security の前提で「クライアントに埋め込まれる」設計だが、**リポジトリの履歴に残さない**運用を推奨する。service_role は RLS をバイパスするため **Flutter・モバイル・フロントのビルド引数・`.env` に一切入れない**。
@@ -25,12 +27,13 @@
 
 - [ ] 開発用 Supabase プロジェクトの **URL**
 - [ ] 同プロジェクトの **anon** key（本番用は別チケット・別 vault で）
-- [ ] LINE Login 用 **チャンネル ID**（アプリと Supabase Edge Function の設定と一致させる）
-- [ ] バックエンドの **開発用 base URL**（例: ローカル Cloudflare Worker）
-- [ ] 認証リダイレクトに使う **許可済み URL**（例: `io.valiark.auth://callback`）と、ダッシュボードで許可する手順へのリンク
+- [ ] （参考）LINE チャンネル ID はリポジトリの `valiark_auth_config.dart` に固定。Edge には `supabase secrets set LINE_CHANNEL_ID=...` で **同じ値**
+- [ ] **Panda Talk API の dev base URL**（`https://….workers.dev` 等。baselink の `VITE_API_BASE_URL=https://…-dev.azurewebsites.net` と同じ。実機向けに localhost は配らない）
+- [ ] 認証リダイレクトに使う **許可済み URL**（Panda Talk: `io.valiark.pandatalk://callback` / `PANDA_TALK_AUTH_REDIRECT_URL`）と、ダッシュボードで許可する手順へのリンク（[05_auth.md](05_auth.md)）
 - [ ] Google ログインを使う環境では **Supabase の Google プロバイダー** をオンにしたこと（Client Secret は **ダッシュボードのみ**、クライアントに埋めない）
 
-**渡さない:** service_role、LINE channel secret、本番のみの鍵、他社・他プロジェクトの秘密。
+**渡さない:** service_role、LINE channel secret、Apple 秘密鍵、本番のみの鍵、他社・他プロジェクトの秘密。  
+**`.env` に書かせない:** `PANDA_TALK_LINE_CHANNEL_*`、`PANDA_TALK_APPLE_*`（pedal_share に無いものは Panda Talk でも不要）。
 
 ---
 

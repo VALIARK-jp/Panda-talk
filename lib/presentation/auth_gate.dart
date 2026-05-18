@@ -4,12 +4,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/design_tokens.dart';
 import '../infrastructure/auth/valiark_deeplink_handler.dart';
-import '../infrastructure/post_login_onboarding_store.dart';
+import '../infrastructure/profile_onboarding_store.dart';
 import '../features/auth/screens/auth/login_screen.dart';
 import '../features/auth/screens/auth/signup_screen.dart';
 import '../screens/main_app.dart';
 import '../screens/onboarding_screen.dart';
-import '../screens/post_login_welcome_screen.dart';
+import '../screens/profile/profile_setup_screen.dart';
 import 'providers/auth_providers.dart';
 
 /// Routes between onboarding, login (pushed), guest [MainApp], and signed-in [MainApp].
@@ -69,34 +69,47 @@ class _AuthGateState extends ConsumerState<AuthGate> {
   }
 }
 
-/// ログイン済み: 初回のみウェルカム → [MainApp]。ゲストは従来どおり直接 MainApp。
-class _LoggedInShell extends StatefulWidget {
+/// ログイン済み: 初回のみプロフィール入力 → [MainApp]（質問フィード）。
+class _LoggedInShell extends ConsumerStatefulWidget {
   const _LoggedInShell();
 
   @override
-  State<_LoggedInShell> createState() => _LoggedInShellState();
+  ConsumerState<_LoggedInShell> createState() => _LoggedInShellState();
 }
 
-class _LoggedInShellState extends State<_LoggedInShell> {
+class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
   bool? _prefsLoaded;
-  bool _welcomeDone = false;
+  bool _profileSetupDone = false;
 
   @override
   void initState() {
     super.initState();
-    PostLoginOnboardingStore.isWelcomeCompleted().then((done) {
-      if (mounted) {
-        setState(() {
-          _welcomeDone = done;
-          _prefsLoaded = true;
-        });
-      }
-    });
+    _loadProfileSetupState();
   }
 
-  Future<void> _completeWelcome() async {
-    await PostLoginOnboardingStore.setWelcomeCompleted();
-    if (mounted) setState(() => _welcomeDone = true);
+  Future<void> _loadProfileSetupState() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final userId = user?.id;
+    if (userId == null) {
+      if (mounted) setState(() => _prefsLoaded = true);
+      return;
+    }
+    await ProfileOnboardingStore.applyPendingEmailSignup(
+      userId: userId,
+      email: user?.email,
+    );
+    final done = await ProfileOnboardingStore.isCompleted(userId);
+    if (mounted) {
+      setState(() {
+        _profileSetupDone = done;
+        _prefsLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _completeProfileSetup() async {
+    ref.read(guestModeProvider.notifier).state = false;
+    if (mounted) setState(() => _profileSetupDone = true);
   }
 
   @override
@@ -107,8 +120,8 @@ class _LoggedInShellState extends State<_LoggedInShell> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    if (!_welcomeDone) {
-      return PostLoginWelcomeScreen(onContinue: _completeWelcome);
+    if (!_profileSetupDone) {
+      return ProfileSetupScreen(onComplete: _completeProfileSetup);
     }
     return const MainApp();
   }

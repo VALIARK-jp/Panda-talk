@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
 import 'core/design_tokens.dart';
+import 'infrastructure/profile_onboarding_store.dart';
 import 'presentation/auth_gate.dart';
 import 'presentation/providers/auth_providers.dart';
 import 'presentation/providers/profile_providers.dart';
@@ -31,9 +32,7 @@ Future<void> main() async {
       detectSessionInUri: false,
     ),
   );
-  if (AppConfig.lineChannelId.isNotEmpty) {
-    await LineSDK.instance.setup(AppConfig.lineChannelId);
-  }
+  await LineSDK.instance.setup(AppConfig.lineChannelId);
   runApp(const ProviderScope(child: PandaTalkApp()));
 }
 
@@ -59,6 +58,10 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
         final provider =
             nextUser.appMetadata['provider'] as String? ?? 'email';
         Future.microtask(() async {
+          await ProfileOnboardingStore.applyPendingEmailSignup(
+            userId: nextUser.id,
+            email: nextUser.email,
+          );
           try {
             await ref
                 .read(authServiceProvider)

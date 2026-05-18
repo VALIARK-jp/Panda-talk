@@ -18,9 +18,9 @@
 
 | 原則 | 内容 |
 |------|------|
-| **単一の身元ストア** | エンドユーザーのアカウントの正は **Supabase Auth（GoTrue / `auth.users`）** とする。 |
-| **アプリ固有プロファイル** | 表示名・独自ドメインのレコードは **バックエンド API**（例: `POST /users/me`）経由で別テーブル（`panda_profiles` 系）に載せ、アプリはログイン直後に同期する。 |
-| **Valiark 横断** | 同一 Supabase プロジェクトを複数アプリで共有する前提。**Redirect URL・スキームは Valiark 共通**（`io.valiark.auth://callback`）。 |
+| **単一の身元ストア** | エンドユーザーのアカウントの正は **Supabase Auth（`auth.users`）** — **UID・メール（または擬似メール）・セッション** のみ。Dashboard の Providers がすべて `Email` でもよい（Edge + `verifyOTP` のため）。 |
+| **アプリ固有プロファイル** | **表示名・ユーザーコード・アイコン・一言** などは **`panda_profiles` 等のアプリ別テーブル**が正本。Dashboard の Display name / Provider type は統一・運用の対象にしない。 |
+| **Valiark 横断** | 同一 Supabase プロジェクトを複数アプリで共有。**Redirect URL はアプリごと**（Panda Talk: `io.valiark.pandatalk://callback` / `PANDA_TALK_AUTH_REDIRECT_URL`）。Dashboard には利用する URI をすべて登録。 |
 | **二種類のセッション確立** | (A) **ブラウザ／メール経由の PKCE** と (B) **ネイティブ IdP → Edge → `verifyOTP(token_hash)`** を明示的に分けて扱う。 |
 
 ---
@@ -54,7 +54,7 @@ flowchart LR
 | コンポーネント | 役割 |
 |----------------|------|
 | **AuthGate** | 未ログイン時はオンボーディング／ログイン・新規登録へ遷移。ログイン済みまたはゲストなら `MainApp`。起動直後にdeeplinkハンドラを1回だけ起動。 |
-| **ValiarkDeeplinkHandler** | `io.valiark.auth` 等の **PKCE `code` 付き** URI だけ `getSessionFromUrl`。**二重処理禁止**（initialLink と stream の両方対策）。 |
+| **ValiarkDeeplinkHandler** | [AppConfig.authRedirectUrl] のスキーム（既定 `io.valiark.pandatalk`）の **PKCE `code` 付き** URI だけ `getSessionFromUrl`。**二重処理禁止**（initialLink と stream の両方対策）。 |
 | **AuthService** | 各プロバイダ呼び出し・`verifyOTP`・サインアウト・パスワードリセット・プロファイル同期トリガの前提となる API。 |
 | **line-auth-native / apple-auth-native** | IdP トークンを検証し、`auth.users` 上のユーザー解決・`app_metadata` 更新・**マジックリンク用 `hashed_token`** を返す。 |
 
@@ -99,7 +99,7 @@ flowchart LR
 
 ### 5.1 メール（サインアップ確認・パスワードリセット・Google OAuth）
 
-共通して **`AuthFlowType.pkce`**、`emailRedirectTo` / OAuth の `redirectTo` は **`AppConfig.authRedirectUrl`**（既定 `io.valiark.auth://callback`）。
+共通して **`AuthFlowType.pkce`**、`emailRedirectTo` / OAuth の `redirectTo` は **`AppConfig.authRedirectUrl`**（既定 `io.valiark.pandatalk://callback`）。
 
 ```mermaid
 sequenceDiagram
@@ -182,9 +182,9 @@ Edge が返す `otp_type` は **`magiclink`** に揃え、アプリは **`OtpTyp
 | キー / 項目 | 用途 |
 |-------------|------|
 | `PANDA_TALK_SUPABASE_URL` / `PANDA_TALK_SUPABASE_ANON_KEY` | Supabase 接続（必須） |
-| `VALIARK_AUTH_REDIRECT_URL` | PKCE / OAuth / メールのリダイレクト先（Dashboard **Redirect URLs** と完全一致） |
-| `PANDA_TALK_LINE_CHANNEL_ID` | LINE SDK + Edge の channel 検証 |
-| Edge secrets | `SUPABASE_SERVICE_ROLE_KEY`, `LINE_CHANNEL_ID` |
+| `PANDA_TALK_AUTH_REDIRECT_URL` | PKCE / OAuth / メールのリダイレクト先（Dashboard **Redirect URLs** と完全一致） |
+| `valiarkLineChannelId`（`2010102462`） | LINE SDK 既定（valiark-dev 共通） |
+| Edge secrets | `SUPABASE_SERVICE_ROLE_KEY`, `LINE_CHANNEL_ID`（`2010102462` と同値） |
 | DB | `get_user_by_email` の **case-insensitive** 版 + **service_role への GRANT EXECUTE** |
 
 ---

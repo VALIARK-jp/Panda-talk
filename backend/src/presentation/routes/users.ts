@@ -70,6 +70,7 @@ app.patch('/me', authMiddleware, async (c) => {
     const userId = c.get('userId')
     const body = await c.req.json<{
       name?: string
+      username?: string
       avatarUrl?: string | null
       bio?: string | null
     }>()
@@ -77,6 +78,7 @@ app.patch('/me', authMiddleware, async (c) => {
     const user = await updateProfileUseCase.execute({
       userId,
       name: body.name,
+      username: body.username,
       avatarUrl: body.avatarUrl,
       bio: body.bio,
     })

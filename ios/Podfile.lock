@@ -5,6 +5,8 @@ PODS:
   - flutter_line_sdk (2.7.2):
     - Flutter
     - LineSDKSwift (~> 5.16)
+  - image_picker_ios (0.0.1):
+    - Flutter
   - LineSDKSwift (5.16.0):
     - LineSDKSwift/Core (= 5.16.0)
   - LineSDKSwift/Core (5.16.0)
@@ -22,6 +24,7 @@ DEPENDENCIES:
   - app_links (from `.symlinks/plugins/app_links/ios`)
   - Flutter (from `Flutter`)
   - flutter_line_sdk (from `.symlinks/plugins/flutter_line_sdk/ios`)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sign_in_with_apple (from `.symlinks/plugins/sign_in_with_apple/ios`)
@@ -38,6 +41,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_line_sdk:
     :path: ".symlinks/plugins/flutter_line_sdk/ios"
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
   share_plus:
     :path: ".symlinks/plugins/share_plus/ios"
   shared_preferences_foundation:
@@ -51,6 +56,7 @@ SPEC CHECKSUMS:
   app_links: a754cbec3c255bd4bbb4d236ecc06f28cd9a7ce8
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_line_sdk: b79e73a268c35420f28e05d4f059a797964eb707
+  image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   LineSDKSwift: ebb8d713640ff33e7353d3c82e129cddfc8f527c
   share_plus: 011d6fb4f9d2576b83179a3a5c5e323202cdabcf
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
