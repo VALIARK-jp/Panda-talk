@@ -24,11 +24,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   void initState() {
     super.initState();
-    _authSubscription =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      data,
+    ) {
       if (data.event == AuthChangeEvent.signedIn && mounted) {
-        Navigator.of(context, rootNavigator: true)
-            .popUntil((route) => route.isFirst);
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).popUntil((route) => route.isFirst);
       }
     });
   }
@@ -44,8 +47,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
-        Navigator.of(context, rootNavigator: true)
-            .popUntil((route) => route.isFirst);
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).popUntil((route) => route.isFirst);
       });
     });
   }
@@ -74,8 +79,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       Align(
                         alignment: Alignment.topLeft,
                         child: IconButton(
-                          icon: const Icon(Icons.arrow_back,
-                              color: AppColors.white),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: AppColors.white,
+                          ),
                           onPressed: () => Navigator.maybePop(context),
                         ),
                       ),
@@ -114,14 +121,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             ),
                           );
                         },
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildAuthButton(
-                        icon: Icons.g_translate,
-                        label: 'Googleで新規登録',
-                        color: AppColors.white,
-                        textColor: AppColors.black,
-                        onPressed: () => _signUpWithGoogle(context),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _buildAuthButton(
@@ -200,40 +199,18 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
-  Future<void> _signUpWithGoogle(BuildContext context) async {
-    try {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-      );
-
-      await ref.read(authServiceProvider).signInWithGoogle();
-
-      if (context.mounted) Navigator.pop(context);
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context);
-        _showErrorDialog(context, e.toString().replaceFirst('Exception: ', ''));
-      }
-    }
-  }
-
   Future<void> _signUpWithLine(BuildContext context) async {
     try {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        builder: (_) =>
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
       );
 
-      await ref.read(authServiceProvider).signInWithLine(
-            flow: NativeAuthFlow.signup,
-          );
+      await ref
+          .read(authServiceProvider)
+          .signInWithLine(flow: NativeAuthFlow.signup);
 
       if (context.mounted) Navigator.pop(context);
       if (!context.mounted) return;
@@ -251,14 +228,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        builder: (_) =>
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
       );
 
-      await ref.read(authServiceProvider).signInWithApple(
-            flow: NativeAuthFlow.signup,
-          );
+      await ref
+          .read(authServiceProvider)
+          .signInWithApple(flow: NativeAuthFlow.signup);
 
       if (context.mounted) Navigator.pop(context);
       if (!context.mounted) return;

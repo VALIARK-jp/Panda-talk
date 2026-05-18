@@ -28,8 +28,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
-        Navigator.of(context, rootNavigator: true)
-            .popUntil((route) => route.isFirst);
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).popUntil((route) => route.isFirst);
       });
     });
   }
@@ -95,9 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  double _calculateLoginContentTopInset({
-    required double viewportHeight,
-  }) {
+  double _calculateLoginContentTopInset({required double viewportHeight}) {
     const outerVerticalPadding = 40.0;
     const headerBlockHeightEstimate = 200.0;
     const headerToButtonsGap = 20.0;
@@ -185,16 +185,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             );
           },
-        ),
-        const SizedBox(height: AppSpacing.sm + 2),
-        _buildAuthButton(
-          icon: Icons.g_translate,
-          label: 'Googleでログイン',
-          color: AppColors.white,
-          textColor: AppColors.black,
-          borderSide: const BorderSide(color: AppColors.borderGray, width: 1),
-          providerKey: 'google',
-          onPressed: () => _signInWithGoogle(context),
         ),
         const SizedBox(height: AppSpacing.sm + 2),
         _buildAuthButton(
@@ -303,30 +293,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    try {
-      if (mounted) {
-        setState(() {
-          _authInFlight = true;
-          _authInFlightProvider = 'google';
-        });
-      }
-
-      await ref.read(authServiceProvider).signInWithGoogle();
-    } catch (e) {
-      if (context.mounted) {
-        _showErrorDialog(context, _formatError(e));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _authInFlight = false;
-          _authInFlightProvider = null;
-        });
-      }
-    }
   }
 
   Future<void> _signInWithLine(BuildContext context) async {
