@@ -115,6 +115,10 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
     return Scaffold(
       backgroundColor: AuthColors.formScaffoldBg,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.maybePop(context),
+        ),
         title: Text(
           showTabs
               ? 'メール認証'

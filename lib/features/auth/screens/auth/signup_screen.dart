@@ -76,7 +76,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         child: IconButton(
                           icon: const Icon(Icons.arrow_back,
                               color: AppColors.white),
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.maybePop(context),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.md),

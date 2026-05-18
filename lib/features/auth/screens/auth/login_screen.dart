@@ -56,6 +56,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       Column(
                         children: [
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back,
+                                color: AppColors.black,
+                              ),
+                              onPressed: () => Navigator.maybePop(context),
+                            ),
+                          ),
                           SizedBox(height: loginTopInset),
                           _buildHeroHeader(),
                           const SizedBox(height: AppSpacing.lg),

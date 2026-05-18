@@ -28,14 +28,18 @@ class ApiQuestionRepository implements QuestionRepository {
 
   String? _accessToken;
 
+  bool get _hasSession =>
+      Supabase.instance.client.auth.currentSession != null;
+
   @override
   Future<List<DummyQuestion>> getFeedQuestions() async {
+    // Worker GET /questions は認証任意（未ログインは anonymous 扱い）
     final data = await _getJson(
       Uri.parse('$_apiBaseUrl/questions?limit=20'),
-      auth: true,
+      auth: false,
     );
     final questions = await _questionsFromResponse(data);
-    if (questions.isNotEmpty) return questions;
+    if (questions.isNotEmpty || !_hasSession) return questions;
     return getHistory();
   }
 
@@ -153,7 +157,9 @@ class ApiQuestionRepository implements QuestionRepository {
     required DummyQuestion question,
     required String selectedOption,
   }) async {
-    if (question.apiId == null) return question.percentA;
+    if (question.apiId == null || !_hasSession) {
+      return question.percentA;
+    }
 
     final selectedA = selectedOption == question.optionA;
     final data = await _postJson(

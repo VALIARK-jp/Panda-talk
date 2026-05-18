@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/question_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
@@ -22,7 +25,11 @@ class QuestionFeedScreen extends ConsumerStatefulWidget {
 
 class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   int _tabIndex = 0; // 0=診断 1=Hot
-  final bool _isGuest = true; // ゲストモードフラグ（ダミー）
+  bool get _isGuest {
+    final asyncUser = ref.read(authUserProvider);
+    return (asyncUser.valueOrNull ?? Supabase.instance.client.auth.currentUser) ==
+        null;
+  }
   final _pageController = PageController();
   Timer? _nextQuestionTimer;
 
