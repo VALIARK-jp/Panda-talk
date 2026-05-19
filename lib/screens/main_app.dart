@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/design_tokens.dart';
 import '../presentation/providers/auth_providers.dart';
+import '../presentation/providers/profile_providers.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/login_required_gate.dart';
 import 'home/question_feed_screen.dart';
@@ -29,7 +30,9 @@ class _MainAppState extends ConsumerState<MainApp> {
 
   bool get _isLoggedIn {
     final asyncUser = ref.watch(authUserProvider);
-    return (asyncUser.valueOrNull ?? Supabase.instance.client.auth.currentUser) != null;
+    return (asyncUser.valueOrNull ??
+            Supabase.instance.client.auth.currentUser) !=
+        null;
   }
 
   String _featureLabelForIndex(int index) {
@@ -58,11 +61,15 @@ class _MainAppState extends ConsumerState<MainApp> {
       case 0:
         return const QuestionFeedScreen();
       case _matchIndex:
-        return const MatchScreen();
+        return MatchScreen(
+          onOpenDiagnosis: () => setState(() => _currentIndex = 0),
+        );
       case _postIndex:
         return const QuestionPostScreen();
       case _talkIndex:
-        return const TalkScreen();
+        return TalkScreen(
+          onOpenMatch: () => setState(() => _currentIndex = _matchIndex),
+        );
       case _profileIndex:
         return const ProfileScreen();
       default:
@@ -81,7 +88,12 @@ class _MainAppState extends ConsumerState<MainApp> {
       body: body,
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) {
+          setState(() => _currentIndex = i);
+          if (i == _profileIndex && _isLoggedIn) {
+            ref.invalidate(profileControllerProvider);
+          }
+        },
       ),
     );
   }

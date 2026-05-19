@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../core/design_tokens.dart';
+import '../../core/share_utils.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 
@@ -297,7 +297,8 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                 label: 'シェアする',
                 onTap: () {
                   final minority = isMinority ? '少数派' : '多数派';
-                  Share.share(
+                  AppShare.text(
+                    context,
                     '私は${widget.selected}派！（$minority $selectedPercent%）\nあなたはどっち？\n#パンダトーク',
                   );
                 },

@@ -17,6 +17,7 @@ const users = [
 const questions: Question[] = [
   {
     id: 'question-1',
+    questionNumber: 1,
     userId: 'user-1',
     text: '朝食はどちら派？',
     optionA: 'ご飯',
@@ -26,6 +27,7 @@ const questions: Question[] = [
   },
   {
     id: 'question-2',
+    questionNumber: 2,
     userId: 'user-2',
     text: '休日の過ごし方は？',
     optionA: 'インドア',
@@ -35,6 +37,7 @@ const questions: Question[] = [
   },
   {
     id: 'question-3',
+    questionNumber: 3,
     userId: 'user-3',
     text: '仕事のスタイルは？',
     optionA: 'リモート',
@@ -44,6 +47,7 @@ const questions: Question[] = [
   },
   {
     id: 'question-4',
+    questionNumber: 4,
     userId: 'user-1',
     text: '旅行するなら？',
     optionA: '国内',
@@ -53,6 +57,7 @@ const questions: Question[] = [
   },
   {
     id: 'question-5',
+    questionNumber: 5,
     userId: 'user-2',
     text: 'ペットを飼うなら？',
     optionA: '犬',
@@ -62,18 +67,31 @@ const questions: Question[] = [
   },
 ]
 
-function toQuestionWithUser(q: Question): QuestionWithUser {
+function toQuestionWithUser(
+  q: Question,
+  engagement?: { likeCount: number; commentCount: number }
+): QuestionWithUser {
   const poster = users.find((u) => u.id === q.userId) ?? {
     id: q.userId,
     username: 'unknown',
     avatarUrl: null,
   }
-  return { ...q, poster }
+  return {
+    ...q,
+    poster,
+    likeCount: engagement?.likeCount ?? 0,
+    commentCount: engagement?.commentCount ?? 0,
+  }
 }
 
 export class MockQuestionRepository implements IQuestionRepository {
   async getFeed(userId: UUID, limit: number, cursor?: UUID): Promise<QuestionWithUser[]> {
-    let list = questions.map(toQuestionWithUser)
+    let list = questions.map((q, index) =>
+      toQuestionWithUser(q, {
+        likeCount: (index + 1) * 3,
+        commentCount: index + 2,
+      })
+    )
     if (cursor) {
       const idx = list.findIndex((q) => q.id === cursor)
       if (idx !== -1) list = list.slice(idx + 1)
@@ -136,9 +154,14 @@ export class MockQuestionRepository implements IQuestionRepository {
       .slice(0, limit)
   }
 
-  async create(data: Omit<Question, 'id' | 'createdAt'>): Promise<Question> {
+  async create(data: Omit<Question, 'id' | 'questionNumber' | 'createdAt'>): Promise<Question> {
+    const nextQuestionNumber =
+      questions.length === 0
+        ? 1
+        : Math.max(...questions.map((question) => question.questionNumber)) + 1
     const question: Question = {
       id: crypto.randomUUID(),
+      questionNumber: nextQuestionNumber,
       ...data,
       createdAt: new Date().toISOString(),
     }

@@ -60,13 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           Align(
                             alignment: Alignment.topLeft,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back,
-                                color: AppColors.black,
-                              ),
-                              onPressed: () => Navigator.maybePop(context),
-                            ),
+                            child: _buildBackButton(context),
                           ),
                           SizedBox(height: loginTopInset),
                           _buildHeroHeader(),
@@ -243,6 +237,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 16),
         const TermsConsentFooter(onLightBackground: true),
       ],
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => Navigator.maybePop(context),
+      icon: const Icon(Icons.arrow_back, size: 20),
+      label: const Text('戻る'),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.black,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: const Size(0, 44),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(
+          fontSize: AppFontSize.md,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 

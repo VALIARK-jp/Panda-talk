@@ -43,10 +43,11 @@ class MockCommentRepository implements CommentRepository {
     final index = comments.indexWhere((comment) => comment.id == commentId);
     if (index == -1) return;
     final comment = comments[index];
-    comments[index] = comment.copyWith(
-      likedByMe: isLike,
-      likes: comment.likes + (isLike ? 1 : -1),
-    );
+    final wasLiked = comment.likedByMe;
+    final likes = isLike
+        ? (wasLiked ? comment.likes : comment.likes + 1)
+        : (wasLiked && comment.likes > 0 ? comment.likes - 1 : comment.likes);
+    comments[index] = comment.copyWith(likedByMe: isLike, likes: likes);
   }
 
   @override

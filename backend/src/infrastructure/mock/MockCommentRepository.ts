@@ -32,11 +32,17 @@ const comments: Comment[] = [
 ]
 
 export class MockCommentRepository implements ICommentRepository {
-  async findByQuestion(questionId: UUID, choice?: AnswerChoice): Promise<Comment[]> {
-    return comments.filter(
-      (c) =>
-        c.questionId === questionId && (choice === undefined || c.choice === choice)
-    )
+  async findByQuestion(
+    questionId: UUID,
+    choice?: AnswerChoice,
+    _viewerUserId?: UUID
+  ): Promise<Comment[]> {
+    return comments
+      .filter(
+        (c) =>
+          c.questionId === questionId && (choice === undefined || c.choice === choice)
+      )
+      .map((c) => ({ ...c, likedByMe: false }))
   }
 
   async findById(id: UUID): Promise<Comment | null> {

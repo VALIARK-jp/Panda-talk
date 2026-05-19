@@ -21,6 +21,7 @@ export type AnswerChoice = 'a' | 'b'
 
 export type Question = {
   id: UUID
+  questionNumber: number
   userId: UUID
   text: string
   optionA: string
@@ -41,6 +42,8 @@ export type QuestionWithUser = Question & {
     username: string
     avatarUrl: string | null
   }
+  likeCount?: number
+  commentCount?: number
 }
 
 export type HotQuestion = QuestionWithUser & {
@@ -88,6 +91,14 @@ export type MatchResult = {
   displayScore: number
 }
 
+export type CompareAnswer = {
+  questionId: UUID
+  question: string
+  mine: string
+  theirs: string
+  match: boolean
+}
+
 export type Comment = {
   id: UUID
   questionId: UUID
@@ -96,6 +107,7 @@ export type Comment = {
   body: string
   likeCount: number
   createdAt: ISODateString
+  likedByMe?: boolean
 }
 
 export type QuestionLike = {
@@ -137,6 +149,8 @@ export type Group = {
   name: string
   type: GroupType
   createdAt: ISODateString
+  members?: string[]
+  avgMatchRate?: number
 }
 
 export type GroupMember = {
@@ -152,6 +166,7 @@ export type Message = {
   userId: UUID
   body: string
   createdAt: ISODateString
+  senderName?: string
 }
 
 export type DirectMessage = {

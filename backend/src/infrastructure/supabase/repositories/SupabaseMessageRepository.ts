@@ -8,6 +8,10 @@ type MessageRow = {
   user_id: string
   body: string
   created_at: string
+  sender?: {
+    name?: string | null
+    username?: string | null
+  } | null
 }
 
 export class SupabaseMessageRepository implements IMessageRepository {
@@ -17,7 +21,7 @@ export class SupabaseMessageRepository implements IMessageRepository {
 
   async findByGroup(groupId: UUID, limit: number, cursor?: UUID): Promise<Message[]> {
     const query: any = {
-      select: '*',
+      select: '*,sender:panda_profiles!user_id(name,username)',
       group_id: `eq.${groupId}`,
       order: 'created_at.desc',
       limit,
@@ -49,5 +53,6 @@ function mapMessage(row: MessageRow): Message {
     userId: row.user_id,
     body: row.body,
     createdAt: row.created_at,
+    senderName: row.sender?.name ?? row.sender?.username ?? undefined,
   }
 }

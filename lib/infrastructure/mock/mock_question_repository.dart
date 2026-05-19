@@ -4,7 +4,7 @@ import '../question_repository.dart';
 class MockQuestionRepository implements QuestionRepository {
   final List<DummyQuestion> _feedQuestions = [
     const DummyQuestion(
-      number: 1256,
+      number: 1,
       category: '生活',
       authorName: 'こうたろう',
       authorUsername: 'kotaro_123',
@@ -12,9 +12,11 @@ class MockQuestionRepository implements QuestionRepository {
       optionA: '外出派',
       optionB: '家派',
       percentA: 64,
+      likeCount: 12,
+      commentCount: 5,
     ),
     const DummyQuestion(
-      number: 1255,
+      number: 2,
       category: '生活',
       authorName: 'まなみ',
       authorUsername: 'manami_456',
@@ -22,9 +24,11 @@ class MockQuestionRepository implements QuestionRepository {
       optionA: '朝型',
       optionB: '夜型',
       percentA: 38,
+      likeCount: 8,
+      commentCount: 3,
     ),
     const DummyQuestion(
-      number: 1254,
+      number: 3,
       category: '性格',
       authorName: 'ゆうき',
       authorUsername: 'yuuki_789',
@@ -32,9 +36,11 @@ class MockQuestionRepository implements QuestionRepository {
       optionA: '即レス派',
       optionB: '溜める派',
       percentA: 55,
+      likeCount: 24,
+      commentCount: 9,
     ),
     const DummyQuestion(
-      number: 1253,
+      number: 4,
       category: '恋愛',
       authorName: 'りな',
       authorUsername: 'rina_222',
@@ -42,12 +48,14 @@ class MockQuestionRepository implements QuestionRepository {
       optionA: '追う派',
       optionB: '追われる派',
       percentA: 42,
+      likeCount: 6,
+      commentCount: 2,
     ),
   ];
 
   final List<DummyQuestion> _myQuestions = [
     const DummyQuestion(
-      number: 1204,
+      number: 5,
       category: '食べ物',
       authorName: 'ぱんだちゃん',
       authorUsername: 'panda_123',
@@ -57,7 +65,7 @@ class MockQuestionRepository implements QuestionRepository {
       percentA: 47,
     ),
     const DummyQuestion(
-      number: 1188,
+      number: 6,
       category: '生活',
       authorName: 'ぱんだちゃん',
       authorUsername: 'panda_123',
@@ -76,7 +84,7 @@ class MockQuestionRepository implements QuestionRepository {
   @override
   Future<DummyQuestion> getCurrentQuestion() async {
     return const DummyQuestion(
-      number: 1256,
+      number: 1,
       category: '生活',
       authorName: 'こうたろう',
       authorUsername: 'kotaro_123',
@@ -91,7 +99,7 @@ class MockQuestionRepository implements QuestionRepository {
   Future<List<DummyQuestion>> getHistory() async {
     return [
       const DummyQuestion(
-        number: 1256,
+        number: 1,
         category: '生活',
         authorName: 'こうたろう',
         authorUsername: 'kotaro_123',
@@ -102,7 +110,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 64,
       ),
       const DummyQuestion(
-        number: 1255,
+        number: 2,
         category: '生活',
         authorName: 'まなみ',
         authorUsername: 'manami_456',
@@ -113,7 +121,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 38,
       ),
       const DummyQuestion(
-        number: 1254,
+        number: 3,
         category: '性格',
         authorName: 'ゆうき',
         authorUsername: 'yuuki_789',
@@ -124,7 +132,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 55,
       ),
       const DummyQuestion(
-        number: 1253,
+        number: 4,
         category: '恋愛',
         authorName: 'りな',
         authorUsername: 'rina_222',
@@ -135,7 +143,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 42,
       ),
       const DummyQuestion(
-        number: 1252,
+        number: 7,
         category: '旅行',
         authorName: 'たくみ',
         authorUsername: 'takumi_111',
@@ -152,7 +160,7 @@ class MockQuestionRepository implements QuestionRepository {
   Future<List<DummyQuestion>> search(String keyword) async {
     return [
       const DummyQuestion(
-        number: 1234,
+        number: 8,
         category: '恋愛',
         authorName: 'りな',
         authorUsername: 'rina_222',
@@ -162,7 +170,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 42,
       ),
       const DummyQuestion(
-        number: 1156,
+        number: 9,
         category: '恋愛',
         authorName: 'あやか',
         authorUsername: 'ayaka_012',
@@ -172,7 +180,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 38,
       ),
       const DummyQuestion(
-        number: 1098,
+        number: 10,
         category: '恋愛',
         authorName: 'しょうた',
         authorUsername: 'shota_345',
@@ -182,7 +190,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 55,
       ),
       const DummyQuestion(
-        number: 1055,
+        number: 11,
         category: '恋愛',
         authorName: 'まなみ',
         authorUsername: 'manami_456',
@@ -192,7 +200,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 29,
       ),
       const DummyQuestion(
-        number: 1023,
+        number: 12,
         category: '恋愛',
         authorName: 'ゆうき',
         authorUsername: 'yuuki_789',
@@ -217,7 +225,7 @@ class MockQuestionRepository implements QuestionRepository {
     required String category,
   }) async {
     final nextNumber = _myQuestions.isEmpty
-        ? 1200
+        ? 1
         : _myQuestions.map((q) => q.number).reduce((a, b) => a > b ? a : b) + 1;
     _myQuestions.insert(
       0,
@@ -266,4 +274,7 @@ class MockQuestionRepository implements QuestionRepository {
   }) async {
     return question.percentA;
   }
+
+  @override
+  Future<int> fetchQuestionPercentA(String questionId) async => 50;
 }

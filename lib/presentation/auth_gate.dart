@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/design_tokens.dart';
 import '../infrastructure/auth/valiark_deeplink_handler.dart';
 import '../infrastructure/profile_onboarding_store.dart';
+import '../infrastructure/providers/repositories.dart';
 import '../features/auth/screens/auth/login_screen.dart';
 import '../features/auth/screens/auth/signup_screen.dart';
 import '../screens/main_app.dart';
@@ -94,11 +95,30 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
       if (mounted) setState(() => _prefsLoaded = true);
       return;
     }
-    await ProfileOnboardingStore.applyPendingEmailSignup(
-      userId: userId,
-      email: user?.email,
-    );
-    final done = await ProfileOnboardingStore.isCompleted(userId);
+    try {
+      await Supabase.instance.client.auth.refreshSession();
+    } catch (_) {}
+
+    // 既存プロフィール（DB）を先に見て、ログインし直しで毎回セットアップにならないようにする。
+    var done = await ProfileOnboardingStore.isCompleted(userId);
+    if (!done) {
+      try {
+        final profile = await ref.read(profileRepositoryProvider).getProfile();
+        done = await ProfileOnboardingStore.syncCompletedFromProfile(
+          userId: userId,
+          username: profile.username,
+        );
+      } catch (_) {}
+    }
+
+    if (!done) {
+      await ProfileOnboardingStore.applyPendingEmailSignup(
+        userId: userId,
+        email: user?.email,
+      );
+      done = await ProfileOnboardingStore.isCompleted(userId);
+    }
+
     if (mounted) {
       setState(() {
         _profileSetupDone = done;

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../core/dummy_data.dart';
 import '../../core/design_tokens.dart';
+import '../../core/share_utils.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/panda_avatar.dart';
-import '../../widgets/panda_button.dart';
 import '../../widgets/tag_chip.dart';
 import '../friends/friends_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -13,11 +13,24 @@ import '../settings/settings_screen.dart';
 import '../../presentation/providers/notification_providers.dart';
 import 'profile_edit_screen.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(profileControllerProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileControllerProvider);
 
     return profileAsync.when(
@@ -40,12 +53,6 @@ class ProfileScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      GestureDetector(
-                        onTap: () =>
-                            Share.share('パンダトークやってます！\n一緒に合致度測ろう🐼\n#パンダトーク'),
-                        child: const Icon(Icons.ios_share, color: AppColors.black),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
                       GestureDetector(
                         onTap: () => Navigator.push(
                           context,
@@ -80,7 +87,9 @@ class ProfileScreen extends ConsumerWidget {
                       GestureDetector(
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
                         ),
                         child: const Icon(
                           Icons.settings_outlined,
@@ -112,29 +121,34 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: PandaOutlinedButton(
-                          label: '編集',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ProfileEditScreen(),
-                            ),
+                      _ProfileActionButton(
+                        icon: Icons.edit_outlined,
+                        label: '編集',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileEditScreen(),
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: PandaOutlinedButton(
-                          label: '友達',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const FriendsScreen(),
-                            ),
+                      _ProfileActionButton(
+                        icon: Icons.people_outline,
+                        label: '友達',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FriendsScreen(),
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ProfileActionButton(
+                        icon: Icons.ios_share,
+                        label: '共有',
+                        onTap: () => _shareProfile(context, profile),
                       ),
                     ],
                   ),
@@ -147,42 +161,25 @@ class ProfileScreen extends ConsumerWidget {
                       _Divider(),
                       _StatItem(label: '投稿数', value: '${profile.postCount}'),
                       _Divider(),
-                      _StatItem(label: '友達数', value: '${profile.friendCount}人'),
+                      _StatItem(label: '友達数', value: '${profile.friendCount}'),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  // 異端児スコアシェア
-                  GestureDetector(
-                    onTap: () => Share.share(
-                      '私の異端児スコアは26%（やや凡人寄り）\n凡人 ████░░░░░░ 異端児\n#パンダトーク',
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
                     ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGray,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '異端児スコア ${profile.oddballScore}%',
-                            style: const TextStyle(
-                              fontSize: AppFontSize.sm,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.black,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.ios_share,
-                            size: 14,
-                            color: AppColors.textGray,
-                          ),
-                        ],
+                    decoration: BoxDecoration(
+                      color: AppColors.softGray,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Text(
+                      '異端児スコア ${profile.oddballScore}%',
+                      style: const TextStyle(
+                        fontSize: AppFontSize.sm,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.black,
                       ),
                     ),
                   ),
@@ -241,6 +238,64 @@ class ProfileScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  void _shareProfile(BuildContext context, DummyProfile profile) {
+    final tags = profile.tags.isEmpty
+        ? ''
+        : '\nタグ: ${profile.tags.join(' / ')}';
+    final bio = profile.bio.trim().isEmpty
+        ? ''
+        : '\n自己紹介: ${profile.bio.trim()}';
+
+    AppShare.text(
+      context,
+      '${profile.name}（@${profile.username}）のパンダトークプロフィール\n'
+      '回答数: ${profile.answerCount} / 投稿数: ${profile.postCount} / 友達数: ${profile.friendCount}\n'
+      '異端児スコア: ${profile.oddballScore}%\n'
+      '$tags'
+      '$bio\n'
+      '#パンダトーク',
+    );
+  }
+}
+
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 16),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.black,
+          side: const BorderSide(color: AppColors.borderGray),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          minimumSize: const Size(86, 36),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          textStyle: const TextStyle(
+            fontSize: AppFontSize.sm,
+            fontWeight: FontWeight.w800,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+        ),
+      ),
     );
   }
 }

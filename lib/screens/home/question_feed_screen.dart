@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../config/app_config.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/share_utils.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/question_providers.dart';
 import '../../widgets/panda_avatar.dart';
@@ -27,9 +29,11 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   int _tabIndex = 0; // 0=診断 1=Hot
   bool get _isGuest {
     final asyncUser = ref.read(authUserProvider);
-    return (asyncUser.valueOrNull ?? Supabase.instance.client.auth.currentUser) ==
+    return (asyncUser.valueOrNull ??
+            Supabase.instance.client.auth.currentUser) ==
         null;
   }
+
   final _pageController = PageController();
   Timer? _nextQuestionTimer;
 
@@ -129,6 +133,29 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     );
   }
 
+  void _shareQuestion({
+    required DummyQuestion question,
+    required String? selected,
+    required int percentA,
+  }) {
+    final hasAnswered = selected != null;
+    final selectedA = selected == question.optionA;
+    final selectedPercent = selectedA ? percentA : 100 - percentA;
+    final resultText = hasAnswered
+        ? '\n私は$selected派（${selectedPercent < 50 ? '少数派' : '多数派'} $selectedPercent%）'
+        : '';
+
+    AppShare.text(
+      context,
+      'Q.${question.number} ${question.text}\n'
+      'A: ${question.optionA}\n'
+      'B: ${question.optionB}'
+      '$resultText\n'
+      'あなたはどっち？\n'
+      '#パンダトーク',
+    );
+  }
+
   Widget _buildQuestionPage(
     DummyQuestion q,
     List<DummyQuestion> questions,
@@ -215,25 +242,37 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   IconButton(
-                    onPressed: () => ref
-                        .read(questionFeedControllerProvider.notifier)
-                        .toggleQuestionLike(q.number),
-                    icon: Icon(
-                      likedQuestion ? Icons.favorite : Icons.favorite_border,
-                      color: AppColors.black,
+                    tooltip: '共有',
+                    onPressed: () => _shareQuestion(
+                      question: q,
+                      selected: selected,
+                      percentA: percentA,
                     ),
+                    icon: const Icon(Icons.ios_share, color: AppColors.black),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => QuestionCommentsScreen(question: q),
-                      ),
-                    ),
-                    icon: const Icon(
-                      Icons.mode_comment_outlined,
-                      color: AppColors.black,
-                    ),
+                  _EngagementIcon(
+                    icon: likedQuestion
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                    count: feedState.likeCountFor(q),
+                    onTap: () => ref
+                        .read(questionFeedControllerProvider.notifier)
+                        .toggleQuestionLike(q),
+                  ),
+                  _EngagementIcon(
+                    icon: Icons.mode_comment_outlined,
+                    count: feedState.commentCountFor(q),
+                    onTap: () async {
+                      final posted = await QuestionCommentsScreen.showModal(
+                        context,
+                        question: q,
+                      );
+                      if (posted && context.mounted) {
+                        ref
+                            .read(questionFeedControllerProvider.notifier)
+                            .incrementCommentCount(q);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -242,7 +281,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 duration: const Duration(milliseconds: 280),
                 child: hasAnswered
                     ? Column(
-                        key: ValueKey('result-${q.number}'),
+                        key: ValueKey(
+                          'result-${q.number}-$percentA-$isMinority',
+                        ),
                         children: [
                           const Text(
                             'あなたは...',
@@ -431,9 +472,19 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                   itemCount: total,
                   onPageChanged: (index) {
                     _nextQuestionTimer?.cancel();
-                    ref
-                        .read(questionFeedControllerProvider.notifier)
-                        .setQuestionIndex(index);
+                    final notifier = ref.read(
+                      questionFeedControllerProvider.notifier,
+                    );
+                    notifier.setQuestionIndex(index);
+                    final q = questions[index];
+                    final feed = ref.read(questionFeedControllerProvider);
+                    final selected =
+                        feed.selectedOptionFor(q.number) ?? q.myAnswer;
+                    if (selected != null) {
+                      Future.microtask(
+                        () => notifier.refreshAnsweredStats([q]),
+                      );
+                    }
                   },
                   itemBuilder: (context, index) {
                     return _buildQuestionPage(
@@ -452,14 +503,54 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     );
   }
 
+  String _feedErrorMessage(Object error) {
+    final text = error.toString();
+    if (text.contains('Connection refused') && AppConfig.usesLocalApiHost) {
+      return 'API（${AppConfig.apiBaseUrl}）に接続できません。\n\n'
+          '別ターミナルで次を実行してください:\n'
+          'cd backend && npm run dev:db\n\n'
+          'または .env の PANDA_TALK_API_BASE_URL を '
+          'deploy 済みの https://….workers.dev に変更してください。';
+    }
+    if (text.contains('Connection refused') || text.contains('Failed host lookup')) {
+      return 'API に接続できません。\n'
+          '.env の PANDA_TALK_API_BASE_URL を確認してください。';
+    }
+    return '質問を読み込めませんでした。\n$text';
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<DummyQuestion>>>(feedQuestionsProvider, (_, next) {
+      next.whenData((questions) {
+        final notifier = ref.read(questionFeedControllerProvider.notifier);
+        notifier.syncAnsweredFromServer(questions);
+        notifier.syncEngagementFromQuestions(questions);
+        Future.microtask(() => notifier.refreshAnsweredStats(questions));
+      });
+    });
+
     final questionsAsync = ref.watch(feedQuestionsProvider);
     final feedState = ref.watch(questionFeedControllerProvider);
     return questionsAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('エラー: $e'))),
+      error: (e, _) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Text(
+              _feedErrorMessage(e),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: AppFontSize.md,
+                color: AppColors.textGray,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ),
       data: (questions) {
         if (questions.isEmpty) {
           return const Scaffold(body: Center(child: Text('まだ表示できる質問がありません')));
@@ -701,6 +792,44 @@ class _OddballScoreCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EngagementIcon extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final VoidCallback? onTap;
+
+  const _EngagementIcon({
+    required this.icon,
+    required this.count,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 48,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.black, size: 24),
+            const SizedBox(height: 2),
+            Text(
+              '$count',
+              style: const TextStyle(
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textGray,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

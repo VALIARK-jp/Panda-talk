@@ -23,13 +23,19 @@ type QuestionStatsRow = {
   count_b: number
 }
 
+type QuestionEngagementRow = {
+  id: string
+  like_count: number
+  comment_count: number
+}
+
 type AnsweredQuestionRow = {
   choice: 'a' | 'b'
   panda_questions: QuestionWithUserRow | null
 }
 
 const QUESTION_SELECT =
-  'id,user_id,text,option_a,option_b,category,created_at,panda_profiles(id,username,avatar_url)'
+  'id,question_number,user_id,text,option_a,option_b,category,created_at,panda_profiles(id,username,avatar_url)'
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -62,12 +68,12 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
       questions = questions.filter((question) => !answeredIds.has(question.id))
     }
 
-    return questions.slice(0, limit)
+    return this.attachEngagementCounts(questions.slice(0, limit))
   }
 
   async getHotFeed(limit: number, cursor?: UUID): Promise<HotQuestion[]> {
     const rows = await this.client.get<HotQuestionRow[]>('panda_hot_questions', {
-      select: 'id,user_id,username,avatar_url,text,option_a,option_b,category,created_at,like_count,comment_count',
+      select: 'id,question_number,user_id,username,avatar_url,text,option_a,option_b,category,created_at,like_count,comment_count',
       order: 'heat_score.desc,created_at.desc',
       limit: Math.max(limit * 3, limit),
     })
@@ -115,7 +121,7 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
     }
 
     const rows = await this.client.get<AnsweredQuestionRow[]>('panda_answers', query)
-    return rows
+    const answered = rows
       .map((row) => {
         if (!row.panda_questions) return null
         const question = toQuestionWithUser(row.panda_questions)
@@ -125,6 +131,8 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
         }
       })
       .filter((question): question is AnsweredQuestion => question !== null)
+
+    return this.attachEngagementCounts(answered)
   }
 
   async findById(id: UUID): Promise<QuestionWithUser | null> {
@@ -160,10 +168,10 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
       order: 'created_at.desc',
       limit,
     })
-    return rows.map(toQuestionWithUser)
+    return this.attachEngagementCounts(rows.map(toQuestionWithUser))
   }
 
-  async create(data: Omit<Question, 'id' | 'createdAt'>): Promise<Question> {
+  async create(data: Omit<Question, 'id' | 'questionNumber' | 'createdAt'>): Promise<Question> {
     const rows = await this.client.insert<QuestionRow>('panda_questions', {
       user_id: data.userId,
       text: data.text,
@@ -194,9 +202,36 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
     await this.client.delete('panda_questions', { id: `eq.${id}` })
   }
 
+  private async attachEngagementCounts<T extends QuestionWithUser>(
+    questions: T[]
+  ): Promise<T[]> {
+    if (questions.length === 0) return questions
+
+    const ids = questions.map((q) => q.id)
+    const rows = await this.client.get<QuestionEngagementRow[]>('panda_hot_questions', {
+      select: 'id,like_count,comment_count',
+      id: `in.(${ids.join(',')})`,
+    })
+    const byId = new Map(
+      rows.map((row) => [
+        row.id,
+        { likeCount: row.like_count ?? 0, commentCount: row.comment_count ?? 0 },
+      ])
+    )
+
+    return questions.map((question) => {
+      const counts = byId.get(question.id)
+      return {
+        ...question,
+        likeCount: counts?.likeCount ?? 0,
+        commentCount: counts?.commentCount ?? 0,
+      }
+    })
+  }
+
   private async findQuestionRow(id: UUID): Promise<QuestionRow | null> {
     const rows = await this.client.get<QuestionRow[]>('panda_questions', {
-      select: 'id,user_id,text,option_a,option_b,category,created_at',
+      select: 'id,question_number,user_id,text,option_a,option_b,category,created_at',
       id: `eq.${id}`,
       limit: 1,
     })

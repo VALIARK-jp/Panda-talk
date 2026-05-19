@@ -21,6 +21,7 @@ export type UserRow = {
 
 export type QuestionRow = {
   id: string
+  question_number: number
   user_id: string
   text: string
   option_a: string
@@ -73,6 +74,7 @@ export function toUser(row: UserRow): User {
 export function toQuestion(row: QuestionRow): Question {
   return {
     id: row.id,
+    questionNumber: row.question_number,
     userId: row.user_id,
     text: row.text,
     optionA: row.option_a,

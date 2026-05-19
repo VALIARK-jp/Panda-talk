@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/dummy_data.dart';
 import '../../infrastructure/providers/repositories.dart';
 
@@ -18,31 +20,44 @@ class CommentController
     return CommentState(question: arg, comments: comments);
   }
 
-  Future<void> toggleLike(String commentId, bool currentIsLiked) async {
+  Future<void> toggleLike(DummyComment comment) async {
+    if (Supabase.instance.client.auth.currentSession == null) {
+      throw StateError('いいねするにはログインが必要です');
+    }
+
     final prev = state;
-    if (prev.value == null) return;
-    
-    // Optimsitic UI update could be done here, but we will rely on refresh for now to ensure consistency, 
-    // or just await and refresh. Let's do simple await and refresh.
-    state = const AsyncValue.loading();
+    final current = prev.value;
+    if (current == null) return;
+
+    final newLiked = !comment.likedByMe;
+    final updatedComments = current.comments.map((c) {
+      if (c.id != comment.id) return c;
+      final likes = newLiked
+          ? c.likes + 1
+          : (c.likes > 0 ? c.likes - 1 : 0);
+      return c.copyWith(likedByMe: newLiked, likes: likes);
+    }).toList();
+
+    state = AsyncValue.data(
+      CommentState(question: arg, comments: updatedComments),
+    );
+
     try {
       await ref.read(commentRepositoryProvider).toggleLike(
             questionNumber: arg.number,
-            commentId: commentId,
-            isLike: !currentIsLiked,
+            commentId: comment.id,
+            isLike: newLiked,
           );
-      ref.invalidateSelf();
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      // Fallback
-      ref.invalidateSelf();
+      state = prev;
+      Error.throwWithStackTrace(e, st);
     }
   }
 
   Future<void> deleteComment(String commentId) async {
     final prev = state;
     if (prev.value == null) return;
-    
+
     state = const AsyncValue.loading();
     try {
       await ref.read(commentRepositoryProvider).deleteComment(
@@ -59,8 +74,7 @@ class CommentController
   Future<void> postComment(String option, String body) async {
     final prev = state;
     if (prev.value == null) return;
-    
-    state = const AsyncValue.loading();
+
     try {
       await ref.read(commentRepositoryProvider).postComment(
             questionNumber: arg.number,
@@ -69,9 +83,9 @@ class CommentController
             question: arg,
           );
       ref.invalidateSelf();
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (e) {
       ref.invalidateSelf();
+      rethrow;
     }
   }
 }

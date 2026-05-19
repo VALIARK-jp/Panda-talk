@@ -4,7 +4,11 @@ import type { Comment, AnswerChoice } from '../../entities/index'
 export class GetCommentsUseCase {
   constructor(private commentRepo: ICommentRepository) {}
 
-  async execute(questionId: string, choice?: AnswerChoice): Promise<Comment[]> {
-    return this.commentRepo.findByQuestion(questionId, choice)
+  async execute(
+    questionId: string,
+    choice?: AnswerChoice,
+    viewerUserId?: string
+  ): Promise<Comment[]> {
+    return this.commentRepo.findByQuestion(questionId, choice, viewerUserId)
   }
 }

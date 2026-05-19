@@ -1,4 +1,4 @@
-import type { UUID, MatchResult, MatchScore, User } from '../../domain/entities/index'
+import type { CompareAnswer, UUID, MatchResult, MatchScore, User } from '../../domain/entities/index'
 import type { IMatchRepository } from '../../domain/repositories/IMatchRepository'
 
 const usersData: User[] = [
@@ -115,6 +115,32 @@ export class MockMatchRepository implements IMatchRepository {
           (s.userAId === userBId && s.userBId === userAId)
       ) ?? null
     )
+  }
+
+  async getCompareAnswers(userAId: UUID, userBId: UUID): Promise<CompareAnswer[]> {
+    return [
+      {
+        questionId: 'mock-question-1',
+        question: '休日は外出派？家派？',
+        mine: '外出派',
+        theirs: '外出派',
+        match: true,
+      },
+      {
+        questionId: 'mock-question-2',
+        question: '朝型？夜型？',
+        mine: '夜型',
+        theirs: '夜型',
+        match: true,
+      },
+      {
+        questionId: 'mock-question-3',
+        question: '旅行は計画派？ノープラン派？',
+        mine: '計画派',
+        theirs: 'ノープラン派',
+        match: false,
+      },
+    ]
   }
 
   async upsert(userAId: UUID, userBId: UUID, isSame: boolean): Promise<void> {

@@ -167,25 +167,65 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        ...friendState.searchResults.map(
-          (user) => _FriendTile(
-            user: user,
-            trailing: friendState.requestedUserIds.contains(user.id)
-                ? const _RequestedBadge()
-                : PandaButton(
-                    label: '申請',
-                    width: 96,
-                    onTap: () => ref
-                        .read(friendControllerProvider.notifier)
-                        .sendFriendRequest(user.id),
-                  ),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
+        if (friendState.searchResults.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.xl),
+            child: _FriendSearchEmptyState(),
+          )
+        else
+          ...friendState.searchResults.map(
+            (user) => _FriendTile(
+              user: user,
+              trailing: friendState.requestedUserIds.contains(user.id)
+                  ? const _RequestedBadge()
+                  : PandaButton(
+                      label: '申請',
+                      width: 96,
+                      onTap: () => ref
+                          .read(friendControllerProvider.notifier)
+                          .sendFriendRequest(user.id),
+                    ),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
+              ),
             ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _FriendSearchEmptyState extends StatelessWidget {
+  const _FriendSearchEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PandaAvatar(size: 64),
+          SizedBox(height: AppSpacing.md),
+          Text(
+            '見つかりませんでした',
+            style: TextStyle(
+              fontSize: AppFontSize.md,
+              fontWeight: FontWeight.w800,
+              color: AppColors.black,
+            ),
+          ),
+          SizedBox(height: AppSpacing.sm),
+          Text(
+            '@usernameを変えて検索してみてください',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: AppFontSize.sm,
+              color: AppColors.textGray,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

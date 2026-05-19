@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -178,13 +179,42 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
       if (!mounted) return;
       await widget.onComplete();
-    } catch (e) {
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('ProfileSetup submit failed: $e\n$st');
+      }
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _errorMessage = '保存に失敗しました。もう一度お試しください';
+        _errorMessage = _messageForSubmitError(e);
       });
     }
+  }
+
+  String _messageForSubmitError(Object error) {
+    final text = error.toString();
+    if (text.contains('SocketException') ||
+        text.contains('Connection refused') ||
+        text.contains('Failed host lookup')) {
+      return 'API に接続できません。'
+          'シミュレータなら backend を `npm run dev:db` で起動するか、'
+          '.env の PANDA_TALK_API_BASE_URL を deploy 済み HTTPS にしてください。';
+    }
+    if (text.contains('StorageException') ||
+        text.contains('Bucket not found') ||
+        text.contains('row-level security')) {
+      return 'アイコンの保存に失敗しました。'
+          'avatars 用マイグレーション（20260518120000）が valiark-dev に適用されているか確認してください。';
+    }
+    if (text.contains('CONFLICT') ||
+        text.contains('duplicate key') ||
+        text.contains('unique constraint')) {
+      return 'このユーザーコードは既に使われています';
+    }
+    if (text.contains('NOT_FOUND') || text.contains('User not found')) {
+      return 'プロフィール行がありません。一度ログアウトしてから再度ログインしてください。';
+    }
+    return '保存に失敗しました。もう一度お試しください';
   }
 
   @override

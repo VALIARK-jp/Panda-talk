@@ -1,21 +1,18 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import { handleError } from '../middleware/errorHandler'
-import {
-  sendFriendRequestUseCase,
-  acceptFriendRequestUseCase,
-  deleteFriendshipUseCase,
-  getFriendsUseCase,
-} from '../../infrastructure/mock/container'
+import { createContainer } from '../../infrastructure/container'
+import type { Env } from '../../infrastructure/env'
 
 type Variables = { userId: string }
 
-const app = new Hono<{ Variables: Variables }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // GET /friendships - フレンド一覧（認証必要）
 app.get('/', authMiddleware, async (c) => {
   try {
     const userId = c.get('userId')
+    const { getFriendsUseCase } = createContainer(c.env)
     const [friends, pendingReceived] = await Promise.all([
       getFriendsUseCase.getFriends(userId),
       getFriendsUseCase.getPendingReceived(userId),
@@ -31,6 +28,7 @@ app.post('/:userId', authMiddleware, async (c) => {
   try {
     const senderId = c.get('userId')
     const targetId = c.req.param('userId')
+    const { sendFriendRequestUseCase } = createContainer(c.env)
     const friendship = await sendFriendRequestUseCase.execute(senderId, targetId)
     return c.json({ friendship }, 201)
   } catch (err) {
@@ -43,6 +41,7 @@ app.patch('/:userId/accept', authMiddleware, async (c) => {
   try {
     const acceptorId = c.get('userId')
     const requesterId = c.req.param('userId')
+    const { acceptFriendRequestUseCase } = createContainer(c.env)
     const friendship = await acceptFriendRequestUseCase.execute(acceptorId, requesterId)
     return c.json({ friendship })
   } catch (err) {
@@ -55,6 +54,7 @@ app.delete('/:userId', authMiddleware, async (c) => {
   try {
     const userId = c.get('userId')
     const targetId = c.req.param('userId')
+    const { deleteFriendshipUseCase } = createContainer(c.env)
     await deleteFriendshipUseCase.execute(userId, targetId)
     return c.json({ success: true })
   } catch (err) {

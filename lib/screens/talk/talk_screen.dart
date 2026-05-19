@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/talk_providers.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/group_card.dart';
+import '../../widgets/login_required_gate.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
 import 'direct_chat_screen.dart';
 import 'group_chat_screen.dart';
 
 class TalkScreen extends ConsumerStatefulWidget {
-  const TalkScreen({super.key});
+  const TalkScreen({super.key, this.onOpenMatch});
+
+  final VoidCallback? onOpenMatch;
 
   @override
   ConsumerState<TalkScreen> createState() => _TalkScreenState();
@@ -22,6 +27,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user =
+        ref.watch(authUserProvider).valueOrNull ??
+        Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return const LoginRequiredGate(featureLabel: 'トーク');
+    }
+
     final groupsAsync = ref.watch(groupsProvider);
     final threadsAsync = ref.watch(directThreadsProvider);
     return Scaffold(
@@ -61,41 +73,55 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
                         error: (e, _) => Center(child: Text('エラー: $e')),
-                        data: (threads) => _DmList(threads: threads),
+                        data: (threads) => _DmList(
+                          threads: threads,
+                          onOpenMatch: widget.onOpenMatch,
+                        ),
                       )
                     : groupsAsync.when(
                         loading: () =>
                             const Center(child: CircularProgressIndicator()),
                         error: (e, _) => Center(child: Text('エラー: $e')),
-                        data: (groups) => ListView.builder(
-                          itemCount: groups.length + 1,
-                          itemBuilder: (context, i) {
-                            if (i == 0) {
-                              return const Padding(
-                                padding: EdgeInsets.only(bottom: AppSpacing.sm),
-                                child: Text(
-                                  '所属グループ。新規登録時に自動参加し、毎月1日に再編成されます。',
-                                  style: TextStyle(
-                                    fontSize: AppFontSize.sm,
-                                    color: AppColors.textGray,
+                        data: (groups) {
+                          if (groups.isEmpty) {
+                            return _TalkEmptyState(
+                              title: 'まだグループがありません',
+                              body: '回答が増えると、合致度に応じたグループに入りやすくなります。',
+                              onOpenMatch: widget.onOpenMatch,
+                            );
+                          }
+                          return ListView.builder(
+                            itemCount: groups.length + 1,
+                            itemBuilder: (context, i) {
+                              if (i == 0) {
+                                return const Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: AppSpacing.sm,
+                                  ),
+                                  child: Text(
+                                    '所属グループ。新規登録時に自動参加し、毎月1日に再編成されます。',
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.sm,
+                                      color: AppColors.textGray,
+                                    ),
+                                  ),
+                                );
+                              }
+                              final g = groups[i - 1];
+                              return GroupCard(
+                                name: g.name,
+                                avgMatchRate: g.avgMatchRate,
+                                members: g.members,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => GroupChatScreen(group: g),
                                   ),
                                 ),
                               );
-                            }
-                            final g = groups[i - 1];
-                            return GroupCard(
-                              name: g.name,
-                              avgMatchRate: g.avgMatchRate,
-                              members: g.members,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => GroupChatScreen(group: g),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                            },
+                          );
+                        },
                       ),
               ),
             ],
@@ -108,10 +134,19 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
 
 class _DmList extends StatelessWidget {
   final List<DummyDirectThread> threads;
-  const _DmList({required this.threads});
+  final VoidCallback? onOpenMatch;
+  const _DmList({required this.threads, required this.onOpenMatch});
 
   @override
   Widget build(BuildContext context) {
+    if (threads.isEmpty) {
+      return _TalkEmptyState(
+        title: 'まだトークがありません',
+        body: '合致度の高い相手を見つけて、友達になったらメッセージを始めましょう。',
+        onOpenMatch: onOpenMatch,
+      );
+    }
+
     return ListView.builder(
       itemCount: threads.length,
       itemBuilder: (context, i) {
@@ -199,6 +234,73 @@ class _DmList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _TalkEmptyState extends StatelessWidget {
+  const _TalkEmptyState({
+    required this.title,
+    required this.body,
+    required this.onOpenMatch,
+  });
+
+  final String title;
+  final String body;
+  final VoidCallback? onOpenMatch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PandaAvatar(size: 64),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: AppFontSize.lg,
+                fontWeight: FontWeight.w900,
+                color: AppColors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              body,
+              style: const TextStyle(
+                fontSize: AppFontSize.md,
+                height: 1.5,
+                color: AppColors.textGray,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              height: 44,
+              child: ElevatedButton(
+                onPressed: onOpenMatch,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.black,
+                  foregroundColor: AppColors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: AppFontSize.md,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                child: const Text('合致度の高い友達を探す'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

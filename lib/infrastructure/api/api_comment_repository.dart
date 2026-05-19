@@ -27,13 +27,15 @@ class ApiCommentRepository implements CommentRepository {
 
   String? _accessToken;
 
+  bool get _hasSession => Supabase.instance.client.auth.currentSession != null;
+
   @override
   Future<List<DummyComment>> getComments(DummyQuestion question) async {
     if (question.apiId == null) return [];
 
     final data = await _getJson(
       Uri.parse('$_apiBaseUrl/questions/${question.apiId}/comments'),
-      auth: true,
+      auth: _hasSession,
     );
 
     final commentsData = data['comments'] as List<dynamic>? ?? [];
@@ -50,7 +52,7 @@ class ApiCommentRepository implements CommentRepository {
         body: commentMap['body'] as String,
         likes: commentMap['likeCount'] as int? ?? 0,
         isMine: commentMap['userId'] == currentUserId,
-        likedByMe: false, // Not supported by backend yet
+        likedByMe: commentMap['likedByMe'] as bool? ?? false,
       );
     }).toList();
   }

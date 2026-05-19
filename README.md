@@ -22,9 +22,9 @@
 
 | いつ | `PANDA_TALK_API_BASE_URL` | Worker（Mac） |
 |------|---------------------------|----------------|
-| **普段（シミュレータ）** | `http://localhost:8787` | `cd backend && npm run dev:db` |
-| **実機**（位置情報など） | `https://panda-talk-backend.valiark.workers.dev` | 不要（クラウド dev） |
-| **実機 × 最新ローカル API** | ngrok URL、またはそのときだけ `npm run deploy` | `dev:db` + ngrok など |
+| **普段（シミュレータ）** | `http://localhost:8787` | `cd backend && npm run dev` |
+| **実機** | `https://panda-talk-backend.valiark.workers.dev` | 不要（クラウド dev） |
+| **実機 × 最新ローカル API** | ngrok URL、またはそのときだけ `npm run deploy` | `dev` + ngrok など |
 
 - **実機にスマホの IP を書く運用はしない**（baselink のクラウド dev API と同じ）。
 - **API を変えるたびの deploy は不要**。詳細は [docs/14_development_api_and_devices.md](docs/14_development_api_and_devices.md)。

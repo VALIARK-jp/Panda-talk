@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/api_error_messages.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/friend_providers.dart';
 import '../../presentation/providers/match_providers.dart';
 import '../../widgets/guest_login_button.dart';
+import '../../widgets/login_required_gate.dart';
 import '../../widgets/match_user_tile.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
@@ -13,7 +16,9 @@ import '../friends/friends_screen.dart';
 import 'user_detail_screen.dart';
 
 class MatchScreen extends ConsumerStatefulWidget {
-  const MatchScreen({super.key});
+  const MatchScreen({super.key, this.onOpenDiagnosis});
+
+  final VoidCallback? onOpenDiagnosis;
 
   @override
   ConsumerState<MatchScreen> createState() => _MatchScreenState();
@@ -38,6 +43,13 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user =
+        ref.watch(authUserProvider).valueOrNull ??
+        Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      return const LoginRequiredGate(featureLabel: 'マッチ');
+    }
+
     final searching = _searchQuery.trim().isNotEmpty;
     final friendStateAsync = ref.watch(friendControllerProvider);
 
@@ -156,7 +168,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                               .sendFriendRequest(user.id),
                         ),
                         loading: () => const Center(
-                          child: CircularProgressIndicator(color: AppColors.black),
+                          child: CircularProgressIndicator(
+                            color: AppColors.black,
+                          ),
                         ),
                         error: (e, st) => Center(
                           child: Text(
@@ -174,23 +188,30 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        data: (users) => ListView.builder(
-                          itemCount: users.length,
-                          itemBuilder: (context, i) {
-                            final u = users[i];
-                            return MatchUserTile(
-                              rank: i + 1,
-                              name: u.name,
-                              matchRate: u.matchRate,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => UserDetailScreen(user: u),
-                                ),
-                              ),
+                        data: (users) {
+                          if (users.isEmpty) {
+                            return _MatchEmptyState(
+                              onOpenDiagnosis: widget.onOpenDiagnosis,
                             );
-                          },
-                        ),
+                          }
+                          return ListView.builder(
+                            itemCount: users.length,
+                            itemBuilder: (context, i) {
+                              final u = users[i];
+                              return MatchUserTile(
+                                rank: i + 1,
+                                name: u.name,
+                                matchRate: u.matchRate,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => UserDetailScreen(user: u),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -198,6 +219,22 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MatchEmptyState extends StatelessWidget {
+  const _MatchEmptyState({required this.onOpenDiagnosis});
+
+  final VoidCallback? onOpenDiagnosis;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EmptyActionPanel(
+      title: 'まだ候補が少ないです',
+      body: '質問に答えるほど、合致度の高い相手や真逆の相手が見つかりやすくなります。',
+      actionLabel: '診断で回答を増やす',
+      onAction: onOpenDiagnosis,
     );
   }
 }
@@ -219,9 +256,29 @@ class _FriendSearchResults extends StatelessWidget {
   Widget build(BuildContext context) {
     if (users.isEmpty) {
       return const Center(
-        child: Text(
-          '該当するユーザーがいません',
-          style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PandaAvatar(size: 64),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              '該当するユーザーがいません',
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                fontWeight: FontWeight.w800,
+                color: AppColors.black,
+              ),
+            ),
+            SizedBox(height: AppSpacing.sm),
+            Text(
+              '@usernameを変えて検索してみてください',
+              style: TextStyle(
+                fontSize: AppFontSize.sm,
+                color: AppColors.textGray,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
@@ -297,6 +354,77 @@ class _FriendSearchResults extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _EmptyActionPanel extends StatelessWidget {
+  const _EmptyActionPanel({
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final String title;
+  final String body;
+  final String actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const PandaAvatar(size: 64),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: AppFontSize.lg,
+                fontWeight: FontWeight.w900,
+                color: AppColors.black,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              body,
+              style: const TextStyle(
+                fontSize: AppFontSize.md,
+                height: 1.5,
+                color: AppColors.textGray,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              height: 44,
+              child: ElevatedButton(
+                onPressed: onAction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.black,
+                  foregroundColor: AppColors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                ),
+                child: Text(
+                  actionLabel,
+                  style: const TextStyle(
+                    fontSize: AppFontSize.md,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

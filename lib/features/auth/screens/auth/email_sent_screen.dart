@@ -29,8 +29,9 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _authSubscription =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      data,
+    ) {
       switch (data.event) {
         case AuthChangeEvent.signedIn:
         case AuthChangeEvent.userUpdated:
@@ -67,8 +68,10 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(context, rootNavigator: true)
-            .popUntil((route) => route.isFirst);
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).popUntil((route) => route.isFirst);
       });
     });
   }
@@ -105,11 +108,15 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
     return Scaffold(
       backgroundColor: AuthColors.formScaffoldBg,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: '戻る',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: const Text('メール確認'),
         backgroundColor: AuthColors.chrome,
         foregroundColor: AppColors.white,
         elevation: 0,
-        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: Padding(
@@ -232,7 +239,7 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'ログイン画面に戻る',
+                  'メール入力に戻る',
                   style: TextStyle(
                     color: AuthColors.mutedOnForm,
                     fontSize: AppFontSize.md,

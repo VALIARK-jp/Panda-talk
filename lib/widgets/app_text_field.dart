@@ -4,6 +4,7 @@ import '../core/design_tokens.dart';
 class AppTextField extends StatelessWidget {
   final String label;
   final String? initialValue;
+  final String? hintText;
   final int maxLines;
   final TextEditingController? controller;
 
@@ -11,6 +12,7 @@ class AppTextField extends StatelessWidget {
     super.key,
     required this.label,
     this.initialValue,
+    this.hintText,
     this.maxLines = 1,
     this.controller,
   });
@@ -38,6 +40,11 @@ class AppTextField extends StatelessWidget {
             color: AppColors.black,
           ),
           decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              fontSize: AppFontSize.lg,
+              color: AppColors.textGray,
+            ),
             filled: true,
             fillColor: AppColors.softGray,
             border: OutlineInputBorder(

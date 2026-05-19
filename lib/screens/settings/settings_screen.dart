@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../presentation/providers/auth_providers.dart';
+import '../../presentation/providers/question_providers.dart';
 import '../../presentation/providers/settings_providers.dart';
 import '../../widgets/panda_button.dart';
 
@@ -79,6 +80,8 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () async {
                 await ref.read(authServiceProvider).signOut();
                 ref.read(guestModeProvider.notifier).state = false;
+                ref.invalidate(questionFeedControllerProvider);
+                ref.invalidate(feedQuestionsProvider);
                 if (context.mounted) Navigator.pop(context);
               },
             ),

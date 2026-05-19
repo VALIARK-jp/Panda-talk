@@ -35,6 +35,7 @@ import { SearchQuestionsUseCase } from '../domain/usecases/questions/SearchQuest
 import { GetQuestionStatsUseCase } from '../domain/usecases/questions/GetQuestionStatsUseCase'
 import { AnswerQuestionUseCase } from '../domain/usecases/answers/AnswerQuestionUseCase'
 import { GetMatchesUseCase } from '../domain/usecases/matches/GetMatchesUseCase'
+import { GetCompareAnswersUseCase } from '../domain/usecases/matches/GetCompareAnswersUseCase'
 import { GetProfileUseCase } from '../domain/usecases/users/GetProfileUseCase'
 import { UpdateProfileUseCase } from '../domain/usecases/users/UpdateProfileUseCase'
 import { SearchUsersUseCase } from '../domain/usecases/users/SearchUsersUseCase'
@@ -132,6 +133,7 @@ export function createContainer(env?: Env) {
     getQuestionStatsUseCase: new GetQuestionStatsUseCase(questionRepo),
     answerQuestionUseCase: new AnswerQuestionUseCase(answerRepo, matchRepo, questionRepo),
     getMatchesUseCase: new GetMatchesUseCase(matchRepo),
+    getCompareAnswersUseCase: new GetCompareAnswersUseCase(matchRepo),
     ensureUserProfileUseCase: new EnsureUserProfileUseCase(userRepo),
     getProfileUseCase: new GetProfileUseCase(userRepo),
     updateProfileUseCase: new UpdateProfileUseCase(userRepo),

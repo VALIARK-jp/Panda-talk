@@ -57,7 +57,7 @@ class ValiarkAuthNoticeBlock extends StatelessWidget {
         ],
         Center(
           child: SvgPicture.asset(
-            'assets/images/valiark.logo.svg',
+            'assets/images/logo/valiark_logo_right.svg',
             height: 28,
             fit: BoxFit.contain,
           ),

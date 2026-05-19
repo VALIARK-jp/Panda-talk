@@ -18,8 +18,12 @@ export class SupabaseCommentRepository implements ICommentRepository {
   private readonly table = 'panda_comments'
   private readonly view = 'panda_comment_summaries'
 
-  async findByQuestion(questionId: UUID, choice?: AnswerChoice): Promise<Comment[]> {
-    const query: any = {
+  async findByQuestion(
+    questionId: UUID,
+    choice?: AnswerChoice,
+    viewerUserId?: UUID
+  ): Promise<Comment[]> {
+    const query: Record<string, string> = {
       select: '*',
       question_id: `eq.${questionId}`,
       order: 'created_at.desc',
@@ -29,7 +33,26 @@ export class SupabaseCommentRepository implements ICommentRepository {
     }
 
     const rows = await this.client.get<CommentRow[]>(this.view, query)
-    return rows.map(mapComment)
+    const comments = rows.map(mapComment)
+    if (!viewerUserId || comments.length === 0) {
+      return comments.map((comment) => ({ ...comment, likedByMe: false }))
+    }
+
+    const commentIds = comments.map((comment) => comment.id).join(',')
+    const likedRows = await this.client.get<Array<{ comment_id: string }>>(
+      'panda_comment_likes',
+      {
+        select: 'comment_id',
+        user_id: `eq.${viewerUserId}`,
+        comment_id: `in.(${commentIds})`,
+      }
+    )
+    const likedIds = new Set(likedRows.map((row) => row.comment_id))
+
+    return comments.map((comment) => ({
+      ...comment,
+      likedByMe: likedIds.has(comment.id),
+    }))
   }
 
   async findById(id: UUID): Promise<Comment | null> {

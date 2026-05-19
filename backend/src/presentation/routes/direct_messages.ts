@@ -1,19 +1,18 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import { handleError } from '../middleware/errorHandler'
-import {
-  getDirectMessagesUseCase,
-  sendDirectMessageUseCase,
-} from '../../infrastructure/mock/container'
+import { createContainer } from '../../infrastructure/container'
+import type { Env } from '../../infrastructure/env'
 
 type Variables = { userId: string }
 
-const app = new Hono<{ Variables: Variables }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // GET /direct_messages/threads - DMスレッド一覧（認証必要）
 app.get('/threads', authMiddleware, async (c) => {
   try {
     const userId = c.get('userId')
+    const { getDirectMessagesUseCase } = createContainer(c.env)
     const threads = await getDirectMessagesUseCase.getThreads(userId)
     return c.json({ threads })
   } catch (err) {
@@ -28,6 +27,7 @@ app.get('/:userId', authMiddleware, async (c) => {
     const partnerId = c.req.param('userId')
     const limit = Number(c.req.query('limit') ?? '50')
     const cursor = c.req.query('cursor')
+    const { getDirectMessagesUseCase } = createContainer(c.env)
     const messages = await getDirectMessagesUseCase.getConversation(myId, partnerId, limit, cursor)
     return c.json({ messages })
   } catch (err) {
@@ -43,6 +43,7 @@ app.post('/', authMiddleware, async (c) => {
       receiverId: string
       body: string
     }>()
+    const { sendDirectMessageUseCase } = createContainer(c.env)
     const message = await sendDirectMessageUseCase.execute({
       senderId,
       receiverId: body.receiverId,

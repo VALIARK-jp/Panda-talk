@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import { handleError } from '../middleware/errorHandler'
-import { getMatchesUseCase } from '../../infrastructure/mock/container'
+import { createContainer } from '../../infrastructure/container'
+import type { Env } from '../../infrastructure/env'
 
 type Variables = { userId: string }
 
-const app = new Hono<{ Variables: Variables }>()
+const app = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // GET /matches?type=similar|opposite|middle&limit=20&cursor=... （認証必要）
 app.get('/', authMiddleware, async (c) => {
@@ -22,6 +23,7 @@ app.get('/', authMiddleware, async (c) => {
       )
     }
 
+    const { getMatchesUseCase } = createContainer(c.env)
     const matches = await getMatchesUseCase.execute({
       userId,
       type: typeParam,
@@ -29,6 +31,19 @@ app.get('/', authMiddleware, async (c) => {
       cursor,
     })
     return c.json({ matches })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// GET /matches/:userId/answers - 2人の共通回答比較（認証必要）
+app.get('/:userId/answers', authMiddleware, async (c) => {
+  try {
+    const myId = c.get('userId')
+    const partnerId = c.req.param('userId')
+    const { getCompareAnswersUseCase } = createContainer(c.env)
+    const answers = await getCompareAnswersUseCase.execute(myId, partnerId)
+    return c.json({ answers })
   } catch (err) {
     return handleError(err, c)
   }

@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
 import '../../core/dummy_data.dart';
 import '../question_repository.dart';
+import '../supabase/supabase_answer_submit.dart';
 
 class ApiQuestionRepository implements QuestionRepository {
   ApiQuestionRepository({http.Client? client})
@@ -28,8 +30,7 @@ class ApiQuestionRepository implements QuestionRepository {
 
   String? _accessToken;
 
-  bool get _hasSession =>
-      Supabase.instance.client.auth.currentSession != null;
+  bool get _hasSession => Supabase.instance.client.auth.currentSession != null;
 
   @override
   Future<List<DummyQuestion>> getFeedQuestions() async {
@@ -158,22 +159,65 @@ class ApiQuestionRepository implements QuestionRepository {
     required String selectedOption,
   }) async {
     if (question.apiId == null || !_hasSession) {
+      assert(() {
+        debugPrint(
+          'ApiQuestionRepository.answerQuestion: skipped POST '
+          '(apiId=${question.apiId}, session=$_hasSession)',
+        );
+        return true;
+      }());
       return question.percentA;
     }
 
     final selectedA = selectedOption == question.optionA;
-    final data = await _postJson(
-      Uri.parse('$_apiBaseUrl/answers'),
-      body: {'questionId': question.apiId, 'choice': selectedA ? 'a' : 'b'},
-      auth: true,
-    );
 
-    final stats = data['stats'] as Map<String, dynamic>;
-    final countA = stats['countA'] as int? ?? 0;
-    final countB = stats['countB'] as int? ?? 0;
-    final total = countA + countB;
-    if (total == 0) return question.percentA;
-    return (countA / total * 100).round();
+    try {
+      final response = await _client.post(
+        Uri.parse('$_apiBaseUrl/answers'),
+        headers: await _headers(auth: true),
+        body: jsonEncode({
+          'questionId': question.apiId,
+          'choice': selectedA ? 'a' : 'b',
+        }),
+      );
+
+      // 二重タップや端末進捗のずれで既に回答済みのときは stats だけ取り直す。
+      if (response.statusCode == 409 &&
+          response.body.contains('Already answered')) {
+        return _getStats(question.apiId!);
+      }
+
+      if (kDebugMode && response.statusCode == 201) {
+        debugPrint(
+          'ApiQuestionRepository.answerQuestion: saved '
+          'questionId=${question.apiId}',
+        );
+      }
+
+      final data = _decode(response);
+      final stats = data['stats'] as Map<String, dynamic>;
+      final countA = stats['countA'] as int? ?? 0;
+      final countB = stats['countB'] as int? ?? 0;
+      final total = countA + countB;
+      if (total == 0) return question.percentA;
+      return (countA / total * 100).round();
+    } catch (e) {
+      if (AppConfig.usesLocalApiHost && _isConnectionError(e)) {
+        return submitAnswerViaSupabase(
+          questionId: question.apiId!,
+          selectedA: selectedA,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  bool _isConnectionError(Object e) {
+    final msg = e.toString();
+    return msg.contains('Connection refused') ||
+        msg.contains('Failed host lookup') ||
+        msg.contains('SocketException') ||
+        msg.contains('ClientException');
   }
 
   Future<List<DummyQuestion>> _questionsFromResponse(
@@ -192,7 +236,7 @@ class ApiQuestionRepository implements QuestionRepository {
 
     return DummyQuestion(
       apiId: id,
-      number: _questionNumberFromId(id),
+      number: _questionNumberFromJson(json, id),
       category: json['category'] as String? ?? 'その他',
       authorName: poster?['username'] as String? ?? 'unknown',
       authorUsername: poster?['username'] as String? ?? 'unknown',
@@ -201,7 +245,21 @@ class ApiQuestionRepository implements QuestionRepository {
       optionB: json['optionB'] as String,
       myAnswer: json['myAnswer'] as String?,
       percentA: stats,
+      likeCount: json['likeCount'] as int? ?? 0,
+      commentCount: json['commentCount'] as int? ?? 0,
     );
+  }
+
+  @override
+  Future<int> fetchQuestionPercentA(String questionId) async {
+    try {
+      return await _getStats(questionId);
+    } catch (e) {
+      if (AppConfig.usesLocalApiHost && _isConnectionError(e)) {
+        return fetchQuestionPercentAFromSupabase(questionId);
+      }
+      rethrow;
+    }
   }
 
   Future<int> _getStats(String questionId) async {
@@ -216,7 +274,15 @@ class ApiQuestionRepository implements QuestionRepository {
     return (countA / total * 100).round();
   }
 
-  int _questionNumberFromId(String id) {
+  int _questionNumberFromJson(Map<String, dynamic> json, String id) {
+    final number = json['questionNumber'] ?? json['question_number'];
+    if (number is int) return number;
+    if (number is num) return number.toInt();
+    if (number is String) {
+      final parsed = int.tryParse(number);
+      if (parsed != null) return parsed;
+    }
+
     final tail = id.split('-').last;
     final decimal = int.tryParse(tail);
     if (decimal != null) return decimal;

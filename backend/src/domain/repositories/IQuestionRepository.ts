@@ -14,7 +14,7 @@ export interface IQuestionRepository {
   findById(id: UUID): Promise<QuestionWithUser | null>
   getStats(questionId: UUID): Promise<QuestionStats>
   search(keyword: string, limit: number): Promise<QuestionWithUser[]>
-  create(data: Omit<Question, 'id' | 'createdAt'>): Promise<Question>
+  create(data: Omit<Question, 'id' | 'questionNumber' | 'createdAt'>): Promise<Question>
   update(
     id: UUID,
     data: Partial<Pick<Question, 'text' | 'optionA' | 'optionB' | 'category'>>

@@ -234,11 +234,11 @@ export interface IQuestionRepository {
   "questions": [
     {
       "id": "uuid",
+      "questionNumber": 1,
       "text": "朝型？夜型？",
       "optionA": "朝型",
       "optionB": "夜型",
       "category": "生活",
-      "number": 1256,
       "createdAt": "2026-01-01T00:00:00Z"
     }
   ],

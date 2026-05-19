@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/dummy_data.dart';
@@ -88,7 +89,10 @@ class SupabaseProfileRepository implements ProfileRepository {
           .count(CountOption.exact)
           .eq(column, userId);
       return result;
-    } catch (_) {
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('SupabaseProfileRepository._count($table): $e\n$st');
+      }
       return 0;
     }
   }

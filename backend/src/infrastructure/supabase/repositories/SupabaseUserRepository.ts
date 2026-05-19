@@ -50,7 +50,7 @@ export class SupabaseUserRepository implements IUserRepository {
       select: '*',
       id: `in.(${ids.join(',')})`,
     })
-    return rows.map(mapUser)
+    return rows.map((row) => mapUser(row))
   }
 
   async findByUsername(username: string): Promise<User | null> {
@@ -69,7 +69,7 @@ export class SupabaseUserRepository implements IUserRepository {
       order: 'username.asc',
       limit,
     })
-    return rows.map(mapUser)
+    return rows.map((row) => mapUser(row))
   }
 
   async isUsernameTaken(username: string): Promise<boolean> {

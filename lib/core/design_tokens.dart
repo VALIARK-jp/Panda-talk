@@ -6,6 +6,7 @@ class AppColors {
   static const softGray = Color(0xFFF5F5F5);
   static const borderGray = Color(0xFFE5E5E5);
   static const textGray = Color(0xFF777777);
+  static const likeRed = Color(0xFFE53935);
 }
 
 class AppRadius {

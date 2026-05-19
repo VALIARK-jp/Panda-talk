@@ -34,10 +34,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             if (_mode != _OnboardingMode.start)
               Align(
                 alignment: Alignment.centerLeft,
-                child: IconButton(
+                child: TextButton.icon(
                   onPressed: () =>
                       setState(() => _mode = _OnboardingMode.start),
-                  icon: const Icon(Icons.arrow_back, color: AppColors.black),
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                  label: const Text('戻る'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 44),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(
+                      fontSize: AppFontSize.md,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               )
             else
@@ -46,20 +57,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: AppSpacing.md),
             Image.asset(
               'assets/images/logo.jpg',
-              height: 120,
+              height: 240,
               fit: BoxFit.contain,
             ),
             const SizedBox(height: AppSpacing.md),
-            const Text(
-              'パンダトーク',
-              style: TextStyle(
-                fontSize: AppFontSize.xxl,
-                fontWeight: FontWeight.w900,
-                color: AppColors.black,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
+
             Text(
               _title,
               style: const TextStyle(

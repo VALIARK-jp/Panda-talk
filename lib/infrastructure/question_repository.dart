@@ -28,4 +28,7 @@ abstract class QuestionRepository {
     required DummyQuestion question,
     required String selectedOption,
   });
+
+  /// 質問ごとの最新集計（A 側の割合 0–100）。
+  Future<int> fetchQuestionPercentA(String questionId);
 }

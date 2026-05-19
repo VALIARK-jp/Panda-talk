@@ -1,10 +1,12 @@
 {
   "name": "panda-talk-backend",
   "scripts": {
-    "dev": "wrangler dev",
-    "dev:lan": "wrangler dev --ip 0.0.0.0",
+    "dev": "node scripts/dev-with-supabase.mjs",
+    "dev:lan": "WRANGLER_DEV_IP=0.0.0.0 node scripts/dev-with-supabase.mjs",
     "dev:db": "node scripts/dev-with-supabase.mjs",
     "dev:db:lan": "WRANGLER_DEV_IP=0.0.0.0 node scripts/dev-with-supabase.mjs",
+    "dev:mock": "wrangler dev --var REPOSITORY_MODE:mock",
+    "dev:mock:lan": "wrangler dev --ip 0.0.0.0 --var REPOSITORY_MODE:mock",
     "deploy": "wrangler deploy",
     "seed:dev": "node ../scripts/seed-supabase-dev.mjs"
   },

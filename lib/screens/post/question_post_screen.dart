@@ -16,11 +16,24 @@ class QuestionPostScreen extends ConsumerStatefulWidget {
 }
 
 class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
-  final _questionController = TextEditingController(text: '恋愛は追う派？追われる派？');
-  final _optionAController = TextEditingController(text: '追う派');
-  final _optionBController = TextEditingController(text: '追われる派');
+  final _questionController = TextEditingController();
+  final _optionAController = TextEditingController();
+  final _optionBController = TextEditingController();
   String _category = '恋愛';
-  final _categories = ['恋愛', '生活', '性格', '旅行', '仕事', '食べ物'];
+  final _categories = [
+    '恋愛',
+    '生活',
+    '性格',
+    '仕事',
+    '学校',
+    '友達',
+    '家族',
+    'お金',
+    '趣味',
+    '旅行',
+    '食べ物',
+    'その他',
+  ];
 
   @override
   void dispose() {
@@ -31,12 +44,22 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
   }
 
   Future<void> _postQuestion() async {
+    final text = _questionController.text.trim();
+    final optionA = _optionAController.text.trim();
+    final optionB = _optionBController.text.trim();
+    if (text.isEmpty || optionA.isEmpty || optionB.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('質問文と選択肢を入力してください')));
+      return;
+    }
+
     await ref
         .read(questionPostControllerProvider.notifier)
         .postQuestion(
-          text: _questionController.text,
-          optionA: _optionAController.text,
-          optionB: _optionBController.text,
+          text: text,
+          optionA: optionA,
+          optionB: optionB,
           category: _category,
         );
     _questionController.clear();
@@ -100,12 +123,21 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
               AppTextField(
                 label: '質問文',
                 controller: _questionController,
+                hintText: '例：恋愛は追う派？追われる派？',
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpacing.md),
-              AppTextField(label: '選択肢A', controller: _optionAController),
+              AppTextField(
+                label: '選択肢A',
+                controller: _optionAController,
+                hintText: '例：追う派',
+              ),
               const SizedBox(height: AppSpacing.md),
-              AppTextField(label: '選択肢B', controller: _optionBController),
+              AppTextField(
+                label: '選択肢B',
+                controller: _optionBController,
+                hintText: '例：追われる派',
+              ),
               const SizedBox(height: AppSpacing.md),
               const Text(
                 'カテゴリ',
@@ -307,7 +339,7 @@ class _SimilarQuestionNotice extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Q.0987',
+                  'Q.1',
                   style: TextStyle(
                     fontSize: AppFontSize.sm,
                     color: AppColors.textGray,

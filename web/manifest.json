@@ -1,6 +1,6 @@
 {
-    "name": "panda_talk",
-    "short_name": "panda_talk",
+    "name": "パンダトーク",
+    "short_name": "パンダトーク",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

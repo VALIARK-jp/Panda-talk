@@ -78,13 +78,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     children: [
                       Align(
                         alignment: Alignment.topLeft,
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back,
-                            color: AppColors.white,
-                          ),
-                          onPressed: () => Navigator.maybePop(context),
-                        ),
+                        child: _buildBackButton(context),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
@@ -194,6 +188,24 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => Navigator.maybePop(context),
+      icon: const Icon(Icons.arrow_back, size: 20),
+      label: const Text('戻る'),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: const Size(0, 44),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(
+          fontSize: AppFontSize.md,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

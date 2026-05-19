@@ -35,12 +35,12 @@
 |------|-----|
 | 端末 | iOS シミュレータ（Mac 上） |
 | `PANDA_TALK_API_BASE_URL` | `http://localhost:8787` |
-| Worker | Mac で `cd backend && npm run dev:db`（または `npm run dev`） |
+| Worker | Mac で `cd backend && npm run dev` |
 | deploy / ngrok | **不要** |
 
 **開発中は localhost で正しい。** Docker は不要（ローカル Supabase `supabase start` を使わない限り）。
 
-### 実機が必要なとき（位置情報・カメラ・実デバイス挙動など）
+### 実機が必要なとき（カメラ・実デバイス挙動など）
 
 | 項目 | 値 |
 |------|-----|
@@ -56,7 +56,7 @@
 | 方法 | いつ |
 |------|------|
 | **`npm run deploy`**（`backend/`） | チーム共有・dev URL を更新したいとき |
-| **ngrok**（`ngrok http 8787` + ローカル `dev:db`） | 個人でサッと試すだけのとき |
+| **ngrok**（`ngrok http 8787` + ローカル `dev`） | 個人でサッと試すだけのとき |
 
 どちらも **「ローカル専用の 8787 を、実機から見える URL に出す」** ための手段。毎日どちらかが必須という意味ではない。
 
@@ -111,4 +111,4 @@ PANDA_TALK_API_BASE_URL=https://panda-talk-backend.valiark.workers.dev
 - [.env.example](../.env.example) — キー名のテンプレ
 - [valiark_client_secrets_playbook.md](./valiark_client_secrets_playbook.md) — 何を配布するか
 - [12_multi_app_supabase.md](./12_multi_app_supabase.md) — valiark-dev 共有
-- [backend/package.json](../backend/package.json) — `dev` / `dev:db` / `deploy` スクリプト
+- [backend/package.json](../backend/package.json) — `dev` / `dev:mock` / `deploy` スクリプト

@@ -22,6 +22,8 @@ class DummyQuestion {
   final String optionB;
   final String? myAnswer;
   final int percentA;
+  final int likeCount;
+  final int commentCount;
   const DummyQuestion({
     this.apiId,
     required this.number,
@@ -33,6 +35,8 @@ class DummyQuestion {
     required this.optionB,
     this.myAnswer,
     required this.percentA,
+    this.likeCount = 0,
+    this.commentCount = 0,
   });
 
   DummyQuestion copyWith({
@@ -42,6 +46,8 @@ class DummyQuestion {
     String? optionB,
     String? myAnswer,
     int? percentA,
+    int? likeCount,
+    int? commentCount,
   }) {
     return DummyQuestion(
       apiId: apiId,
@@ -54,6 +60,8 @@ class DummyQuestion {
       optionB: optionB ?? this.optionB,
       myAnswer: myAnswer ?? this.myAnswer,
       percentA: percentA ?? this.percentA,
+      likeCount: likeCount ?? this.likeCount,
+      commentCount: commentCount ?? this.commentCount,
     );
   }
 }

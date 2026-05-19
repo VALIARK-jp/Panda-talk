@@ -17,16 +17,35 @@ Future<void> ensurePandaProfileRow({
       user.email?.split('@').first ??
       'panda user';
 
+  final existing = await supabase
+      .from('panda_profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+
+  if (existing != null) {
+    await supabase.from('panda_profiles').update({
+      'email': user.email,
+      'name': name.trim().isEmpty
+          ? (existing['username'] as String? ?? 'panda user')
+          : name.trim(),
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (avatarUrl == null && metadata['photoURL'] != null)
+        'avatar_url': metadata['photoURL'],
+    }).eq('id', user.id);
+    return;
+  }
+
   final username = await _resolveUsername(supabase, user.id, name, user.email);
 
-  await supabase.from('panda_profiles').upsert({
+  await supabase.from('panda_profiles').insert({
     'id': user.id,
     'email': user.email,
     'username': username,
     'name': name.trim().isEmpty ? username : name.trim(),
     if (avatarUrl != null) 'avatar_url': avatarUrl,
     if (avatarUrl == null) 'avatar_url': metadata['photoURL'],
-  }, onConflict: 'id');
+  });
 }
 
 Future<String> _resolveUsername(
