@@ -154,8 +154,6 @@ class _QuestionPostScreenState extends ConsumerState<QuestionPostScreen> {
                 onChanged: (value) => setState(() => _category = value),
               ),
               const SizedBox(height: AppSpacing.lg),
-              const _SimilarQuestionNotice(),
-              const SizedBox(height: AppSpacing.xl),
               PandaButton(label: '投稿する', onTap: _postQuestion),
               const SizedBox(height: AppSpacing.lg),
               const Text(
@@ -287,68 +285,6 @@ class _CategoryDropdown extends StatelessWidget {
             if (v != null) onChanged(v);
           },
         ),
-      ),
-    );
-  }
-}
-
-class _SimilarQuestionNotice extends StatelessWidget {
-  const _SimilarQuestionNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.softGray,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.info_outline, size: 16, color: AppColors.textGray),
-              SizedBox(width: 6),
-              Text(
-                '類似する質問があります',
-                style: TextStyle(
-                  fontSize: AppFontSize.sm,
-                  color: AppColors.textGray,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              border: Border.all(color: AppColors.borderGray),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '恋愛は追う派？待つ派？',
-                    style: TextStyle(
-                      fontSize: AppFontSize.md,
-                      color: AppColors.black,
-                    ),
-                  ),
-                ),
-                Text(
-                  'Q.1',
-                  style: TextStyle(
-                    fontSize: AppFontSize.sm,
-                    color: AppColors.textGray,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

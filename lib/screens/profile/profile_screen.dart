@@ -5,7 +5,8 @@ import '../../core/design_tokens.dart';
 import '../../core/share_utils.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/guest_login_button.dart';
-import '../../widgets/panda_avatar.dart';
+import '../../widgets/user_avatar.dart';
+import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/tag_chip.dart';
 import '../friends/friends_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -101,7 +102,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  PandaAvatar(size: 72),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ProfileEditScreen(),
+                      ),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        UserAvatar(size: 72, imageUrl: profile.avatarUrl),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(
+                            color: AppColors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.photo_camera_outlined,
+                            color: AppColors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     profile.name,
@@ -212,6 +239,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ],
                     ),
                   ),
+                  PandaTypeProfileSection(profile: profile),
                   const SizedBox(height: AppSpacing.lg),
                   const Align(
                     alignment: Alignment.centerLeft,

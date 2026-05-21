@@ -23,6 +23,24 @@ app.get('/', async (c) => {
   }
 })
 
+// GET /questions/diagnosis-16 - 後方互換。中身は window?maxQuestionNumber=16 と同じ。
+app.get('/diagnosis-16', async (c) => {
+  try {
+    const token = c.req.header('Authorization')?.replace('Bearer ', '')
+    const userId = token ? await resolveUserId(c.env, token) : 'anonymous'
+    const { getFeedWindowUseCase } = createContainer(c.env)
+    const questions = await getFeedWindowUseCase.execute(
+      userId ?? 'anonymous',
+      0,
+      0,
+      16
+    )
+    return c.json({ questions })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
 // GET /questions/hot - ホットフィード（認証なし）
 app.get('/hot', async (c) => {
   try {
@@ -43,6 +61,29 @@ app.get('/search', async (c) => {
     const limit = Number(c.req.query('limit') ?? '20')
     const { searchQuestionsUseCase } = createContainer(c.env)
     const questions = await searchQuestionsUseCase.execute(q, limit)
+    return c.json({ questions })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// GET /questions/window - 未回答フロンティア前後の質問（認証推奨）
+app.get('/window', async (c) => {
+  try {
+    const before = Number(c.req.query('before') ?? '10')
+    const after = Number(c.req.query('after') ?? '10')
+    const maxRaw = c.req.query('maxQuestionNumber')
+    const maxQuestionNumber =
+      maxRaw != null && maxRaw !== '' ? Number(maxRaw) : undefined
+    const token = c.req.header('Authorization')?.replace('Bearer ', '')
+    const userId = token ? await resolveUserId(c.env, token) : 'anonymous'
+    const { getFeedWindowUseCase } = createContainer(c.env)
+    const questions = await getFeedWindowUseCase.execute(
+      userId ?? 'anonymous',
+      before,
+      after,
+      Number.isFinite(maxQuestionNumber) ? maxQuestionNumber : undefined
+    )
     return c.json({ questions })
   } catch (err) {
     return handleError(err, c)

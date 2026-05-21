@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
 import 'core/design_tokens.dart';
+import 'infrastructure/diagnosis_16_sync.dart';
 import 'infrastructure/guest_answer_sync.dart';
 import 'infrastructure/profile_onboarding_store.dart';
 import 'presentation/auth_gate.dart';
@@ -72,7 +73,9 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
             await ref
                 .read(authServiceProvider)
                 .ensureBackendProfile(provider: provider);
+            await uploadPendingDiagnosis16Answers(ref);
             await uploadPendingGuestAnswers(ref);
+            await syncDiagnosis16Result(ref);
             ref.invalidate(profileControllerProvider);
             ref.invalidate(feedQuestionsProvider);
             ref.invalidate(questionFeedControllerProvider);

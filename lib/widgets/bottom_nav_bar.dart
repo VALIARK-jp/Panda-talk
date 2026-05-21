@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../config/feature_flags.dart';
 import '../core/design_tokens.dart';
 import 'panda_avatar.dart';
 
@@ -38,17 +40,18 @@ class BottomNavBar extends StatelessWidget {
               current: currentIndex,
               onTap: onTap,
             ),
-            _NavItem(
-              icon: Icons.chat_bubble_outline,
-              label: 'トーク',
-              index: 3,
-              current: currentIndex,
-              onTap: onTap,
-            ),
+            if (kTalkNavTabEnabled)
+              _NavItem(
+                icon: Icons.chat_bubble_outline,
+                label: 'トーク',
+                index: 3,
+                current: currentIndex,
+                onTap: onTap,
+              ),
             _NavItem(
               icon: Icons.person_outline,
               label: 'プロフィール',
-              index: 4,
+              index: kTalkNavTabEnabled ? 4 : 3,
               current: currentIndex,
               onTap: onTap,
             ),

@@ -1,6 +1,7 @@
 import type {
   UUID,
   AnsweredQuestion,
+  FeedWindowQuestion,
   HotQuestion,
   Question,
   QuestionStats,
@@ -29,13 +30,19 @@ type QuestionEngagementRow = {
   comment_count: number
 }
 
+function percentAFromCounts(countA: number, countB: number): number {
+  const total = countA + countB
+  if (total === 0) return 50
+  return Math.round((countA / total) * 100)
+}
+
 type AnsweredQuestionRow = {
   choice: 'a' | 'b'
   panda_questions: QuestionWithUserRow | null
 }
 
 const QUESTION_SELECT =
-  'id,question_number,user_id,text,option_a,option_b,category,created_at,panda_profiles(id,username,avatar_url)'
+  'id,question_number,user_id,text,option_a,option_b,category,created_at,panda_profiles(id,username,name,avatar_url)'
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -44,11 +51,63 @@ function isUuid(value: string): boolean {
 export class SupabaseQuestionRepository implements IQuestionRepository {
   constructor(private readonly client: SupabaseRestClient) {}
 
+  async getDiagnosis16(userId?: UUID): Promise<QuestionWithUser[]> {
+    const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
+      select: QUESTION_SELECT,
+      and: '(question_number.gte.1,question_number.lte.16)',
+      order: 'question_number.asc',
+      limit: 16,
+    })
+    const questions = rows
+      .map(toQuestionWithUser)
+      .filter((question) => question.questionNumber >= 1 && question.questionNumber <= 16)
+
+    const withEngagement = await this.attachEngagementCounts(questions)
+    if (!userId || !isUuid(userId)) return withEngagement
+
+    const answerRows = await this.client.get<
+      Array<{ question_id: string; choice: 'a' | 'b' }>
+    >('panda_answers', {
+      select: 'question_id,choice',
+      user_id: `eq.${userId}`,
+      limit: 32,
+    })
+    const choiceByQuestionId = new Map(
+      answerRows.map((row) => [row.question_id, row.choice])
+    )
+
+    return withEngagement.map((question) => {
+      const choice = choiceByQuestionId.get(question.id)
+      if (!choice) return question
+      return {
+        ...question,
+        myAnswer: choice === 'a' ? question.optionA : question.optionB,
+      }
+    })
+  }
+
   async getFeed(userId: UUID, limit: number, cursor?: UUID): Promise<QuestionWithUser[]> {
+    let answeredIds: string[] = []
+    if (isUuid(userId)) {
+      const answeredRows = await this.client.get<Array<{ question_id: string }>>(
+        'panda_answers',
+        {
+          select: 'question_id',
+          user_id: `eq.${userId}`,
+          limit: 10000,
+        }
+      )
+      answeredIds = answeredRows.map((row) => row.question_id)
+    }
+
     const query: Record<string, string | number> = {
       select: QUESTION_SELECT,
-      order: 'created_at.asc,id.asc',
-      limit: Math.max(limit * 3, limit),
+      order: 'question_number.asc,id.asc',
+      limit,
+    }
+
+    if (answeredIds.length > 0) {
+      query.id = `not.in.(${answeredIds.join(',')})`
     }
 
     if (cursor) {
@@ -57,18 +116,106 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
     }
 
     const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', query)
-    let questions = rows.map(toQuestionWithUser)
+    return this.attachEngagementCounts(rows.map(toQuestionWithUser))
+  }
 
+  async getFeedWindow(
+    userId: UUID,
+    before: number,
+    after: number,
+    maxQuestionNumber?: number
+  ): Promise<FeedWindowQuestion[]> {
+    const answeredByQuestionId = new Map<string, 'a' | 'b'>()
     if (isUuid(userId)) {
-      const answeredRows = await this.client.get<Array<{ question_id: string }>>('panda_answers', {
-        select: 'question_id',
+      const answeredRows = await this.client.get<
+        Array<{ question_id: string; choice: 'a' | 'b' }>
+      >('panda_answers', {
+        select: 'question_id,choice',
         user_id: `eq.${userId}`,
+        limit: 10000,
       })
-      const answeredIds = new Set(answeredRows.map((row) => row.question_id))
-      questions = questions.filter((question) => !answeredIds.has(question.id))
+      for (const row of answeredRows) {
+        answeredByQuestionId.set(row.question_id, row.choice)
+      }
     }
 
-    return this.attachEngagementCounts(questions.slice(0, limit))
+    const attachAnswers = <T extends QuestionWithUser>(questions: T[]): T[] =>
+      questions.map((question) => {
+        const choice = answeredByQuestionId.get(question.id)
+        if (!choice) return question
+        return {
+          ...question,
+          myAnswer: choice === 'a' ? question.optionA : question.optionB,
+        }
+      })
+
+    // 16type 診断中: Q1–max だけ。ログイン時はフロンティアまで、ゲストは全問返して端末で進捗を切る。
+    if (maxQuestionNumber != null && maxQuestionNumber > 0) {
+      const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
+        select: QUESTION_SELECT,
+        and: `(question_number.gte.1,question_number.lte.${maxQuestionNumber})`,
+        order: 'question_number.asc,id.asc',
+        limit: maxQuestionNumber + 5,
+      })
+      const questions = attachAnswers(
+        await this.attachEngagementCounts(rows.map(toQuestionWithUser))
+      )
+      if (!isUuid(userId)) {
+        return questions
+      }
+
+      let frontier = maxQuestionNumber
+      for (const question of questions) {
+        if (!answeredByQuestionId.has(question.id)) {
+          frontier = question.questionNumber
+          break
+        }
+      }
+      return questions.filter((q) => q.questionNumber <= frontier)
+    }
+
+    const answeredIds = [...answeredByQuestionId.keys()]
+    const frontierQuery: Record<string, string | number> = {
+      select: 'question_number',
+      order: 'question_number.asc',
+      limit: 1,
+    }
+    if (answeredIds.length > 0) {
+      frontierQuery.id = `not.in.(${answeredIds.join(',')})`
+    }
+
+    const frontierRows = await this.client.get<Array<{ question_number: number }>>(
+      'panda_questions',
+      frontierQuery
+    )
+
+    let frontier: number
+    if (frontierRows.length > 0) {
+      frontier = frontierRows[0].question_number
+    } else if (answeredIds.length > 0) {
+      const answeredQuestionRows = await this.client.get<
+        Array<{ question_number: number }>
+      >('panda_questions', {
+        select: 'question_number',
+        id: `in.(${answeredIds.join(',')})`,
+        order: 'question_number.desc',
+        limit: 1,
+      })
+      frontier = answeredQuestionRows[0]?.question_number ?? 1
+    } else {
+      return []
+    }
+    const minNum = Math.max(1, frontier - before)
+    const maxNum = frontier + after
+
+    const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
+      select: QUESTION_SELECT,
+      and: `(question_number.gte.${minNum},question_number.lte.${maxNum})`,
+      order: 'question_number.asc,id.asc',
+      limit: before + after + 5,
+    })
+
+    return attachAnswers(await this.attachEngagementCounts(rows.map(toQuestionWithUser)))
   }
 
   async getHotFeed(limit: number, cursor?: UUID): Promise<HotQuestion[]> {
@@ -208,23 +355,43 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
     if (questions.length === 0) return questions
 
     const ids = questions.map((q) => q.id)
-    const rows = await this.client.get<QuestionEngagementRow[]>('panda_hot_questions', {
-      select: 'id,like_count,comment_count',
-      id: `in.(${ids.join(',')})`,
-    })
-    const byId = new Map(
-      rows.map((row) => [
+    const [engagementRows, statsRows] = await Promise.all([
+      this.client.get<QuestionEngagementRow[]>('panda_hot_questions', {
+        select: 'id,like_count,comment_count',
+        id: `in.(${ids.join(',')})`,
+      }),
+      this.client.get<QuestionStatsRow[]>('panda_question_stats', {
+        select: 'question_id,count_a,count_b',
+        question_id: `in.(${ids.join(',')})`,
+      }),
+    ])
+    const engagementById = new Map(
+      engagementRows.map((row) => [
         row.id,
         { likeCount: row.like_count ?? 0, commentCount: row.comment_count ?? 0 },
       ])
     )
+    const statsById = new Map(
+      statsRows.map((row) => [
+        row.question_id,
+        {
+          countA: row.count_a ?? 0,
+          countB: row.count_b ?? 0,
+          percentA: percentAFromCounts(row.count_a ?? 0, row.count_b ?? 0),
+        },
+      ])
+    )
 
     return questions.map((question) => {
-      const counts = byId.get(question.id)
+      const counts = engagementById.get(question.id)
+      const stats = statsById.get(question.id)
       return {
         ...question,
         likeCount: counts?.likeCount ?? 0,
         commentCount: counts?.commentCount ?? 0,
+        countA: stats?.countA ?? 0,
+        countB: stats?.countB ?? 0,
+        percentA: stats?.percentA ?? 50,
       }
     })
   }

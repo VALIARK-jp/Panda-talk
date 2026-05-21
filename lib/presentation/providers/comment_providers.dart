@@ -48,7 +48,17 @@ class CommentController
             commentId: comment.id,
             isLike: newLiked,
           );
+      ref.invalidateSelf();
     } catch (e, st) {
+      final message = e.toString();
+      final alreadyLiked = newLiked &&
+          (message.contains('CONFLICT') || message.contains('409'));
+      final alreadyUnliked = !newLiked &&
+          (message.contains('NOT_FOUND') || message.contains('404'));
+      if (alreadyLiked || alreadyUnliked) {
+        ref.invalidateSelf();
+        return;
+      }
       state = prev;
       Error.throwWithStackTrace(e, st);
     }

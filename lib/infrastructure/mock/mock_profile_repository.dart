@@ -21,9 +21,33 @@ class MockProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> updateProfile({required String name, required String bio}) async {
+  Future<DummyProfile> getUserProfile(String userId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return DummyProfile(
+      name: 'ぱんだユーザー',
+      username: userId,
+      bio: 'よろしくお願いします',
+      avatarUrl: null,
+      answerCount: 42,
+      postCount: 3,
+      friendCount: 10,
+      oddballScore: 18,
+      tags: const ['夜型', '外出派'],
+    );
+  }
+
+  @override
+  Future<void> updateProfile({
+    required String name,
+    required String bio,
+    String? avatarUrl,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    _profile = _profile.copyWith(name: name, bio: bio);
+    _profile = _profile.copyWith(
+      name: name,
+      bio: bio,
+      avatarUrl: avatarUrl,
+    );
   }
 
   @override
@@ -50,6 +74,32 @@ class MockProfileRepository implements ProfileRepository {
       friendCount: _profile.friendCount,
       oddballScore: _profile.oddballScore,
       tags: _profile.tags,
+      pandaTypeSlug: _profile.pandaTypeSlug,
+      typeAffectionPct: _profile.typeAffectionPct,
+      typeThinkingPct: _profile.typeThinkingPct,
+      typeActionPct: _profile.typeActionPct,
+      typeLifePct: _profile.typeLifePct,
+      diagnosed16At: _profile.diagnosed16At,
+    );
+  }
+
+  @override
+  Future<void> savePandaType16({
+    required String slug,
+    required int affectionPct,
+    required int thinkingPct,
+    required int actionPct,
+    required int lifePct,
+    DateTime? diagnosedAt,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _profile = _profile.copyWith(
+      pandaTypeSlug: slug,
+      typeAffectionPct: affectionPct,
+      typeThinkingPct: thinkingPct,
+      typeActionPct: actionPct,
+      typeLifePct: lifePct,
+      diagnosed16At: diagnosedAt ?? DateTime.now(),
     );
   }
 }

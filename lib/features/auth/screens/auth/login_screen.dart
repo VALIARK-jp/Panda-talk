@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/design_tokens.dart';
+import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
@@ -21,18 +22,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _authInFlight = false;
   String? _authInFlightProvider;
 
-  void _finishNativeAuth() {
-    ref.invalidate(authUserProvider);
-    // StreamProvider が 1 フレーム遅れても、AuthGate が currentUser で拾えるよう
-    // 次フレームでスタックを畳む。
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!context.mounted) return;
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).popUntil((route) => route.isFirst);
-      });
+  Future<void> _finishNativeAuth() async {
+    await PostAuthFlow.withLoading(context, () async {
+      await PostAuthFlow.finishLogin(ref: ref, context: context);
     });
   }
 

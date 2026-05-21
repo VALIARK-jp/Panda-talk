@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
+import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
@@ -26,12 +27,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     super.initState();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       data,
-    ) {
+    ) async {
       if (data.event == AuthChangeEvent.signedIn && mounted) {
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).popUntil((route) => route.isFirst);
+        await PostAuthFlow.withLoading(context, () async {
+          await PostAuthFlow.finishLogin(ref: ref, context: context);
+        });
       }
     });
   }
@@ -42,16 +42,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     super.dispose();
   }
 
-  void _finishNativeAuth() {
-    ref.invalidate(authUserProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!context.mounted) return;
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).popUntil((route) => route.isFirst);
-      });
+  Future<void> _finishNativeAuth() async {
+    await PostAuthFlow.withLoading(context, () async {
+      await PostAuthFlow.finishLogin(ref: ref, context: context);
     });
   }
 

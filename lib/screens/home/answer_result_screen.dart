@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/design_tokens.dart';
+import '../../core/oddball_score.dart';
+import '../../core/question_stats_utils.dart';
 import '../../core/share_utils.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
@@ -47,15 +49,20 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
     final pA = widget.percentA;
     final pB = 100 - pA;
 
-    // 少数派判定
     final selectedA = widget.selected == widget.optionA;
     final selectedPercent = selectedA ? pA : pB;
-    final isMinority = selectedPercent < 50;
+    final counts = voteCountsForQuestion(percentA: pA);
+    final isMinority = isMinorityFromSide(
+      selectedA: selectedA,
+      percentA: pA,
+      countA: counts.$1,
+      countB: counts.$2,
+    );
 
-    // 異端児スコア
-    final score = widget.answeredCount > 0
-        ? (widget.minorityCount / widget.answeredCount * 100).round()
-        : 0;
+    final score = oddballScorePercent(
+      minorityAnswerCount: widget.minorityCount,
+      totalAnswerCount: widget.answeredCount,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.white,

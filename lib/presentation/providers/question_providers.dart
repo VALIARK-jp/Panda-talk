@@ -2,22 +2,224 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../infrastructure/diagnosis_16_store.dart';
 import '../../infrastructure/providers/repositories.dart';
 import '../../infrastructure/question_progress_store.dart';
+import '../../infrastructure/question_repository.dart';
 import '../../core/dummy_data.dart';
-import '../../core/question_stats_utils.dart';
+import '../../core/oddball_score.dart';
+import 'diagnosis_providers.dart';
 import 'profile_providers.dart';
+
+const _feedWindowBefore = 10;
+const _feedWindowAfter = 12;
+
+/// 未回答フィードを cursor で最後まで取得する（ゲスト等のフォールバック）。
+Future<List<DummyQuestion>> loadAllUnansweredFeed(
+  QuestionRepository repo, {
+  int pageSize = 50,
+}) async {
+  final all = <DummyQuestion>[];
+  String? cursor;
+  for (var page = 0; page < 40; page++) {
+    final chunk = await repo.getFeedQuestions(limit: pageSize, cursor: cursor);
+    if (chunk.isEmpty) break;
+    all.addAll(chunk);
+    if (chunk.length < pageSize) break;
+    final lastId = chunk.last.apiId;
+    if (lastId == null) break;
+    cursor = lastId;
+  }
+  return all;
+}
+
+/// 回答済み履歴を API から取得する（最大 [maxPages] ページまで）。
+Future<List<DummyQuestion>> loadAnsweredHistory(
+  QuestionRepository repo, {
+  int pageSize = 50,
+  int maxPages = 4,
+}) async {
+  final all = <DummyQuestion>[];
+  String? cursor;
+  for (var page = 0; page < maxPages; page++) {
+    final chunk = await repo.getHistory(limit: pageSize, cursor: cursor);
+    if (chunk.isEmpty) break;
+    all.addAll(chunk);
+    if (chunk.length < pageSize) break;
+    final lastId = chunk.last.apiId;
+    if (lastId == null) break;
+    cursor = lastId;
+  }
+  return all;
+}
+
+@Deprecated('Use loadAnsweredHistory with maxPages')
+Future<List<DummyQuestion>> loadAllAnsweredHistory(QuestionRepository repo) =>
+    loadAnsweredHistory(repo, pageSize: 200, maxPages: 20);
+
+bool isDiagnosisQuestionNumber(int number) => number >= 1 && number <= 16;
+
+bool isDiagnosis16QuestionList(List<DummyQuestion> questions) {
+  if (questions.isEmpty) return false;
+  return questions.every((q) => isDiagnosisQuestionNumber(q.number));
+}
+
+/// サーバーに既に保存済みの質問 ID（診断16用は diagnosis16 API の myAnswer から）。
+Future<Set<String>> loadAnsweredQuestionIdsOnServer(
+  QuestionRepository repo, {
+  Set<String>? onlyQuestionIds,
+}) async {
+  if (Supabase.instance.client.auth.currentSession == null) {
+    return const {};
+  }
+  if (onlyQuestionIds != null && onlyQuestionIds.isNotEmpty) {
+    try {
+      final diagnosis = await repo.getFeedWindow(
+        before: 0,
+        after: 0,
+        maxQuestionNumber: 16,
+      );
+      return diagnosis
+          .where((q) => q.myAnswer != null && q.apiId != null)
+          .map((q) => q.apiId!)
+          .where(onlyQuestionIds.contains)
+          .toSet();
+    } catch (_) {
+      return const {};
+    }
+  }
+  try {
+    final history = await loadAnsweredHistory(repo, maxPages: 2);
+    return history.map((q) => q.apiId).whereType<String>().toSet();
+  } catch (_) {
+    return const {};
+  }
+}
 
 final currentQuestionProvider = FutureProvider<DummyQuestion>((ref) {
   return ref.watch(questionRepositoryProvider).getCurrentQuestion();
 });
 
-final feedQuestionsProvider = FutureProvider<List<DummyQuestion>>((ref) {
-  return ref.watch(questionRepositoryProvider).getFeedQuestions();
+/// アプリ起動時に診断フィードを先読み（診断タブ初回表示での古い GET 再利用を防ぐ）。
+final feedBootstrapProvider = FutureProvider<void>((ref) async {
+  ref.keepAlive();
+  await ref.watch(diagnosis16UnlockedProvider.future);
+  ref.invalidate(feedQuestionsProvider);
+  await ref.read(feedQuestionsProvider.future);
 });
 
-final questionHistoryProvider = FutureProvider<List<DummyQuestion>>((ref) {
-  return ref.watch(questionRepositoryProvider).getHistory();
+/// フィード: 常に [getFeedWindow]。16type 中は maxQuestionNumber=16 のみ。
+/// 診断中は [diagnosisProgressWindow] で「回答済み + 次の1問」だけ返す。
+final feedQuestionsProvider = FutureProvider<List<DummyQuestion>>((ref) async {
+  final repo = ref.watch(questionRepositoryProvider);
+  final inDiagnosis16 =
+      !(await ref.watch(diagnosis16UnlockedProvider.future));
+  final session = Supabase.instance.client.auth.currentSession;
+
+  final window = await repo.getFeedWindow(
+    before: _feedWindowBefore,
+    after: _feedWindowAfter,
+    maxQuestionNumber: inDiagnosis16 ? 16 : null,
+  );
+  final sorted = [...window]..sort((a, b) => a.number.compareTo(b.number));
+
+  if (inDiagnosis16) {
+    final answeredIds = sorted
+        .where((q) => q.apiId != null && q.myAnswer != null)
+        .map((q) => q.apiId!)
+        .toSet();
+    final guestAnswers = session == null
+        ? await Diagnosis16Store.loadAnswers()
+        : const <int, bool>{};
+    return diagnosisProgressWindow(
+      sorted,
+      answeredIds: answeredIds,
+      guestAnsweredNumbers: guestAnswers.keys.toSet(),
+    );
+  }
+
+  if (session == null) {
+    final candidates = await loadAllUnansweredFeed(repo);
+    var result = _filterUnansweredQuestions(
+      candidates,
+      answeredIds: const {},
+      hasSession: false,
+    );
+    return filterUnansweredForGuest(result);
+  }
+
+  return window;
+});
+
+/// 初回診断: 回答済み + 次の1問まで（それより先の未回答は見せない）。
+List<DummyQuestion> diagnosisProgressWindow(
+  List<DummyQuestion> sortedByNumber, {
+  required Set<String> answeredIds,
+  Set<int> guestAnsweredNumbers = const {},
+}) {
+  bool isAnswered(DummyQuestion q) {
+    if (guestAnsweredNumbers.contains(q.number)) return true;
+    if (q.apiId != null && answeredIds.contains(q.apiId)) return true;
+    return q.myAnswer != null;
+  }
+
+  int? firstUnansweredNumber;
+  for (final q in sortedByNumber) {
+    if (q.number < 1 || q.number > 16) continue;
+    if (!isAnswered(q)) {
+      firstUnansweredNumber = q.number;
+      break;
+    }
+  }
+
+  if (firstUnansweredNumber != null) {
+    final frontier = firstUnansweredNumber;
+    return sortedByNumber
+        .where((q) => q.number >= 1 && q.number <= frontier)
+        .toList();
+  }
+
+  return sortedByNumber.where((q) => q.number >= 1 && q.number <= 16).toList();
+}
+
+List<DummyQuestion> _filterUnansweredQuestions(
+  List<DummyQuestion> questions, {
+  required Set<String> answeredIds,
+  required bool hasSession,
+}) {
+  if (questions.isEmpty) return questions;
+
+  if (hasSession) {
+    final needsHistoryFilter = questions.every(
+      (q) => q.number >= 1 && q.number <= 16,
+    );
+    if (needsHistoryFilter && answeredIds.isNotEmpty) {
+      return questions
+          .where((q) => q.apiId == null || !answeredIds.contains(q.apiId))
+          .toList();
+    }
+    return questions.where((q) => q.myAnswer == null).toList();
+  }
+
+  // ゲストは同期的にフィルタできないため別途（診断16の番号ベース）
+  return questions;
+}
+
+/// ゲスト用: 診断16の未回答だけ残す。
+Future<List<DummyQuestion>> filterUnansweredForGuest(
+  List<DummyQuestion> questions,
+) async {
+  final guestAnswers = await Diagnosis16Store.loadAnswers();
+  return questions.where((q) => !guestAnswers.containsKey(q.number)).toList();
+}
+
+final questionHistoryProvider = FutureProvider<List<DummyQuestion>>((ref) async {
+  ref.keepAlive();
+  final repo = ref.watch(questionRepositoryProvider);
+  if (Supabase.instance.client.auth.currentSession == null) {
+    return repo.getHistory(limit: 50);
+  }
+  return loadAnsweredHistory(repo, pageSize: 50, maxPages: 4);
 });
 
 final questionSearchProvider =
@@ -30,7 +232,11 @@ class QuestionFeedState {
   final int answeredCount;
   final int minorityCount;
   final Map<int, String> selectedOptionsByQuestion;
+  /// 選択が A 側か（表示窓外の回答でも少数派数を再計算するため保持）。
+  final Map<int, bool> selectedSideAByQuestion;
   final Map<int, int> percentAByQuestion;
+  final Map<int, int> countAByQuestion;
+  final Map<int, int> countBByQuestion;
   final Map<int, int> likeCountByQuestion;
   final Map<int, int> commentCountByQuestion;
   final Set<int> likedQuestionNumbers;
@@ -40,7 +246,10 @@ class QuestionFeedState {
     this.answeredCount = 0,
     this.minorityCount = 0,
     this.selectedOptionsByQuestion = const {},
+    this.selectedSideAByQuestion = const {},
     this.percentAByQuestion = const {},
+    this.countAByQuestion = const {},
+    this.countBByQuestion = const {},
     this.likeCountByQuestion = const {},
     this.commentCountByQuestion = const {},
     this.likedQuestionNumbers = const {},
@@ -62,12 +271,23 @@ class QuestionFeedState {
     return percentAByQuestion[question.number] ?? question.percentA;
   }
 
+  int countAFor(DummyQuestion question) {
+    return countAByQuestion[question.number] ?? question.countA;
+  }
+
+  int countBFor(DummyQuestion question) {
+    return countBByQuestion[question.number] ?? question.countB;
+  }
+
   QuestionFeedState copyWith({
     int? questionIndex,
     int? answeredCount,
     int? minorityCount,
     Map<int, String>? selectedOptionsByQuestion,
+    Map<int, bool>? selectedSideAByQuestion,
     Map<int, int>? percentAByQuestion,
+    Map<int, int>? countAByQuestion,
+    Map<int, int>? countBByQuestion,
     Map<int, int>? likeCountByQuestion,
     Map<int, int>? commentCountByQuestion,
     Set<int>? likedQuestionNumbers,
@@ -78,7 +298,11 @@ class QuestionFeedState {
       minorityCount: minorityCount ?? this.minorityCount,
       selectedOptionsByQuestion:
           selectedOptionsByQuestion ?? this.selectedOptionsByQuestion,
+      selectedSideAByQuestion:
+          selectedSideAByQuestion ?? this.selectedSideAByQuestion,
       percentAByQuestion: percentAByQuestion ?? this.percentAByQuestion,
+      countAByQuestion: countAByQuestion ?? this.countAByQuestion,
+      countBByQuestion: countBByQuestion ?? this.countBByQuestion,
       likeCountByQuestion: likeCountByQuestion ?? this.likeCountByQuestion,
       commentCountByQuestion:
           commentCountByQuestion ?? this.commentCountByQuestion,
@@ -93,7 +317,16 @@ class QuestionFeedState {
     'selectedOptionsByQuestion': selectedOptionsByQuestion.map(
       (k, v) => MapEntry(k.toString(), v),
     ),
+    'selectedSideAByQuestion': selectedSideAByQuestion.map(
+      (k, v) => MapEntry(k.toString(), v),
+    ),
     'percentAByQuestion': percentAByQuestion.map(
+      (k, v) => MapEntry(k.toString(), v),
+    ),
+    'countAByQuestion': countAByQuestion.map(
+      (k, v) => MapEntry(k.toString(), v),
+    ),
+    'countBByQuestion': countBByQuestion.map(
       (k, v) => MapEntry(k.toString(), v),
     ),
     'likeCountByQuestion': likeCountByQuestion.map(
@@ -108,8 +341,12 @@ class QuestionFeedState {
   static QuestionFeedState fromJson(Map<String, dynamic> json) {
     final selectedRaw =
         json['selectedOptionsByQuestion'] as Map<String, dynamic>? ?? {};
+    final sideRaw =
+        json['selectedSideAByQuestion'] as Map<String, dynamic>? ?? {};
     final percentRaw =
         json['percentAByQuestion'] as Map<String, dynamic>? ?? {};
+    final countARaw = json['countAByQuestion'] as Map<String, dynamic>? ?? {};
+    final countBRaw = json['countBByQuestion'] as Map<String, dynamic>? ?? {};
     final likedRaw = json['likedQuestionNumbers'] as List<dynamic>? ?? [];
     final likeCountRaw =
         json['likeCountByQuestion'] as Map<String, dynamic>? ?? {};
@@ -124,8 +361,18 @@ class QuestionFeedState {
         for (final e in selectedRaw.entries)
           int.parse(e.key): e.value as String,
       },
+      selectedSideAByQuestion: {
+        for (final e in sideRaw.entries)
+          int.parse(e.key): e.value as bool,
+      },
       percentAByQuestion: {
         for (final e in percentRaw.entries) int.parse(e.key): e.value as int,
+      },
+      countAByQuestion: {
+        for (final e in countARaw.entries) int.parse(e.key): e.value as int,
+      },
+      countBByQuestion: {
+        for (final e in countBRaw.entries) int.parse(e.key): e.value as int,
       },
       likeCountByQuestion: {
         for (final e in likeCountRaw.entries)
@@ -149,10 +396,70 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
   final Set<int> _answerInFlight = {};
 
   Future<void> _restoreProgress() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     final saved = await _loadProgressForCurrentSession();
-    if (saved != null) {
-      state = QuestionFeedState.fromJson(saved);
+    var next = saved != null
+        ? QuestionFeedState.fromJson(saved)
+        : const QuestionFeedState();
+
+    if (userId != null) {
+      // ログイン中の回答は DB 同期が正。端末に残った 1–16 のゴーストで全問回答済みに見えるのを防ぐ。
+      next = next.copyWith(
+        selectedOptionsByQuestion: const {},
+        selectedSideAByQuestion: const {},
+        percentAByQuestion: const {},
+        countAByQuestion: const {},
+        countBByQuestion: const {},
+        answeredCount: 0,
+        minorityCount: 0,
+        questionIndex: 0,
+      );
+    } else {
+      final guestDiag = await Diagnosis16Store.loadAnswers();
+      if (guestDiag.isNotEmpty) {
+        try {
+          final qs = await _ref.read(questionRepositoryProvider).getFeedWindow(
+            before: 0,
+            after: 0,
+            maxQuestionNumber: 16,
+          );
+          final byNum = {for (final q in qs) q.number: q};
+          final selected =
+              Map<int, String>.from(next.selectedOptionsByQuestion);
+          final sideA = Map<int, bool>.from(next.selectedSideAByQuestion);
+          final percentA = Map<int, int>.from(next.percentAByQuestion);
+          final countA = Map<int, int>.from(next.countAByQuestion);
+          final countB = Map<int, int>.from(next.countBByQuestion);
+          for (final entry in guestDiag.entries) {
+            final q = byNum[entry.key];
+            if (q == null) continue;
+            selected[entry.key] = entry.value ? q.optionA : q.optionB;
+            sideA[entry.key] = entry.value;
+            percentA[entry.key] = q.percentA;
+            countA[entry.key] = q.countA;
+            countB[entry.key] = q.countB;
+          }
+          next = next.copyWith(
+            selectedOptionsByQuestion: selected,
+            selectedSideAByQuestion: sideA,
+            percentAByQuestion: percentA,
+            countAByQuestion: countA,
+            countBByQuestion: countB,
+            answeredCount: selected.length,
+            minorityCount: countMinorityAnswers(
+              selectedSideAByQuestion: sideA,
+              countAByQuestion: countA,
+              countBByQuestion: countB,
+            ),
+          );
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('_restoreProgress: guest diagnosis hydrate failed: $e');
+          }
+        }
+      }
     }
+    state = next;
   }
 
   Future<Map<String, dynamic>?> _loadProgressForCurrentSession() async {
@@ -166,6 +473,24 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
   void _persistProgress() {
     final json = state.toJson();
     final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      // 診断 Q1–16 は Diagnosis16Store のみ。ゲスト進捗に入れるとログイン時に一括 POST される。
+      final selectedRaw =
+          json['selectedOptionsByQuestion'] as Map<String, dynamic>? ?? {};
+      final percentRaw =
+          json['percentAByQuestion'] as Map<String, dynamic>? ?? {};
+      json['selectedOptionsByQuestion'] = {
+        for (final e in selectedRaw.entries)
+          if (!isDiagnosisQuestionNumber(int.parse(e.key))) e.key: e.value,
+      };
+      json['percentAByQuestion'] = {
+        for (final e in percentRaw.entries)
+          if (!isDiagnosisQuestionNumber(int.parse(e.key))) e.key: e.value,
+      };
+      final selectedCount =
+          (json['selectedOptionsByQuestion'] as Map).length;
+      json['answeredCount'] = selectedCount;
+    }
     if (userId != null) {
       QuestionProgressStore.saveForUser(userId, json);
     } else {
@@ -186,19 +511,38 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
             'Q${question.number}',
           );
         }
+        final choseA = selected == question.optionA;
+        final base = voteCountsForQuestion(
+          percentA: question.percentA,
+          countA: question.countA,
+          countB: question.countB,
+        );
+        final after = voteCountsAfterGuestAnswer(
+          choseA: choseA,
+          baseCountA: base.$1,
+          baseCountB: base.$2,
+        );
+        final total = after.$1 + after.$2;
+        final percentA =
+            total == 0 ? question.percentA : (after.$1 / total * 100).round();
         _applyAnswerLocally(
           question,
           selected,
-          question.percentA,
+          QuestionVoteStats(
+            percentA: percentA,
+            countA: after.$1,
+            countB: after.$2,
+          ),
           countAsNew: true,
         );
+        _ref.invalidate(feedQuestionsProvider);
         return;
       }
 
-      final percentA = await _ref
+      final stats = await _ref
           .read(questionRepositoryProvider)
           .answerQuestion(question: question, selectedOption: selected);
-      _applyAnswerLocally(question, selected, percentA, countAsNew: true);
+      _applyAnswerLocally(question, selected, stats, countAsNew: true);
       _ref.invalidate(profileControllerProvider);
       _ref.invalidate(feedQuestionsProvider);
     } finally {
@@ -206,7 +550,7 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
     }
   }
 
-  /// いいね数・コメント数を API の値で揃える。
+  /// いいね数・コメント数を API の値で揃える（楽観更新中のいいね数は上書きしない）。
   void syncEngagementFromQuestions(List<DummyQuestion> questions) {
     if (questions.isEmpty) return;
     final likeCounts = Map<int, int>.from(state.likeCountByQuestion);
@@ -214,8 +558,12 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
     var changed = false;
 
     for (final q in questions) {
-      if (likeCounts[q.number] != q.likeCount) {
-        likeCounts[q.number] = q.likeCount;
+      final likedLocally = state.likedQuestionNumbers.contains(q.number);
+      final targetLikes = likedLocally
+          ? (likeCounts[q.number] ?? q.likeCount)
+          : q.likeCount;
+      if (likeCounts[q.number] != targetLikes) {
+        likeCounts[q.number] = targetLikes;
         changed = true;
       }
       if (commentCounts[q.number] != q.commentCount) {
@@ -232,192 +580,279 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
     _persistProgress();
   }
 
-  /// API が返す `myAnswer` と端末キャッシュを揃える（再ログイン・ホットリスタート後）。
-  void syncAnsweredFromServer(List<DummyQuestion> questions) {
+  /// 表示中の質問（API 付き myAnswer）だけで端末状態を揃える。履歴 API は叩かない。
+  Future<void> reconcileWithServer(List<DummyQuestion> visibleQuestions) async {
+    if (Supabase.instance.client.auth.currentSession == null) {
+      _reconcileGuestAnswersAgainstVisible(visibleQuestions);
+      return;
+    }
+
+    final isDiagnosis = isDiagnosis16QuestionList(visibleQuestions);
+    final selectedOptions =
+        Map<int, String>.from(state.selectedOptionsByQuestion);
+    final selectedSideA =
+        Map<int, bool>.from(state.selectedSideAByQuestion);
+    final percentAByQuestion = Map<int, int>.from(state.percentAByQuestion);
+    final countAByQuestion = Map<int, int>.from(state.countAByQuestion);
+    final countBByQuestion = Map<int, int>.from(state.countBByQuestion);
     var changed = false;
-    var selectedOptions = Map<int, String>.from(state.selectedOptionsByQuestion);
-    var percentAByQuestion = Map<int, int>.from(state.percentAByQuestion);
-    var answeredCount = state.answeredCount;
 
-    for (final q in questions) {
-      final existing = q.myAnswer;
-      if (existing == null) continue;
+    for (final q in visibleQuestions) {
+      if (isDiagnosis && (q.number < 1 || q.number > 16)) continue;
+      final ans = q.myAnswer ?? selectedOptions[q.number];
+      if (ans == null) continue;
 
-      if (!selectedOptions.containsKey(q.number)) {
-        selectedOptions[q.number] = existing;
-        answeredCount += 1;
+      final sideA = q.myAnswer != null
+          ? ans == q.optionA
+          : (selectedSideA[q.number] ?? ans == q.optionA);
+      final label = q.myAnswer ?? ans;
+      final percentA = q.percentA;
+      final counts = voteCountsForQuestion(
+        percentA: q.percentA,
+        countA: q.countA,
+        countB: q.countB,
+      );
+
+      if (selectedOptions[q.number] != label) {
+        selectedOptions[q.number] = label;
         changed = true;
       }
-      if (percentAByQuestion[q.number] != q.percentA) {
-        percentAByQuestion[q.number] = q.percentA;
+      if (selectedSideA[q.number] != sideA) {
+        selectedSideA[q.number] = sideA;
         changed = true;
+      }
+      if (percentAByQuestion[q.number] != percentA) {
+        percentAByQuestion[q.number] = percentA;
+        changed = true;
+      }
+      if (countAByQuestion[q.number] != counts.$1) {
+        countAByQuestion[q.number] = counts.$1;
+        changed = true;
+      }
+      if (countBByQuestion[q.number] != counts.$2) {
+        countBByQuestion[q.number] = counts.$2;
+        changed = true;
+      }
+    }
+
+    if (!changed &&
+        selectedOptions.length == state.selectedOptionsByQuestion.length) {
+      syncEngagementFromQuestions(visibleQuestions);
+      return;
+    }
+
+    state = state.copyWith(
+      selectedOptionsByQuestion: selectedOptions,
+      selectedSideAByQuestion: selectedSideA,
+      percentAByQuestion: percentAByQuestion,
+      countAByQuestion: countAByQuestion,
+      countBByQuestion: countBByQuestion,
+      answeredCount: selectedOptions.length,
+      minorityCount: countMinorityAnswers(
+        selectedSideAByQuestion: selectedSideA,
+        countAByQuestion: countAByQuestion,
+        countBByQuestion: countBByQuestion,
+      ),
+    );
+    _persistProgress();
+    syncEngagementFromQuestions(visibleQuestions);
+  }
+
+  void _reconcileGuestAnswersAgainstVisible(List<DummyQuestion> visibleQuestions) {
+    if (visibleQuestions.isEmpty) {
+      syncEngagementFromQuestions(visibleQuestions);
+      return;
+    }
+
+    var selectedOptions = Map<int, String>.from(state.selectedOptionsByQuestion);
+    var selectedSideA = Map<int, bool>.from(state.selectedSideAByQuestion);
+    var percentAByQuestion = Map<int, int>.from(state.percentAByQuestion);
+    var countAByQuestion = Map<int, int>.from(state.countAByQuestion);
+    var countBByQuestion = Map<int, int>.from(state.countBByQuestion);
+    var changed = false;
+
+    for (final q in visibleQuestions) {
+      final counts = voteCountsForQuestion(
+        percentA: q.percentA,
+        countA: q.countA,
+        countB: q.countB,
+      );
+      final server = q.myAnswer;
+      if (server != null) {
+        final sideA = server == q.optionA;
+        if (selectedOptions[q.number] != server) {
+          selectedOptions[q.number] = server;
+          changed = true;
+        }
+        if (selectedSideA[q.number] != sideA) {
+          selectedSideA[q.number] = sideA;
+          changed = true;
+        }
+        if (percentAByQuestion[q.number] != q.percentA) {
+          percentAByQuestion[q.number] = q.percentA;
+          changed = true;
+        }
+        if (countAByQuestion[q.number] != counts.$1) {
+          countAByQuestion[q.number] = counts.$1;
+          changed = true;
+        }
+        if (countBByQuestion[q.number] != counts.$2) {
+          countBByQuestion[q.number] = counts.$2;
+          changed = true;
+        }
+      } else if (selectedOptions.containsKey(q.number)) {
+        final sideA = selectedOptions[q.number] == q.optionA;
+        if (selectedSideA[q.number] != sideA) {
+          selectedSideA[q.number] = sideA;
+          changed = true;
+        }
+        if (percentAByQuestion[q.number] != q.percentA) {
+          percentAByQuestion[q.number] = q.percentA;
+          changed = true;
+        }
+        if (countAByQuestion[q.number] != counts.$1) {
+          countAByQuestion[q.number] = counts.$1;
+          changed = true;
+        }
+        if (countBByQuestion[q.number] != counts.$2) {
+          countBByQuestion[q.number] = counts.$2;
+          changed = true;
+        }
       }
     }
 
     if (changed) {
-      final byNumber = {for (final q in questions) q.number: q};
       state = state.copyWith(
         selectedOptionsByQuestion: selectedOptions,
+        selectedSideAByQuestion: selectedSideA,
         percentAByQuestion: percentAByQuestion,
-        answeredCount: answeredCount,
-        minorityCount: _countMinority(selectedOptions, percentAByQuestion, byNumber),
+        countAByQuestion: countAByQuestion,
+        countBByQuestion: countBByQuestion,
+        answeredCount: selectedOptions.length,
+        minorityCount: countMinorityAnswers(
+          selectedSideAByQuestion: selectedSideA,
+          countAByQuestion: countAByQuestion,
+          countBByQuestion: countBByQuestion,
+        ),
       );
       _persistProgress();
     }
-    syncEngagementFromQuestions(questions);
+    syncEngagementFromQuestions(visibleQuestions);
   }
 
   /// 履歴 API などで取った `percentA` を端末に反映し、少数派数を再計算する。
   void applyServerStats(List<DummyQuestion> questions) {
     if (questions.isEmpty) return;
     final selectedOptions = Map<int, String>.from(state.selectedOptionsByQuestion);
+    final selectedSideA = Map<int, bool>.from(state.selectedSideAByQuestion);
     final percentAByQuestion = Map<int, int>.from(state.percentAByQuestion);
-    final byNumber = {for (final q in questions) q.number: q};
+    final countAByQuestion = Map<int, int>.from(state.countAByQuestion);
+    final countBByQuestion = Map<int, int>.from(state.countBByQuestion);
     var changed = false;
 
     for (final q in questions) {
       final selected = selectedOptions[q.number] ?? q.myAnswer;
       if (selected == null) continue;
+      final sideA = selected == q.optionA;
+      final counts = voteCountsForQuestion(
+        percentA: q.percentA,
+        countA: q.countA,
+        countB: q.countB,
+      );
       if (!selectedOptions.containsKey(q.number)) {
         selectedOptions[q.number] = selected;
+        selectedSideA[q.number] = sideA;
         changed = true;
       }
       if (percentAByQuestion[q.number] != q.percentA) {
         percentAByQuestion[q.number] = q.percentA;
         changed = true;
       }
+      if (countAByQuestion[q.number] != counts.$1) {
+        countAByQuestion[q.number] = counts.$1;
+        changed = true;
+      }
+      if (countBByQuestion[q.number] != counts.$2) {
+        countBByQuestion[q.number] = counts.$2;
+        changed = true;
+      }
     }
 
     if (!changed) return;
 
     state = state.copyWith(
       selectedOptionsByQuestion: selectedOptions,
+      selectedSideAByQuestion: selectedSideA,
       percentAByQuestion: percentAByQuestion,
-      minorityCount: _countMinority(selectedOptions, percentAByQuestion, byNumber),
+      countAByQuestion: countAByQuestion,
+      countBByQuestion: countBByQuestion,
+      answeredCount: selectedOptions.length,
+      minorityCount: countMinorityAnswers(
+        selectedSideAByQuestion: selectedSideA,
+        countAByQuestion: countAByQuestion,
+        countBByQuestion: countBByQuestion,
+      ),
     );
     _persistProgress();
   }
 
-  /// 回答済み質問の最新集計を取得し、バー・多数派/少数派・異端児スコアを更新する。
+  /// 表示位置の前後の質問データを先読み（集計・エンゲージメント）。
+  Future<void> prefetchAround(
+    List<DummyQuestion> questions,
+    int centerIndex, {
+    int before = 2,
+    int after = 1,
+  }) async {
+    if (questions.isEmpty) return;
+    final picked = <DummyQuestion>[];
+    for (var offset = -before; offset <= after; offset++) {
+      final i = centerIndex + offset;
+      if (i < 0 || i >= questions.length) continue;
+      picked.add(questions[i]);
+    }
+    syncEngagementFromQuestions(picked);
+    applyServerStats(picked);
+  }
+
+  /// 表示中の質問について、API 付きの `percentA` を端末状態に反映する。
   Future<void> refreshAnsweredStats(List<DummyQuestion> visibleQuestions) async {
-    final selectedOptions = state.selectedOptionsByQuestion;
-    final hasAnsweredInFeed = visibleQuestions.any(
-      (q) => selectedOptions.containsKey(q.number) || q.myAnswer != null,
-    );
-    if (selectedOptions.isEmpty && !hasAnsweredInFeed) return;
-
-    final repo = _ref.read(questionRepositoryProvider);
-    final byNumber = {for (final q in visibleQuestions) q.number: q};
-
-    if (Supabase.instance.client.auth.currentSession != null) {
-      try {
-        final history = await repo.getHistory();
-        for (final q in history) {
-          byNumber[q.number] = q;
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('refreshAnsweredStats: history load failed: $e');
-        }
-      }
-    }
-
-    final numbersToRefresh = <int>{
-      ...selectedOptions.keys,
-      for (final q in visibleQuestions)
-        if (selectedOptions.containsKey(q.number) || q.myAnswer != null) q.number,
-    };
-
-    var percentAByQuestion = Map<int, int>.from(state.percentAByQuestion);
-    var changed = false;
-
-    for (final number in numbersToRefresh) {
-      final q = byNumber[number];
-      if (q?.apiId == null) continue;
-      try {
-        final percentA = await repo.fetchQuestionPercentA(q!.apiId!);
-        if (percentAByQuestion[number] != percentA) {
-          percentAByQuestion[number] = percentA;
-          changed = true;
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint('refreshAnsweredStats: Q$number failed: $e');
-        }
-      }
-    }
-
-    if (!changed) return;
-
-    state = state.copyWith(
-      percentAByQuestion: percentAByQuestion,
-      minorityCount: _countMinority(selectedOptions, percentAByQuestion, byNumber),
-    );
-    _persistProgress();
-  }
-
-  int _countMinority(
-    Map<int, String> selectedOptions,
-    Map<int, int> percentAByQuestion,
-    Map<int, DummyQuestion> byNumber,
-  ) {
-    var count = 0;
-    for (final entry in selectedOptions.entries) {
-      final q = byNumber[entry.key];
-      if (q == null) continue;
-      final percentA = percentAByQuestion[entry.key] ?? q.percentA;
-      if (isMinorityAnswer(
-        selected: entry.value,
-        question: q,
-        percentA: percentA,
-      )) {
-        count++;
-      }
-    }
-    return count;
+    applyServerStats(visibleQuestions);
   }
 
   void _applyAnswerLocally(
     DummyQuestion question,
     String selected,
-    int percentA, {
+    QuestionVoteStats stats, {
     required bool countAsNew,
   }) {
     final selectedOptions = Map<int, String>.from(state.selectedOptionsByQuestion);
+    final selectedSideA = Map<int, bool>.from(state.selectedSideAByQuestion);
     final percentAByQuestion = Map<int, int>.from(state.percentAByQuestion);
+    final countAByQuestion = Map<int, int>.from(state.countAByQuestion);
+    final countBByQuestion = Map<int, int>.from(state.countBByQuestion);
     final alreadyAnswered = selectedOptions.containsKey(question.number);
-    final oldPercentA = percentAByQuestion[question.number] ?? question.percentA;
-    final oldSelected = selectedOptions[question.number] ?? selected;
-
-    var minorityCount = state.minorityCount;
-    if (alreadyAnswered) {
-      final wasMinority = isMinorityAnswer(
-        selected: oldSelected,
-        question: question,
-        percentA: oldPercentA,
-      );
-      final nowMinority = isMinorityAnswer(
-        selected: selected,
-        question: question,
-        percentA: percentA,
-      );
-      if (wasMinority && !nowMinority) minorityCount--;
-      if (!wasMinority && nowMinority) minorityCount++;
-    } else if (countAsNew &&
-        isMinorityAnswer(selected: selected, question: question, percentA: percentA)) {
-      minorityCount++;
-    }
+    final sideA = selected == question.optionA;
 
     selectedOptions[question.number] = selected;
-    percentAByQuestion[question.number] = percentA;
+    selectedSideA[question.number] = sideA;
+    percentAByQuestion[question.number] = stats.percentA;
+    countAByQuestion[question.number] = stats.countA;
+    countBByQuestion[question.number] = stats.countB;
 
     state = state.copyWith(
       selectedOptionsByQuestion: selectedOptions,
+      selectedSideAByQuestion: selectedSideA,
       percentAByQuestion: percentAByQuestion,
+      countAByQuestion: countAByQuestion,
+      countBByQuestion: countBByQuestion,
       answeredCount: countAsNew && !alreadyAnswered
           ? state.answeredCount + 1
           : state.answeredCount,
-      minorityCount: minorityCount,
+      minorityCount: countMinorityAnswers(
+        selectedSideAByQuestion: selectedSideA,
+        countAByQuestion: countAByQuestion,
+        countBByQuestion: countBByQuestion,
+      ),
     );
     _persistProgress();
   }
@@ -444,16 +879,18 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
     _persistProgress();
   }
 
-  void toggleQuestionLike(DummyQuestion question) {
+  Future<void> toggleQuestionLike(DummyQuestion question) async {
     final number = question.number;
+    final prev = state;
     final liked = {...state.likedQuestionNumbers};
+    final willLike = !liked.contains(number);
     var likes = state.likeCountFor(question);
-    if (liked.contains(number)) {
-      liked.remove(number);
-      likes = likes > 0 ? likes - 1 : 0;
-    } else {
+    if (willLike) {
       liked.add(number);
       likes++;
+    } else {
+      liked.remove(number);
+      likes = likes > 0 ? likes - 1 : 0;
     }
     final likeCounts = Map<int, int>.from(state.likeCountByQuestion);
     likeCounts[number] = likes;
@@ -462,6 +899,21 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
       likeCountByQuestion: likeCounts,
     );
     _persistProgress();
+
+    final questionId = question.apiId;
+    if (questionId == null) return;
+    if (Supabase.instance.client.auth.currentSession == null) return;
+
+    try {
+      await _ref.read(questionRepositoryProvider).toggleQuestionLike(
+            questionId: questionId,
+            isLike: willLike,
+          );
+    } catch (e, st) {
+      state = prev;
+      _persistProgress();
+      Error.throwWithStackTrace(e, st);
+    }
   }
 
   void incrementCommentCount(DummyQuestion question) {

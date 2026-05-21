@@ -2,12 +2,26 @@ import '../core/dummy_data.dart';
 
 abstract class ProfileRepository {
   Future<DummyProfile> getProfile();
-  Future<void> updateProfile({required String name, required String bio});
+  Future<DummyProfile> getUserProfile(String userId);
+  Future<void> updateProfile({
+    required String name,
+    required String bio,
+    String? avatarUrl,
+  });
   Future<bool> isUsernameAvailable(String username);
   Future<void> completeProfileSetup({
     required String name,
     required String username,
     required String bio,
     String? avatarUrl,
+  });
+
+  Future<void> savePandaType16({
+    required String slug,
+    required int affectionPct,
+    required int thinkingPct,
+    required int actionPct,
+    required int lifePct,
+    DateTime? diagnosedAt,
   });
 }

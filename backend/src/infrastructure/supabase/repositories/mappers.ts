@@ -31,7 +31,7 @@ export type QuestionRow = {
 }
 
 export type QuestionWithUserRow = QuestionRow & {
-  panda_profiles?: Pick<UserRow, 'id' | 'username' | 'avatar_url'> | null
+  panda_profiles?: Pick<UserRow, 'id' | 'username' | 'name' | 'avatar_url'> | null
 }
 
 export type HotQuestionRow = QuestionWithUserRow & {
@@ -86,11 +86,14 @@ export function toQuestion(row: QuestionRow): Question {
 
 export function toQuestionWithUser(row: QuestionWithUserRow): QuestionWithUser {
   const profile = row.panda_profiles
+  const username = profile?.username ?? 'unknown'
+  const displayName = profile?.name?.trim()
   return {
     ...toQuestion(row),
     poster: {
       id: profile?.id ?? row.user_id,
-      username: profile?.username ?? 'unknown',
+      username,
+      name: displayName && displayName.length > 0 ? displayName : username,
       avatarUrl: profile?.avatar_url ?? null,
     },
   }

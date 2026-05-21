@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/design_tokens.dart';
@@ -14,8 +13,8 @@ import '../../infrastructure/providers/repositories.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/app_text_field.dart';
-import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
+import '../../widgets/profile_avatar_picker.dart';
 
 /// 初回ログイン後のプロフィール入力（名前・ユーザーコード・アイコン・一言）。
 class ProfileSetupScreen extends ConsumerStatefulWidget {
@@ -31,8 +30,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
-  final _picker = ImagePicker();
-
   File? _pickedAvatar;
   String? _remoteAvatarUrl;
   bool _submitting = false;
@@ -114,15 +111,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final file = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    final file = await ProfileAvatarPicker.pick(context);
     if (file == null || !mounted) return;
     setState(() {
-      _pickedAvatar = File(file.path);
+      _pickedAvatar = file;
       _remoteAvatarUrl = null;
     });
   }
@@ -203,8 +195,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (text.contains('StorageException') ||
         text.contains('Bucket not found') ||
         text.contains('row-level security')) {
-      return 'アイコンの保存に失敗しました。'
-          'avatars 用マイグレーション（20260518120000）が valiark-dev に適用されているか確認してください。';
+      return profileAvatarErrorMessage(error);
     }
     if (text.contains('CONFLICT') ||
         text.contains('duplicate key') ||
@@ -244,36 +235,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Center(
-              child: GestureDetector(
-                onTap: _submitting ? null : _pickAvatar,
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    _buildAvatarPreview(),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: AppColors.black,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.photo_camera_outlined,
-                        color: AppColors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Center(
-              child: Text(
-                'タップしてアイコンを選ぶ',
-                style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray),
-              ),
+            ProfileAvatarEditor(
+              size: 88,
+              imageUrl: _pickedAvatar == null ? _remoteAvatarUrl : null,
+              localFile: _pickedAvatar,
+              enabled: !_submitting,
+              onTap: _pickAvatar,
+              hint: 'タップしてアイコンを選ぶ',
             ),
             const SizedBox(height: AppSpacing.lg),
             AppTextField(label: 'ユーザー名', controller: _nameController),
@@ -314,23 +282,4 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  Widget _buildAvatarPreview() {
-    if (_pickedAvatar != null) {
-      return ClipOval(
-        child: Image.file(_pickedAvatar!, width: 88, height: 88, fit: BoxFit.cover),
-      );
-    }
-    if (_remoteAvatarUrl != null && _remoteAvatarUrl!.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          _remoteAvatarUrl!,
-          width: 88,
-          height: 88,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const PandaAvatar(size: 88),
-        ),
-      );
-    }
-    return const PandaAvatar(size: 88);
-  }
 }

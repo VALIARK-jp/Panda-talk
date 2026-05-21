@@ -5,9 +5,17 @@ import type {
   HotQuestion,
   QuestionStats,
   AnsweredQuestion,
+  FeedWindowQuestion,
 } from '../entities/index'
 
 export interface IQuestionRepository {
+  getDiagnosis16(userId?: UUID): Promise<QuestionWithUser[]>
+  getFeedWindow(
+    userId: UUID,
+    before: number,
+    after: number,
+    maxQuestionNumber?: number
+  ): Promise<FeedWindowQuestion[]>
   getFeed(userId: UUID, limit: number, cursor?: UUID): Promise<QuestionWithUser[]>
   getHotFeed(limit: number, cursor?: UUID): Promise<HotQuestion[]>
   getAnsweredHistory(userId: UUID, limit: number, cursor?: UUID): Promise<AnsweredQuestion[]>

@@ -10,6 +10,12 @@ type UserRow = {
   avatar_url: string | null
   bio: string | null
   created_at: string
+  panda_type_slug: string | null
+  type_affection_pct: number | null
+  type_thinking_pct: number | null
+  type_action_pct: number | null
+  type_life_pct: number | null
+  diagnosed_16_at: string | null
 }
 
 export class SupabaseUserRepository implements IUserRepository {
@@ -26,20 +32,21 @@ export class SupabaseUserRepository implements IUserRepository {
     if (!rows[0]) return null
 
     // Fetch counts from other tables
-    const [answerCount, postCount, friendCount] = await Promise.all([
+    const [answerCount, postCount, friendCount, oddballScore] = await Promise.all([
       this.client.count('panda_answers', { user_id: `eq.${id}` }),
       this.client.count('panda_questions', { user_id: `eq.${id}` }),
       this.client.count('panda_friendships', {
         or: `(user_a_id.eq.${id},user_b_id.eq.${id})`,
         status: 'eq.accepted',
       }),
+      this.fetchOddballScore(id),
     ])
 
     return mapUser(rows[0], {
       answerCount,
       postCount,
       friendCount,
-      oddballScore: 0, // TODO: Implement oddball score algorithm
+      oddballScore,
       tags: [], // TODO: Generate tags from answers
     })
   }
@@ -97,7 +104,21 @@ export class SupabaseUserRepository implements IUserRepository {
 
   async update(
     id: UUID,
-    data: Partial<Pick<User, 'name' | 'username' | 'avatarUrl' | 'bio'>>
+    data: Partial<
+      Pick<
+        User,
+        | 'name'
+        | 'username'
+        | 'avatarUrl'
+        | 'bio'
+        | 'pandaTypeSlug'
+        | 'typeAffectionPct'
+        | 'typeThinkingPct'
+        | 'typeActionPct'
+        | 'typeLifePct'
+        | 'diagnosed16At'
+      >
+    >
   ): Promise<User> {
     const rows = await this.client.update<UserRow>(
       this.resource,
@@ -110,6 +131,18 @@ export class SupabaseUserRepository implements IUserRepository {
 
   async delete(id: UUID): Promise<void> {
     await this.client.delete(this.resource, { id: `eq.${id}` })
+  }
+
+  private async fetchOddballScore(userId: UUID): Promise<number> {
+    const rows = await this.client.get<Array<{ oddball_score: number }>>(
+      'panda_user_oddball_scores',
+      {
+        select: 'oddball_score',
+        user_id: `eq.${userId}`,
+        limit: 1,
+      }
+    )
+    return rows[0]?.oddball_score ?? 0
   }
 }
 
@@ -125,6 +158,12 @@ function mapUser(
     avatarUrl: row.avatar_url,
     bio: row.bio,
     createdAt: row.created_at,
+    pandaTypeSlug: row.panda_type_slug,
+    typeAffectionPct: row.type_affection_pct,
+    typeThinkingPct: row.type_thinking_pct,
+    typeActionPct: row.type_action_pct,
+    typeLifePct: row.type_life_pct,
+    diagnosed16At: row.diagnosed_16_at,
     ...stats,
   }
 }
@@ -137,5 +176,11 @@ function toRow(data: Partial<Omit<User, 'createdAt'>>): Record<string, unknown> 
     ...(data.name !== undefined ? { name: data.name } : {}),
     ...(data.avatarUrl !== undefined ? { avatar_url: data.avatarUrl } : {}),
     ...(data.bio !== undefined ? { bio: data.bio } : {}),
+    ...(data.pandaTypeSlug !== undefined ? { panda_type_slug: data.pandaTypeSlug } : {}),
+    ...(data.typeAffectionPct !== undefined ? { type_affection_pct: data.typeAffectionPct } : {}),
+    ...(data.typeThinkingPct !== undefined ? { type_thinking_pct: data.typeThinkingPct } : {}),
+    ...(data.typeActionPct !== undefined ? { type_action_pct: data.typeActionPct } : {}),
+    ...(data.typeLifePct !== undefined ? { type_life_pct: data.typeLifePct } : {}),
+    ...(data.diagnosed16At !== undefined ? { diagnosed_16_at: data.diagnosed16At } : {}),
   }
 }

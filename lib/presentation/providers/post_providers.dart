@@ -30,6 +30,7 @@ class QuestionPostController extends StateNotifier<List<DummyQuestion>> {
         );
     await reload();
     _ref.invalidate(feedQuestionsProvider);
+    _ref.invalidate(questionHistoryProvider);
   }
 
   Future<void> editQuestion({
@@ -50,12 +51,14 @@ class QuestionPostController extends StateNotifier<List<DummyQuestion>> {
         );
     await reload();
     _ref.invalidate(feedQuestionsProvider);
+    _ref.invalidate(questionHistoryProvider);
   }
 
   Future<void> deleteQuestion(int number) async {
     await _ref.read(questionRepositoryProvider).deleteQuestion(number);
     await reload();
     _ref.invalidate(feedQuestionsProvider);
+    _ref.invalidate(questionHistoryProvider);
   }
 }
 

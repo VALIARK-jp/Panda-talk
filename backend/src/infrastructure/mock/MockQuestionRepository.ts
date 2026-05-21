@@ -5,6 +5,7 @@ import type {
   HotQuestion,
   QuestionStats,
   AnsweredQuestion,
+  FeedWindowQuestion,
 } from '../../domain/entities/index'
 import type { IQuestionRepository } from '../../domain/repositories/IQuestionRepository'
 
@@ -78,13 +79,53 @@ function toQuestionWithUser(
   }
   return {
     ...q,
-    poster,
+    poster: {
+      id: poster.id,
+      username: poster.username,
+      name: poster.username,
+      avatarUrl: poster.avatarUrl,
+    },
     likeCount: engagement?.likeCount ?? 0,
     commentCount: engagement?.commentCount ?? 0,
   }
 }
 
 export class MockQuestionRepository implements IQuestionRepository {
+  async getDiagnosis16(_userId?: UUID): Promise<QuestionWithUser[]> {
+    return questions
+      .filter((q) => q.questionNumber >= 1 && q.questionNumber <= 16)
+      .sort((a, b) => a.questionNumber - b.questionNumber)
+      .map((q, index) =>
+        toQuestionWithUser(q, {
+          likeCount: (index + 1) * 2,
+          commentCount: index,
+        })
+      )
+  }
+
+  async getFeedWindow(
+    _userId: UUID,
+    before: number,
+    after: number,
+    maxQuestionNumber?: number
+  ): Promise<FeedWindowQuestion[]> {
+    const sorted = [...questions].sort((a, b) => a.questionNumber - b.questionNumber)
+    if (maxQuestionNumber != null && maxQuestionNumber > 0) {
+      const inRange = sorted.filter(
+        (q) => q.questionNumber >= 1 && q.questionNumber <= maxQuestionNumber
+      )
+      return inRange.map((q, index) =>
+        toQuestionWithUser(q, { likeCount: index, commentCount: index })
+      )
+    }
+    const frontier = sorted[0]?.questionNumber ?? 1
+    const minNum = Math.max(1, frontier - before)
+    const maxNum = frontier + after
+    return sorted
+      .filter((q) => q.questionNumber >= minNum && q.questionNumber <= maxNum)
+      .map((q, index) => toQuestionWithUser(q, { likeCount: index, commentCount: index }))
+  }
+
   async getFeed(userId: UUID, limit: number, cursor?: UUID): Promise<QuestionWithUser[]> {
     let list = questions.map((q, index) =>
       toQuestionWithUser(q, {
@@ -150,7 +191,7 @@ export class MockQuestionRepository implements IQuestionRepository {
           q.optionA.includes(keyword) ||
           q.optionB.includes(keyword)
       )
-      .map(toQuestionWithUser)
+      .map((q) => toQuestionWithUser(q))
       .slice(0, limit)
   }
 
@@ -180,7 +221,15 @@ export class MockQuestionRepository implements IQuestionRepository {
   }
 
   async delete(id: UUID): Promise<void> {
+    const target = questions.find((q) => q.id === id)
+    if (!target) return
+    const deletedNumber = target.questionNumber
     const idx = questions.findIndex((q) => q.id === id)
-    if (idx !== -1) questions.splice(idx, 1)
+    questions.splice(idx, 1)
+    for (const q of questions) {
+      if (q.questionNumber > deletedNumber) {
+        q.questionNumber -= 1
+      }
+    }
   }
 }

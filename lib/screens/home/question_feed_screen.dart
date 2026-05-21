@@ -7,19 +7,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/app_config.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/question_stats_utils.dart';
 import '../../core/share_utils.dart';
+import '../../infrastructure/diagnosis_16_completion.dart';
+import '../../infrastructure/diagnosis_16_store.dart';
 import '../../presentation/providers/auth_providers.dart';
+import '../../presentation/providers/diagnosis_providers.dart';
 import '../../presentation/providers/question_providers.dart';
+import '../../widgets/diagnosis_16_result_modal.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
+import '../../widgets/answer_ratio_bar.dart';
 import 'question_comments_screen.dart';
 import 'question_history_screen.dart';
 
 class QuestionFeedScreen extends ConsumerStatefulWidget {
-  const QuestionFeedScreen({super.key});
+  const QuestionFeedScreen({super.key, this.onOpenPost});
+
+  /// 未回答がなくなったとき、投稿タブへ誘導する。
+  final VoidCallback? onOpenPost;
 
   @override
   ConsumerState<QuestionFeedScreen> createState() => _QuestionFeedScreenState();
@@ -27,6 +36,15 @@ class QuestionFeedScreen extends ConsumerStatefulWidget {
 
 class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   int _tabIndex = 0; // 0=診断 1=Hot
+  bool _checkedPendingDiagnosisModal = false;
+
+  Timer? _feedSyncDebounce;
+  String? _lastSyncedQuestionKey;
+  String? _lastBuildFeedKey;
+  String? _activeFeedKey;
+  int _lastFeedQuestionCount = 0;
+  bool _userHasNavigated = false;
+  bool _pendingAdvanceAfterAnswer = false;
   bool get _isGuest {
     final asyncUser = ref.read(authUserProvider);
     return (asyncUser.valueOrNull ??
@@ -34,9 +52,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         null;
   }
 
-  final _pageController = PageController();
+  PageController? _pageController;
   Timer? _nextQuestionTimer;
-
   static const _nudgeMessages = {
     10: '10問答えたね！\n登録すると合致度が見られるよ。',
     20: 'あなたと合う人、\nもう見つかってるかも。',
@@ -46,82 +63,144 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   @override
   void dispose() {
     _nextQuestionTimer?.cancel();
-    _pageController.dispose();
+    _feedSyncDebounce?.cancel();
+    _pageController?.dispose();
     super.dispose();
   }
 
-  Future<void> _onAnswer(DummyQuestion q, String selected, int total) async {
+  Future<void> _onAnswer(
+    DummyQuestion q,
+    String selected,
+    int total,
+    List<DummyQuestion> questions,
+  ) async {
     final controller = ref.read(questionFeedControllerProvider.notifier);
-    if (ref.read(questionFeedControllerProvider).selectedOptionFor(q.number) !=
-        null) {
+    final feedState = ref.read(questionFeedControllerProvider);
+    if (feedState.selectedOptionFor(q.number) != null || q.myAnswer != null) {
       return;
     }
     await controller.answer(q, selected);
     if (!mounted) return;
 
+    final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
+    if (!unlocked && q.number <= 16) {
+      final choseA = selected == q.optionA;
+      await Diagnosis16Store.saveAnswer(q.number, choseA);
+
+      if (q.number == 16) {
+        _nextQuestionTimer?.cancel();
+        final updated = ref.read(questionFeedControllerProvider);
+        final result = await completeDiagnosis16FromFeed(
+          ref: ref,
+          diagnosisQuestions: questions,
+          selectedOptionsByQuestion: updated.selectedOptionsByQuestion,
+        );
+        if (!mounted) return;
+        await showDiagnosis16ResultModal(context, result);
+        await Diagnosis16Store.markResultSeen();
+        ref.invalidate(diagnosis16UnlockedProvider);
+        ref.invalidate(feedQuestionsProvider);
+        ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(0);
+        return;
+      }
+    }
+
+    _pendingAdvanceAfterAnswer = true;
+    ref.invalidate(feedQuestionsProvider);
     _nextQuestionTimer?.cancel();
-    _nextQuestionTimer = Timer(const Duration(milliseconds: 850), () {
+    _nextQuestionTimer = Timer(const Duration(milliseconds: 850), () async {
       if (!mounted) return;
+      _pendingAdvanceAfterAnswer = false;
       final answeredCount = ref
           .read(questionFeedControllerProvider)
           .answeredCount;
-      _goToNextQuestion(total);
+      final latest = await ref.read(feedQuestionsProvider.future);
+      if (!mounted || latest.isEmpty) return;
+      final feedState = ref.read(questionFeedControllerProvider);
+      final currentIndex = feedState.questionIndex.clamp(0, latest.length - 1);
+      final nextIndex = _nextPageIndexAfterAnswer(latest, feedState, currentIndex);
+      _animateToQuestion(nextIndex);
       if (_isGuest && _nudgeMessages.containsKey(answeredCount)) {
         _showNudgeModal(answeredCount);
       }
     });
   }
 
-  void _goToNextQuestion(int total) {
-    _nextQuestionTimer?.cancel();
-    final currentIndex = ref.read(questionFeedControllerProvider).questionIndex;
-    final nextIndex = (currentIndex + 1) % total;
-    _animateToQuestion(nextIndex);
+  bool _isQuestionAnswered(DummyQuestion q, QuestionFeedState feedState) {
+    return feedState.selectedOptionFor(q.number) != null || q.myAnswer != null;
   }
 
-  void _handleManualSwipe(
-    DragEndDetails details,
+  /// 回答直後: ひとつ新しい未回答へ。なければフロンティア。
+  int _nextPageIndexAfterAnswer(
     List<DummyQuestion> questions,
     QuestionFeedState feedState,
+    int currentIndex,
   ) {
-    final velocity = details.primaryVelocity;
-    if (velocity == null) return;
-
-    final total = questions.length;
-    final currentIndex = feedState.questionIndex % total;
-    final currentQuestion = questions[currentIndex];
-    final currentAnswered =
-        feedState.selectedOptionFor(currentQuestion.number) != null ||
-        currentQuestion.myAnswer != null;
-
-    if (velocity < -200) {
-      if (currentAnswered) _goToNextQuestion(total);
-      return;
+    for (var i = currentIndex + 1; i < questions.length; i++) {
+      if (!_isQuestionAnswered(questions[i], feedState)) return i;
     }
-
-    if (velocity > 200) {
-      for (var index = currentIndex - 1; index >= 0; index--) {
-        final question = questions[index];
-        if (feedState.selectedOptionFor(question.number) != null ||
-            question.myAnswer != null) {
-          _nextQuestionTimer?.cancel();
-          _animateToQuestion(index);
-          return;
-        }
-      }
-    }
+    return _unansweredFrontierIndex(questions, feedState);
   }
 
   void _animateToQuestion(int index) {
-    if (!_pageController.hasClients) {
+    if (index < 0) return;
+    _userHasNavigated = true;
+    _nextQuestionTimer?.cancel();
+    final controller = _pageController;
+    if (controller == null || !controller.hasClients) {
       ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(index);
       return;
     }
-    _pageController.animateToPage(
+    final current = controller.page?.round() ?? 0;
+    if (current == index) {
+      ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(index);
+      return;
+    }
+    controller.animateToPage(
       index,
       duration: const Duration(milliseconds: 420),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  /// 未回答のうち番号が最小の問（リスト先頭側）。古い順＝上が古い・下が最新。
+  int _unansweredFrontierIndex(
+    List<DummyQuestion> questions,
+    QuestionFeedState feedState,
+  ) {
+    for (var i = 0; i < questions.length; i++) {
+      if (!_isQuestionAnswered(questions[i], feedState)) return i;
+    }
+    return questions.length - 1;
+  }
+
+  bool _shouldSnapToFrontier(
+    List<DummyQuestion> questions, {
+    required String feedKey,
+  }) {
+    if (questions.isEmpty) return false;
+    if (!_userHasNavigated || _activeFeedKey != feedKey) return true;
+    if (questions.length > _lastFeedQuestionCount) return true;
+    final idx = ref.read(questionFeedControllerProvider).questionIndex;
+    if (idx >= questions.length) return true;
+    return false;
+  }
+
+  Future<void> _maybeShowPendingDiagnosisResult() async {
+    if (_checkedPendingDiagnosisModal) return;
+    _checkedPendingDiagnosisModal = true;
+
+    final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
+    if (unlocked || !mounted) return;
+    if (!await Diagnosis16Store.isComplete()) return;
+
+    final result = await Diagnosis16Store.loadResult();
+    if (result == null || !mounted) return;
+
+    await showDiagnosis16ResultModal(context, result);
+    await Diagnosis16Store.markResultSeen();
+    ref.invalidate(diagnosis16UnlockedProvider);
+    ref.invalidate(feedQuestionsProvider);
   }
 
   void _showNudgeModal(int count) {
@@ -140,9 +219,21 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   }) {
     final hasAnswered = selected != null;
     final selectedA = selected == question.optionA;
-    final selectedPercent = selectedA ? percentA : 100 - percentA;
+    final feedState = ref.read(questionFeedControllerProvider);
+    final selectedPercent = selectedSidePercent(
+      selected: selected ?? question.optionA,
+      question: question,
+      percentA: percentA,
+    );
+    final isMinority = hasAnswered &&
+        isMinorityFromSide(
+          selectedA: selectedA,
+          percentA: percentA,
+          countA: feedState.countAFor(question),
+          countB: feedState.countBFor(question),
+        );
     final resultText = hasAnswered
-        ? '\n私は$selected派（${selectedPercent < 50 ? '少数派' : '多数派'} $selectedPercent%）'
+        ? '\n私は$selected派（${isMinority ? '少数派 ' : ''}$selectedPercent%）'
         : '';
 
     AppShare.text(
@@ -163,14 +254,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     QuestionFeedState feedState,
   ) {
     final selected = feedState.selectedOptionFor(q.number) ?? q.myAnswer;
-    final hasAnswered = selected != null;
     final percentA = feedState.percentAFor(q);
-    final selectedA = selected == q.optionA;
-    final selectedPercent = selectedA ? percentA : (100 - percentA);
-    final isMinority = hasAnswered && selectedPercent < 50;
-    final oddballScore = feedState.answeredCount > 0
-        ? (feedState.minorityCount / feedState.answeredCount * 100).round()
-        : 0;
     final likedQuestion = feedState.likedQuestionNumbers.contains(q.number);
 
     return Padding(
@@ -255,17 +339,29 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                         ? Icons.favorite
                         : Icons.favorite_border,
                     count: feedState.likeCountFor(q),
-                    onTap: () => ref
-                        .read(questionFeedControllerProvider.notifier)
-                        .toggleQuestionLike(q),
+                    highlighted: likedQuestion,
+                    onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await ref
+                            .read(questionFeedControllerProvider.notifier)
+                            .toggleQuestionLike(q);
+                      } catch (_) {
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('いいねに失敗しました')),
+                        );
+                      }
+                    },
                   ),
                   _EngagementIcon(
                     icon: Icons.mode_comment_outlined,
                     count: feedState.commentCountFor(q),
                     onTap: () async {
-                      final posted = await QuestionCommentsScreen.showModal(
+                      final posted = await QuestionCommentsScreen.openFocus(
                         context,
                         question: q,
+                        percentA: percentA,
+                        selectedOption: selected,
                       );
                       if (posted && context.mounted) {
                         ref
@@ -277,97 +373,34 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 280),
-                child: hasAnswered
-                    ? Column(
-                        key: ValueKey(
-                          'result-${q.number}-$percentA-$isMinority',
-                        ),
-                        children: [
-                          const Text(
-                            'あなたは...',
-                            style: TextStyle(
-                              fontSize: AppFontSize.lg,
-                              color: AppColors.textGray,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            '$selected！',
-                            style: const TextStyle(
-                              fontSize: AppFontSize.xxxl,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.black,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isMinority
-                                  ? AppColors.black
-                                  : AppColors.softGray,
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.full,
-                              ),
-                            ),
-                            child: Text(
-                              '${isMinority ? '少数派' : '多数派'} $selectedPercent%',
-                              style: TextStyle(
-                                fontSize: AppFontSize.sm,
-                                fontWeight: FontWeight.w800,
-                                color: isMinority
-                                    ? AppColors.white
-                                    : AppColors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        key: ValueKey('question-${q.number}'),
-                        children: [
-                          PandaMascot(size: 72),
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            q.text,
-                            style: const TextStyle(
-                              fontSize: AppFontSize.xl,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.black,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+              Column(
+                children: [
+                  PandaMascot(size: 72),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    q.text,
+                    style: const TextStyle(
+                      fontSize: AppFontSize.xl,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
               const Spacer(),
-              SizedBox(
-                height: 118,
-                child: AnimatedOpacity(
-                  opacity: hasAnswered ? 1 : 0,
-                  duration: const Duration(milliseconds: 240),
-                  child: hasAnswered
-                      ? _OddballScoreCard(
-                          key: ValueKey('score-${q.number}'),
-                          score: oddballScore,
-                          answeredCount: feedState.answeredCount,
-                          minorityCount: feedState.minorityCount,
-                        )
-                      : const SizedBox.shrink(),
+              Hero(
+                tag: answerRatioBarHeroTag(q),
+                child: Material(
+                  color: Colors.transparent,
+                  child: AnswerRatioBar(
+                    question: q,
+                    percentA: percentA,
+                    selectedOption: selected,
+                    onSelect: (option) =>
+                        _onAnswer(q, option, total, questions),
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _AnswerRatioBar(
-                question: q,
-                percentA: percentA,
-                selectedOption: selected,
-                onSelect: (option) => _onAnswer(q, option, total),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
@@ -377,13 +410,186 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     );
   }
 
-  Widget _buildScreen(
+  int _diagnosisAnsweredCount(
     List<DummyQuestion> questions,
     QuestionFeedState feedState,
   ) {
+    var count = 0;
+    for (final q in questions) {
+      if (q.number < 1 || q.number > 16) continue;
+      if (feedState.selectedOptionFor(q.number) != null || q.myAnswer != null) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  Widget _buildDiagnosisProgressBar(int answered) {
+    const total = 16;
+    final done = answered >= total;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.borderGray),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '初回診断',
+                style: TextStyle(
+                  fontSize: AppFontSize.sm,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.black,
+                ),
+              ),
+              Text(
+                done ? '診断完了' : '$answered / $total',
+                style: TextStyle(
+                  fontSize: AppFontSize.sm,
+                  fontWeight: FontWeight.w700,
+                  color: done ? AppColors.black : AppColors.textGray,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: LinearProgressIndicator(
+              value: answered / total,
+              minHeight: 8,
+              backgroundColor: AppColors.softGray,
+              valueColor: const AlwaysStoppedAnimation(AppColors.black),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAllAnsweredBanner() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      child: GestureDetector(
+        onTap: widget.onOpenPost,
+        behavior: HitTestBehavior.opaque,
+        child: Text(
+          widget.onOpenPost != null
+              ? '未解答はありません。二択を投稿してみよう →'
+              : '未解答はありません',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: AppFontSize.sm,
+            color: AppColors.textGray,
+            height: 1.35,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoQuestionsEmpty() {
+    return Scaffold(
+      backgroundColor: AppColors.softGray,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const PandaMascot(size: 72),
+                const SizedBox(height: AppSpacing.lg),
+                const Text(
+                  'まだ質問がありません',
+                  style: TextStyle(
+                    fontSize: AppFontSize.lg,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                const Text(
+                  '最初の二択を投稿してみよう！',
+                  style: TextStyle(
+                    fontSize: AppFontSize.md,
+                    color: AppColors.textGray,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (widget.onOpenPost != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  PandaButton(
+                    label: '二択を投稿する',
+                    onTap: widget.onOpenPost,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _ensurePageController(
+    List<DummyQuestion> questions,
+    QuestionFeedState feedState,
+  ) {
+    if (questions.isEmpty) return;
+    if (_pageController != null) return;
+
+    final frontier = _unansweredFrontierIndex(questions, feedState)
+        .clamp(0, questions.length - 1);
+    final initial = _userHasNavigated
+        ? feedState.questionIndex.clamp(0, questions.length - 1)
+        : frontier;
+
+    _pageController = PageController(initialPage: initial);
+    // build 中に StateNotifier を更新しない（Riverpod の制約）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(initial);
+    });
+  }
+
+  Widget _buildScreen(
+    List<DummyQuestion> questions,
+    QuestionFeedState feedState, {
+    required bool showDiagnosisProgress,
+    bool showAllAnsweredBanner = false,
+  }) {
     final total = questions.length;
-    final showingAnsweredHistory =
-        questions.isNotEmpty && questions.every((q) => q.myAnswer != null);
+    _ensurePageController(questions, feedState);
+    final diagnosisAnswered = showDiagnosisProgress
+        ? _diagnosisAnsweredCount(questions, feedState)
+        : 0;
+    final pageController = _pageController;
+    if (pageController == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.softGray,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.softGray,
       body: SafeArea(
@@ -408,13 +614,24 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                         ref
                             .read(questionFeedControllerProvider.notifier)
                             .resetForTab();
-                        if (_pageController.hasClients) {
-                          _pageController.jumpToPage(0);
+                        if (_pageController?.hasClients == true) {
+                          _pageController!.jumpToPage(0);
                         }
                       },
                     ),
                   ),
                   const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: '更新',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    onPressed: _refreshFromServer,
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: AppColors.black,
+                      size: 24,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
@@ -433,74 +650,54 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 ],
               ),
             ),
-            if (showingAnsweredHistory)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  0,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.borderGray),
-                ),
-                child: const Text(
-                  '未回答の質問はありません',
-                  style: TextStyle(
-                    fontSize: AppFontSize.sm,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.black,
-                  ),
-                ),
-              ),
+            if (showDiagnosisProgress)
+              _buildDiagnosisProgressBar(diagnosisAnswered),
+            if (showAllAnsweredBanner) _buildAllAnsweredBanner(),
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onVerticalDragEnd: (details) =>
-                    _handleManualSwipe(details, questions, feedState),
-                child: PageView.builder(
-                  controller: _pageController,
+              child: PageView.builder(
+                  controller: pageController,
                   scrollDirection: Axis.vertical,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: total > 1
+                      ? const ClampingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
                   itemCount: total,
                   onPageChanged: (index) {
+                    _userHasNavigated = true;
                     _nextQuestionTimer?.cancel();
                     final notifier = ref.read(
                       questionFeedControllerProvider.notifier,
                     );
                     notifier.setQuestionIndex(index);
-                    final q = questions[index];
-                    final feed = ref.read(questionFeedControllerProvider);
-                    final selected =
-                        feed.selectedOptionFor(q.number) ?? q.myAnswer;
-                    if (selected != null) {
-                      Future.microtask(
-                        () => notifier.refreshAnsweredStats([q]),
-                      );
-                    }
+                    Future.microtask(
+                      () => notifier.prefetchAround(questions, index),
+                    );
                   },
                   itemBuilder: (context, index) {
+                    final currentFeed = ref.watch(questionFeedControllerProvider);
                     return _buildQuestionPage(
                       questions[index],
                       questions,
                       total,
-                      feedState,
+                      currentFeed,
                     );
                   },
                 ),
-              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  bool _feedIsAllAnswered(
+    List<DummyQuestion> questions,
+    QuestionFeedState feedState,
+  ) {
+    if (questions.isEmpty) return false;
+    return questions.every((q) {
+      return feedState.selectedOptionFor(q.number) != null ||
+          q.myAnswer != null;
+    });
   }
 
   String _feedErrorMessage(Object error) {
@@ -519,20 +716,81 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     return '質問を読み込めませんでした。\n$text';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    ref.listen<AsyncValue<List<DummyQuestion>>>(feedQuestionsProvider, (_, next) {
-      next.whenData((questions) {
-        final notifier = ref.read(questionFeedControllerProvider.notifier);
-        notifier.syncAnsweredFromServer(questions);
-        notifier.syncEngagementFromQuestions(questions);
-        Future.microtask(() => notifier.refreshAnsweredStats(questions));
+  String _questionsSyncKey(List<DummyQuestion> questions) {
+    return questions.map((q) => '${q.apiId}:${q.myAnswer ?? ""}').join('|');
+  }
+
+  void _scheduleFeedSync(List<DummyQuestion> questions) {
+    if (questions.isEmpty) return;
+    final bootstrap = ref.read(feedBootstrapProvider);
+    if (!bootstrap.hasValue) return;
+
+    final key = _questionsSyncKey(questions);
+    if (key == _lastSyncedQuestionKey) return;
+
+    _feedSyncDebounce?.cancel();
+    _feedSyncDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      _lastSyncedQuestionKey = key;
+      final notifier = ref.read(questionFeedControllerProvider.notifier);
+      Future.microtask(() async {
+        await notifier.reconcileWithServer(questions);
+        if (!mounted) return;
+        final feedState = ref.read(questionFeedControllerProvider);
+        notifier.applyServerStats(questions);
+
+        final snap = _shouldSnapToFrontier(questions, feedKey: key);
+        _lastFeedQuestionCount = questions.length;
+        _activeFeedKey = key;
+        if (snap && !_pendingAdvanceAfterAnswer && _pageController != null) {
+          final frontier = _unansweredFrontierIndex(questions, feedState);
+          final current = _pageController!.hasClients
+              ? (_pageController!.page?.round() ?? 0)
+              : feedState.questionIndex;
+          if (current != frontier) {
+            _pageController!.jumpToPage(frontier);
+            notifier.setQuestionIndex(frontier);
+          }
+        }
       });
     });
+  }
 
-    final questionsAsync = ref.watch(feedQuestionsProvider);
+  Future<void> _refreshFromServer() async {
+    _lastSyncedQuestionKey = null;
+    _userHasNavigated = false;
+    _activeFeedKey = null;
+    _pageController?.dispose();
+    _pageController = null;
+    ref.invalidate(feedBootstrapProvider);
+    ref.invalidate(feedQuestionsProvider);
+    await ref.read(feedQuestionsProvider.future);
+  }
+
+  List<DummyQuestion> _orderForTab(List<DummyQuestion> questions) {
+    final ordered = [...questions];
+    if (_tabIndex == 1) {
+      ordered.sort((a, b) => b.percentA.compareTo(a.percentA));
+    }
+    return ordered;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final feedState = ref.watch(questionFeedControllerProvider);
-    return questionsAsync.when(
+    final bootstrap = ref.watch(feedBootstrapProvider);
+    final feedAsync = ref.watch(feedQuestionsProvider);
+    final inDiagnosis16 = !(ref.watch(diagnosis16UnlockedProvider).valueOrNull ??
+        false);
+
+    if (!bootstrap.hasValue && bootstrap.isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.softGray,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return feedAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
@@ -551,248 +809,51 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
           ),
         ),
       ),
-      data: (questions) {
-        if (questions.isEmpty) {
-          return const Scaffold(body: Center(child: Text('まだ表示できる質問がありません')));
+      data: (feedQuestions) {
+        if (feedQuestions.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _maybeShowPendingDiagnosisResult();
+          });
+          return _buildNoQuestionsEmpty();
         }
-        final orderedQuestions = [...questions];
-        if (_tabIndex == 1) {
-          orderedQuestions.sort((a, b) => b.percentA.compareTo(a.percentA));
+
+        final ordered = _orderForTab(feedQuestions);
+        final feedKey = _questionsSyncKey(ordered);
+        if (feedKey != _lastBuildFeedKey) {
+          final prevKey = _lastBuildFeedKey;
+          _lastBuildFeedKey = feedKey;
+          if (_activeFeedKey != feedKey) {
+            _userHasNavigated = false;
+          }
+          if (inDiagnosis16 &&
+              prevKey != null &&
+              prevKey != feedKey &&
+              ordered.length != _lastFeedQuestionCount) {
+            _pageController?.dispose();
+            _pageController = null;
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _scheduleFeedSync(ordered);
+          });
         }
-        return _buildScreen(orderedQuestions, feedState);
+
+        if (inDiagnosis16) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _maybeShowPendingDiagnosisResult();
+          });
+        }
+
+        final allAnswered = !inDiagnosis16 &&
+            _feedIsAllAnswered(ordered, feedState);
+
+        return _buildScreen(
+          ordered,
+          feedState,
+          showDiagnosisProgress: inDiagnosis16,
+          showAllAnsweredBanner: allAnswered,
+        );
       },
-    );
-  }
-}
-
-class _AnswerRatioBar extends StatelessWidget {
-  final DummyQuestion question;
-  final int percentA;
-  final String? selectedOption;
-  final ValueChanged<String> onSelect;
-
-  const _AnswerRatioBar({
-    required this.question,
-    required this.percentA,
-    required this.selectedOption,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasAnswered = selectedOption != null;
-    final leftPercent = hasAnswered ? percentA : 50;
-    final rightPercent = hasAnswered ? 100 - percentA : 50;
-    final selectedA = selectedOption == question.optionA;
-    final selectedB = selectedOption == question.optionB;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AnimatedOpacity(
-          opacity: hasAnswered ? 1 : 0,
-          duration: const Duration(milliseconds: 200),
-          child: const Text(
-            'みんなの回答',
-            style: TextStyle(
-              fontSize: AppFontSize.md,
-              fontWeight: FontWeight.w700,
-              color: AppColors.black,
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            border: Border.all(color: AppColors.borderGray),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            child: SizedBox(
-              height: 64,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  return Row(
-                    children: [
-                      GestureDetector(
-                        onTap: hasAnswered
-                            ? null
-                            : () => onSelect(question.optionA),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 900),
-                          curve: Curves.easeOutCubic,
-                          width: width * leftPercent / 100,
-                          color: AppColors.white,
-                          alignment: Alignment.center,
-                          child: _RatioLabel(
-                            label: hasAnswered
-                                ? '${question.optionA} $leftPercent%'
-                                : question.optionA,
-                            selected: selectedA,
-                            dark: false,
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: hasAnswered
-                            ? null
-                            : () => onSelect(question.optionB),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 900),
-                          curve: Curves.easeOutCubic,
-                          width: width * rightPercent / 100,
-                          color: AppColors.black,
-                          alignment: Alignment.center,
-                          child: _RatioLabel(
-                            label: hasAnswered
-                                ? '${question.optionB} $rightPercent%'
-                                : question.optionB,
-                            selected: selectedB,
-                            dark: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RatioLabel extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final bool dark;
-
-  const _RatioLabel({
-    required this.label,
-    required this.selected,
-    required this.dark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (selected) ...[
-              Icon(
-                Icons.check_circle,
-                size: 16,
-                color: dark ? AppColors.white : AppColors.black,
-              ),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: AppFontSize.lg,
-                fontWeight: FontWeight.w800,
-                color: dark ? AppColors.white : AppColors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OddballScoreCard extends StatelessWidget {
-  final int score;
-  final int answeredCount;
-  final int minorityCount;
-
-  const _OddballScoreCard({
-    super.key,
-    required this.score,
-    required this.answeredCount,
-    required this.minorityCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.softGray,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'あなたの異端児スコア',
-                  style: TextStyle(
-                    fontSize: AppFontSize.md,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.black,
-                  ),
-                ),
-              ),
-              Text(
-                '$score%',
-                style: const TextStyle(
-                  fontSize: AppFontSize.xl,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.black,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            child: LinearProgressIndicator(
-              value: score / 100,
-              minHeight: 10,
-              backgroundColor: AppColors.borderGray,
-              valueColor: const AlwaysStoppedAnimation(AppColors.black),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '凡人',
-                style: TextStyle(
-                  fontSize: AppFontSize.sm,
-                  color: AppColors.textGray,
-                ),
-              ),
-              Text(
-                '$answeredCount問中$minorityCount問で少数派',
-                style: const TextStyle(
-                  fontSize: AppFontSize.sm,
-                  color: AppColors.textGray,
-                ),
-              ),
-              const Text(
-                '異端児',
-                style: TextStyle(
-                  fontSize: AppFontSize.sm,
-                  color: AppColors.textGray,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -800,16 +861,19 @@ class _OddballScoreCard extends StatelessWidget {
 class _EngagementIcon extends StatelessWidget {
   final IconData icon;
   final int count;
+  final bool highlighted;
   final VoidCallback? onTap;
 
   const _EngagementIcon({
     required this.icon,
     required this.count,
+    this.highlighted = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = highlighted ? AppColors.likeRed : AppColors.black;
     return SizedBox(
       width: 48,
       child: GestureDetector(
@@ -818,14 +882,14 @@ class _EngagementIcon extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: AppColors.black, size: 24),
+            Icon(icon, color: color, size: 24),
             const SizedBox(height: 2),
             Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: AppFontSize.sm,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textGray,
+                color: highlighted ? AppColors.likeRed : AppColors.textGray,
               ),
             ),
           ],
@@ -837,6 +901,7 @@ class _EngagementIcon extends StatelessWidget {
 
 class _NudgeCard extends StatelessWidget {
   final String message;
+
   const _NudgeCard({required this.message});
 
   @override
@@ -851,7 +916,6 @@ class _NudgeCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ハンドル
           Container(
             width: 40,
             height: 4,

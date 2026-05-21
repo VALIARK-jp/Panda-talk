@@ -37,12 +37,26 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> updateProfile({required String name, required String bio}) async {
+  Future<DummyProfile> getUserProfile(String userId) async {
+    final data = await _getJson(
+      Uri.parse('$_apiBaseUrl/users/$userId'),
+      auth: true,
+    );
+    return _profileFromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> updateProfile({
+    required String name,
+    required String bio,
+    String? avatarUrl,
+  }) async {
     await _patchJson(
       Uri.parse('$_apiBaseUrl/users/me'),
       body: {
         'name': name,
         'bio': bio,
+        if (avatarUrl != null) 'avatarUrl': avatarUrl,
       },
       auth: true,
     );
@@ -91,6 +105,29 @@ class ApiProfileRepository implements ProfileRepository {
     return RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(username);
   }
 
+  @override
+  Future<void> savePandaType16({
+    required String slug,
+    required int affectionPct,
+    required int thinkingPct,
+    required int actionPct,
+    required int lifePct,
+    DateTime? diagnosedAt,
+  }) async {
+    await _patchJson(
+      Uri.parse('$_apiBaseUrl/users/me'),
+      body: {
+        'pandaTypeSlug': slug,
+        'typeAffectionPct': affectionPct,
+        'typeThinkingPct': thinkingPct,
+        'typeActionPct': actionPct,
+        'typeLifePct': lifePct,
+        'diagnosed16At': (diagnosedAt ?? DateTime.now()).toUtc().toIso8601String(),
+      },
+      auth: true,
+    );
+  }
+
   DummyProfile _profileFromJson(Map<String, dynamic> json) {
     return DummyProfile(
       name: json['name'] as String? ?? '名無しさん',
@@ -102,6 +139,14 @@ class ApiProfileRepository implements ProfileRepository {
       friendCount: json['friendCount'] as int? ?? 0,
       oddballScore: (json['oddballScore'] as num? ?? 0).toInt(),
       tags: (json['tags'] as List<dynamic>?)?.cast<String>() ?? const [],
+      pandaTypeSlug: json['pandaTypeSlug'] as String?,
+      typeAffectionPct: (json['typeAffectionPct'] as num?)?.toInt(),
+      typeThinkingPct: (json['typeThinkingPct'] as num?)?.toInt(),
+      typeActionPct: (json['typeActionPct'] as num?)?.toInt(),
+      typeLifePct: (json['typeLifePct'] as num?)?.toInt(),
+      diagnosed16At: json['diagnosed16At'] != null
+          ? DateTime.tryParse(json['diagnosed16At'] as String)
+          : null,
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
+import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../infrastructure/profile_onboarding_store.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/terms_consent_footer.dart';
@@ -60,10 +61,11 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
     );
 
     _authSubscription =
-        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       if (data.event == AuthChangeEvent.signedIn && mounted) {
-        Navigator.of(context, rootNavigator: true)
-            .popUntil((route) => route.isFirst);
+        await PostAuthFlow.withLoading(context, () async {
+          await PostAuthFlow.finishLogin(ref: ref, context: context);
+        });
       }
     });
   }
@@ -414,9 +416,9 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         password: _loginPasswordController.text,
       );
       if (!mounted) return;
-      ref.invalidate(authUserProvider);
-      Navigator.of(context, rootNavigator: true)
-          .popUntil((route) => route.isFirst);
+      await PostAuthFlow.withLoading(context, () async {
+        await PostAuthFlow.finishLogin(ref: ref, context: context);
+      });
     } catch (e) {
       if (mounted) {
         _showErrorDialog(e.toString().replaceFirst('Exception: ', ''));
@@ -450,13 +452,9 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         if (userId != null) {
           await ProfileOnboardingStore.requireSetup(userId);
         }
-        ref.invalidate(authUserProvider);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!context.mounted) return;
-            Navigator.of(context, rootNavigator: true)
-                .popUntil((route) => route.isFirst);
-          });
+        if (!mounted) return;
+        await PostAuthFlow.withLoading(context, () async {
+          await PostAuthFlow.finishLogin(ref: ref, context: context);
         });
         return;
       }

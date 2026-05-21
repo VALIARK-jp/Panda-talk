@@ -56,7 +56,8 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/app_icon.png"
+  # 差し替え: assets/images/app_icon.png を置き `dart run flutter_launcher_icons` を実行
+  image_path: "assets/images/16type.png"
   min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the

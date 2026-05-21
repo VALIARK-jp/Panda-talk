@@ -22,6 +22,8 @@ class DummyQuestion {
   final String optionB;
   final String? myAnswer;
   final int percentA;
+  final int countA;
+  final int countB;
   final int likeCount;
   final int commentCount;
   const DummyQuestion({
@@ -35,6 +37,8 @@ class DummyQuestion {
     required this.optionB,
     this.myAnswer,
     required this.percentA,
+    this.countA = 0,
+    this.countB = 0,
     this.likeCount = 0,
     this.commentCount = 0,
   });
@@ -46,6 +50,8 @@ class DummyQuestion {
     String? optionB,
     String? myAnswer,
     int? percentA,
+    int? countA,
+    int? countB,
     int? likeCount,
     int? commentCount,
   }) {
@@ -60,6 +66,8 @@ class DummyQuestion {
       optionB: optionB ?? this.optionB,
       myAnswer: myAnswer ?? this.myAnswer,
       percentA: percentA ?? this.percentA,
+      countA: countA ?? this.countA,
+      countB: countB ?? this.countB,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
     );
@@ -208,6 +216,12 @@ class DummyProfile {
   final int friendCount;
   final int oddballScore;
   final List<String> tags;
+  final String? pandaTypeSlug;
+  final int? typeAffectionPct;
+  final int? typeThinkingPct;
+  final int? typeActionPct;
+  final int? typeLifePct;
+  final DateTime? diagnosed16At;
 
   const DummyProfile({
     required this.name,
@@ -219,18 +233,48 @@ class DummyProfile {
     required this.friendCount,
     required this.oddballScore,
     required this.tags,
+    this.pandaTypeSlug,
+    this.typeAffectionPct,
+    this.typeThinkingPct,
+    this.typeActionPct,
+    this.typeLifePct,
+    this.diagnosed16At,
   });
 
-  DummyProfile copyWith({String? name, String? bio}) {
+  bool get hasDiagnosis16 =>
+      pandaTypeSlug != null &&
+      typeAffectionPct != null &&
+      typeThinkingPct != null &&
+      typeActionPct != null &&
+      typeLifePct != null;
+
+  DummyProfile copyWith({
+    String? name,
+    String? bio,
+    String? avatarUrl,
+    String? pandaTypeSlug,
+    int? typeAffectionPct,
+    int? typeThinkingPct,
+    int? typeActionPct,
+    int? typeLifePct,
+    DateTime? diagnosed16At,
+  }) {
     return DummyProfile(
       name: name ?? this.name,
       username: username,
       bio: bio ?? this.bio,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       answerCount: answerCount,
       postCount: postCount,
       friendCount: friendCount,
       oddballScore: oddballScore,
       tags: tags,
+      pandaTypeSlug: pandaTypeSlug ?? this.pandaTypeSlug,
+      typeAffectionPct: typeAffectionPct ?? this.typeAffectionPct,
+      typeThinkingPct: typeThinkingPct ?? this.typeThinkingPct,
+      typeActionPct: typeActionPct ?? this.typeActionPct,
+      typeLifePct: typeLifePct ?? this.typeLifePct,
+      diagnosed16At: diagnosed16At ?? this.diagnosed16At,
     );
   }
 }

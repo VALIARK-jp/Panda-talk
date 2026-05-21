@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
-import '../../../../presentation/providers/auth_providers.dart';
+import '../../../../infrastructure/post_auth_flow.dart';
 
 /// サインアップ確認メール送付後。メール内リンク（PKCE）でセッションが付いたらルートまで戻す。
 class EmailSentScreen extends ConsumerStatefulWidget {
@@ -60,19 +60,12 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
     }
   }
 
-  void _popToRootIfSession() {
+  Future<void> _popToRootIfSession() async {
     if (_poppedToRoot || !mounted) return;
     if (Supabase.instance.client.auth.currentSession == null) return;
     _poppedToRoot = true;
-    ref.invalidate(authUserProvider);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).popUntil((route) => route.isFirst);
-      });
+    await PostAuthFlow.withLoading(context, () async {
+      await PostAuthFlow.finishLogin(ref: ref, context: context);
     });
   }
 

@@ -9,10 +9,24 @@ class AppConfig {
       'PANDA_TALK_API_BASE_URL',
       defaultValue: '',
     );
-    if (fromDefine.isNotEmpty) return fromDefine;
+    if (fromDefine.isNotEmpty) return _normalizeApiBaseUrl(fromDefine);
     final fromFile = dotenv.env['PANDA_TALK_API_BASE_URL']?.trim();
-    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    if (fromFile != null && fromFile.isNotEmpty) {
+      return _normalizeApiBaseUrl(fromFile);
+    }
     return 'http://localhost:8787';
+  }
+
+  /// `localhost:8787` のように scheme 抜けを補正（`No host specified in URI` 防止）。
+  static String _normalizeApiBaseUrl(String raw) {
+    var value = raw.trim();
+    if (value.isEmpty) return 'http://localhost:8787';
+    if (!value.contains('://')) {
+      final isLocal = value.startsWith('localhost') ||
+          value.startsWith('127.0.0.1');
+      value = '${isLocal ? 'http' : 'https'}://$value';
+    }
+    return value.replaceAll(RegExp(r'/+$'), '');
   }
 
   /// `localhost` / `127.0.0.1` 向け（Mac 上の wrangler dev）。実機からは届かない。

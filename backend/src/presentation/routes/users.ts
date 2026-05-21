@@ -73,6 +73,12 @@ app.patch('/me', authMiddleware, async (c) => {
       username?: string
       avatarUrl?: string | null
       bio?: string | null
+      pandaTypeSlug?: string | null
+      typeAffectionPct?: number | null
+      typeThinkingPct?: number | null
+      typeActionPct?: number | null
+      typeLifePct?: number | null
+      diagnosed16At?: string | null
     }>()
     const { updateProfileUseCase } = createContainer(c.env)
     const user = await updateProfileUseCase.execute({
@@ -81,6 +87,12 @@ app.patch('/me', authMiddleware, async (c) => {
       username: body.username,
       avatarUrl: body.avatarUrl,
       bio: body.bio,
+      pandaTypeSlug: body.pandaTypeSlug,
+      typeAffectionPct: body.typeAffectionPct,
+      typeThinkingPct: body.typeThinkingPct,
+      typeActionPct: body.typeActionPct,
+      typeLifePct: body.typeLifePct,
+      diagnosed16At: body.diagnosed16At,
     })
     return c.json({ user })
   } catch (err) {

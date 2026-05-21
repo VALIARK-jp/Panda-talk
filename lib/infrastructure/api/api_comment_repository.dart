@@ -178,7 +178,7 @@ class ApiCommentRepository implements CommentRepository {
 
   Map<String, dynamic> _decode(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError(response.body);
+      throw StateError('${response.statusCode}: ${response.body}');
     }
     if (response.body.isEmpty) return <String, dynamic>{};
     return jsonDecode(response.body) as Map<String, dynamic>;

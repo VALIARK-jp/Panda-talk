@@ -19,7 +19,7 @@ import '../settings_repository.dart';
 import '../api/api_settings_repository.dart';
 import '../mock/mock_comment_repository.dart';
 import '../mock/mock_profile_repository.dart';
-import '../api/api_profile_repository.dart';
+import '../resilient_profile_repository.dart';
 import '../supabase/supabase_profile_repository.dart';
 import '../../config/app_config.dart';
 import '../profile_repository.dart';
@@ -76,7 +76,7 @@ final commentRepositoryProvider = Provider<CommentRepository>((ref) {
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   if (!_useApiRepositories) return MockProfileRepository();
-  // シミュレータ + localhost:8787 では Worker に届かないため Supabase 直（docs/14）。
+  // ローカル開発は読み書きとも Supabase 直（保存と表示の取り違え防止）
   if (AppConfig.usesLocalApiHost) return SupabaseProfileRepository();
-  return ApiProfileRepository();
+  return ResilientProfileRepository();
 });

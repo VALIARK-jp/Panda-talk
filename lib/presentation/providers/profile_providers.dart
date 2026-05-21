@@ -1,35 +1,28 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/dummy_data.dart';
 import '../../infrastructure/providers/repositories.dart';
-import 'auth_providers.dart';
 
 class ProfileController extends AsyncNotifier<DummyProfile> {
   @override
   Future<DummyProfile> build() async {
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      final provider =
-          session.user.appMetadata['provider'] as String? ?? 'email';
-      try {
-        await ref.read(authServiceProvider).ensureBackendProfile(
-              provider: provider,
-            );
-      } catch (e, st) {
-        if (kDebugMode) {
-          debugPrint('ensureBackendProfile: $e\n$st');
-        }
-      }
-    }
+    // ensureBackendProfile はログイン時のみ（main / post_auth）。ここで毎回呼ぶと
+    // 編集した名前が OAuth の表示名で上書きされる。
     return ref.read(profileRepositoryProvider).getProfile();
   }
 
-  Future<void> updateProfile({required String name, required String bio}) async {
+  Future<void> updateProfile({
+    required String name,
+    required String bio,
+    String? avatarUrl,
+  }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      await ref.read(profileRepositoryProvider).updateProfile(name: name, bio: bio);
+      await ref.read(profileRepositoryProvider).updateProfile(
+            name: name,
+            bio: bio,
+            avatarUrl: avatarUrl,
+          );
       return ref.read(profileRepositoryProvider).getProfile();
     });
   }

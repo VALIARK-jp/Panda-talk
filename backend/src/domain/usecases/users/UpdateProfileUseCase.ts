@@ -7,6 +7,12 @@ interface UpdateProfileInput {
   username?: string
   avatarUrl?: string | null
   bio?: string | null
+  pandaTypeSlug?: string | null
+  typeAffectionPct?: number | null
+  typeThinkingPct?: number | null
+  typeActionPct?: number | null
+  typeLifePct?: number | null
+  diagnosed16At?: string | null
 }
 
 export class UpdateProfileUseCase {
@@ -22,6 +28,12 @@ export class UpdateProfileUseCase {
       username: input.username,
       avatarUrl: input.avatarUrl,
       bio: input.bio,
+      pandaTypeSlug: input.pandaTypeSlug,
+      typeAffectionPct: input.typeAffectionPct,
+      typeThinkingPct: input.typeThinkingPct,
+      typeActionPct: input.typeActionPct,
+      typeLifePct: input.typeLifePct,
+      diagnosed16At: input.diagnosed16At,
     })
   }
 }

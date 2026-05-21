@@ -1,5 +1,12 @@
 import '../../core/dummy_data.dart';
+import '../../core/oddball_score.dart';
 import '../question_repository.dart';
+
+DummyQuestion _ensureVoteCounts(DummyQuestion q) {
+  if (q.countA > 0 || q.countB > 0) return q;
+  final counts = estimateVoteCountsFromPercent(q.percentA);
+  return q.copyWith(countA: counts.$1, countB: counts.$2);
+}
 
 class MockQuestionRepository implements QuestionRepository {
   final List<DummyQuestion> _feedQuestions = [
@@ -77,8 +84,53 @@ class MockQuestionRepository implements QuestionRepository {
   ];
 
   @override
-  Future<List<DummyQuestion>> getFeedQuestions() async {
-    return List.unmodifiable([..._myQuestions, ..._feedQuestions]);
+  Future<List<DummyQuestion>> getDiagnosis16Questions() async {
+    return getFeedWindow(before: 0, after: 0, maxQuestionNumber: 16);
+  }
+
+  @override
+  Future<List<DummyQuestion>> getFeedWindow({
+    int before = 10,
+    int after = 10,
+    int? maxQuestionNumber,
+  }) async {
+    final all = [..._myQuestions, ..._feedQuestions]
+      ..sort((a, b) => a.number.compareTo(b.number));
+    if (all.isEmpty) return const [];
+
+    if (maxQuestionNumber != null) {
+      return List.unmodifiable(
+        all
+            .where((q) => q.number >= 1 && q.number <= maxQuestionNumber)
+            .map(_ensureVoteCounts)
+            .toList(),
+      );
+    }
+
+    final frontier = all.first.number;
+    final minN = frontier - before;
+    final maxN = frontier + after;
+    return List.unmodifiable(
+      all
+          .where((q) => q.number >= minN && q.number <= maxN)
+          .map(_ensureVoteCounts)
+          .toList(),
+    );
+  }
+
+  @override
+  Future<List<DummyQuestion>> getFeedQuestions({
+    int limit = 200,
+    String? cursor,
+  }) async {
+    final all = [..._myQuestions, ..._feedQuestions];
+    var start = 0;
+    if (cursor != null) {
+      final idx = all.indexWhere((q) => q.apiId == cursor);
+      start = idx >= 0 ? idx + 1 : 0;
+    }
+    final end = (start + limit).clamp(0, all.length);
+    return List.unmodifiable(all.sublist(start, end));
   }
 
   @override
@@ -96,8 +148,8 @@ class MockQuestionRepository implements QuestionRepository {
   }
 
   @override
-  Future<List<DummyQuestion>> getHistory() async {
-    return [
+  Future<List<DummyQuestion>> getHistory({int limit = 20, String? cursor}) async {
+    final all = [
       const DummyQuestion(
         number: 1,
         category: '生活',
@@ -154,6 +206,7 @@ class MockQuestionRepository implements QuestionRepository {
         percentA: 61,
       ),
     ];
+    return List.unmodifiable(all.take(limit).toList());
   }
 
   @override
@@ -268,13 +321,37 @@ class MockQuestionRepository implements QuestionRepository {
   }
 
   @override
-  Future<int> answerQuestion({
+  Future<QuestionVoteStats> answerQuestion({
     required DummyQuestion question,
     required String selectedOption,
   }) async {
-    return question.percentA;
+    final choseA = selectedOption == question.optionA;
+    final base = voteCountsForQuestion(
+      percentA: question.percentA,
+      countA: question.countA,
+      countB: question.countB,
+    );
+    final after = voteCountsAfterGuestAnswer(
+      choseA: choseA,
+      baseCountA: base.$1,
+      baseCountB: base.$2,
+    );
+    final total = after.$1 + after.$2;
+    final percentA =
+        total == 0 ? question.percentA : (after.$1 / total * 100).round();
+    return QuestionVoteStats(
+      percentA: percentA,
+      countA: after.$1,
+      countB: after.$2,
+    );
   }
 
   @override
   Future<int> fetchQuestionPercentA(String questionId) async => 50;
+
+  @override
+  Future<void> toggleQuestionLike({
+    required String questionId,
+    required bool isLike,
+  }) async {}
 }

@@ -9,6 +9,12 @@ export type User = {
   avatarUrl: string | null
   bio: string | null
   createdAt: ISODateString
+  pandaTypeSlug?: string | null
+  typeAffectionPct?: number | null
+  typeThinkingPct?: number | null
+  typeActionPct?: number | null
+  typeLifePct?: number | null
+  diagnosed16At?: ISODateString | null
   // Statistics and scores
   answerCount?: number
   postCount?: number
@@ -40,10 +46,19 @@ export type QuestionWithUser = Question & {
   poster: {
     id: UUID
     username: string
+    name: string
     avatarUrl: string | null
   }
   likeCount?: number
   commentCount?: number
+  /** A の回答割合（0–100）。一覧 API でまとめて付与。 */
+  percentA?: number
+  /** 集計上の A 票数（異端児・少数派判定用）。 */
+  countA?: number
+  /** 集計上の B 票数。 */
+  countB?: number
+  /** ログインユーザーが回答済みのときのみ（診断16 API 等）。 */
+  myAnswer?: string
 }
 
 export type HotQuestion = QuestionWithUser & {
@@ -53,6 +68,11 @@ export type HotQuestion = QuestionWithUser & {
 
 export type AnsweredQuestion = QuestionWithUser & {
   myAnswer: string
+}
+
+/** フィード窓: フロンティア前後の質問（回答済みは myAnswer 付き）。 */
+export type FeedWindowQuestion = QuestionWithUser & {
+  myAnswer?: string
 }
 
 export type Answer = {

@@ -105,6 +105,10 @@ export SUPABASE_PROJECT_REF=<valiark-dev の project ref>
 npm run seed:dev
 ```
 
+### 16type 初回16問
+
+**CLI シードは使わない。** 運営アカウント「管理者パンダ」でアプリの投稿画面から手動投稿する（`question_number` は 1 から連番、削除すると番号が詰まる）。文言・各問の `category` は [docs/15_16type_questions.md](../docs/15_16type_questions.md)。初回診断は番号 1〜16 の質問として扱う。
+
 旧プロジェクトから移す場合は下記「旧プロジェクトから dev データを引き継ぐ場合」を参照。
 
 このスクリプトは Supabase CLI のログイン情報から service role key を取得し、開発用の Auth ユーザー、質問、回答、コメント、いいね、`panda_match_scores` を投入する。key はファイルには保存しない。

@@ -24,15 +24,14 @@ Future<void> ensurePandaProfileRow({
       .maybeSingle();
 
   if (existing != null) {
-    await supabase.from('panda_profiles').update({
-      'email': user.email,
-      'name': name.trim().isEmpty
-          ? (existing['username'] as String? ?? 'panda user')
-          : name.trim(),
-      if (avatarUrl != null) 'avatar_url': avatarUrl,
-      if (avatarUrl == null && metadata['photoURL'] != null)
-        'avatar_url': metadata['photoURL'],
-    }).eq('id', user.id);
+    // 既存行の name / username はプロフィール編集の正。OAuth の表示名で上書きしない。
+    final patch = <String, dynamic>{'email': user.email};
+    if (avatarUrl != null) {
+      patch['avatar_url'] = avatarUrl;
+    } else if (metadata['photoURL'] != null) {
+      patch['avatar_url'] = metadata['photoURL'];
+    }
+    await supabase.from('panda_profiles').update(patch).eq('id', user.id);
     return;
   }
 

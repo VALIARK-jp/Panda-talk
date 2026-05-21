@@ -6,7 +6,6 @@ import '../../presentation/providers/friend_providers.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
-import '../match/answer_compare_screen.dart';
 import '../match/user_detail_screen.dart';
 
 class FriendsScreen extends ConsumerStatefulWidget {
@@ -18,13 +17,6 @@ class FriendsScreen extends ConsumerStatefulWidget {
 
 class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   int _tabIndex = 0;
-  final _searchController = TextEditingController(text: '@panda');
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +53,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               child: SegmentedTabs(
-                tabs: const ['一覧', '申請', '検索'],
+                tabs: const ['一覧', '申請'],
                 selectedIndex: _tabIndex,
                 onChanged: (i) => setState(() => _tabIndex = i),
               ),
@@ -69,7 +61,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             const SizedBox(height: AppSpacing.md),
             Expanded(
               child: friendStateAsync.when(
-                data: (friendState) => _buildTab(friendState),
+                data: (friendState) => _tabIndex == 0
+                    ? _buildFriendsList(friendState)
+                    : _buildRequests(friendState),
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.black),
                 ),
@@ -84,38 +78,53 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 
-  Widget _buildTab(FriendState friendState) {
-    if (_tabIndex == 1) return _buildRequests(friendState);
-    if (_tabIndex == 2) return _buildSearch(friendState);
+  void _openProfile(DummyUser user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
+    );
+  }
+
+  Widget _buildFriendsList(FriendState friendState) {
+    if (friendState.friends.isEmpty) {
+      return const Center(
+        child: Text(
+          'まだ友達がいません',
+          style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       itemCount: friendState.friends.length,
-      itemBuilder: (context, i) => _FriendTile(
-        user: friendState.friends[i],
-        trailing: PandaOutlinedButton(
-          label: '解除',
-          width: 96,
-          onTap: () => ref
-              .read(friendControllerProvider.notifier)
-              .deleteFriendship(friendState.friends[i].id),
-        ),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => UserDetailScreen(user: friendState.friends[i]),
+      itemBuilder: (context, i) {
+        final user = friendState.friends[i];
+        return _FriendTile(
+          user: user,
+          trailing: PandaOutlinedButton(
+            label: '解除',
+            width: 96,
+            onTap: () => ref
+                .read(friendControllerProvider.notifier)
+                .deleteFriendship(user.id),
           ),
-        ),
-        onCompare: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AnswerCompareScreen(user: friendState.friends[i]),
-          ),
-        ),
-      ),
+          onTap: () => _openProfile(user),
+        );
+      },
     );
   }
 
   Widget _buildRequests(FriendState friendState) {
+    if (friendState.requests.isEmpty) {
+      return const Center(
+        child: Text(
+          '届いている申請はありません',
+          style: TextStyle(fontSize: AppFontSize.md, color: AppColors.textGray),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       itemCount: friendState.requests.length,
@@ -123,6 +132,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         final request = friendState.requests[i];
         return _RequestCard(
           request: request,
+          onOpenProfile: () => _openProfile(request.user),
           onAccept: () => ref
               .read(friendControllerProvider.notifier)
               .acceptRequest(request.user.id),
@@ -133,115 +143,18 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       },
     );
   }
-
-  Widget _buildSearch(FriendState friendState) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.softGray,
-            borderRadius: BorderRadius.circular(AppRadius.full),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.search, size: 18, color: AppColors.textGray),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: ref
-                      .read(friendControllerProvider.notifier)
-                      .setSearchQuery,
-                  decoration: const InputDecoration.collapsed(
-                    hintText: '@usernameで検索',
-                  ),
-                  style: const TextStyle(
-                    fontSize: AppFontSize.md,
-                    color: AppColors.black,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (friendState.searchResults.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: AppSpacing.xl),
-            child: _FriendSearchEmptyState(),
-          )
-        else
-          ...friendState.searchResults.map(
-            (user) => _FriendTile(
-              user: user,
-              trailing: friendState.requestedUserIds.contains(user.id)
-                  ? const _RequestedBadge()
-                  : PandaButton(
-                      label: '申請',
-                      width: 96,
-                      onTap: () => ref
-                          .read(friendControllerProvider.notifier)
-                          .sendFriendRequest(user.id),
-                    ),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _FriendSearchEmptyState extends StatelessWidget {
-  const _FriendSearchEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PandaAvatar(size: 64),
-          SizedBox(height: AppSpacing.md),
-          Text(
-            '見つかりませんでした',
-            style: TextStyle(
-              fontSize: AppFontSize.md,
-              fontWeight: FontWeight.w800,
-              color: AppColors.black,
-            ),
-          ),
-          SizedBox(height: AppSpacing.sm),
-          Text(
-            '@usernameを変えて検索してみてください',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: AppFontSize.sm,
-              color: AppColors.textGray,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _FriendTile extends StatelessWidget {
-  final DummyUser user;
-  final Widget trailing;
-  final VoidCallback onTap;
-  final VoidCallback? onCompare;
-
   const _FriendTile({
     required this.user,
     required this.trailing,
     required this.onTap,
-    this.onCompare,
   });
+
+  final DummyUser user;
+  final Widget trailing;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +186,7 @@ class _FriendTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '@${user.id}  合致度 ${user.matchRate}%',
+                    '@${user.id}',
                     style: const TextStyle(
                       fontSize: AppFontSize.sm,
                       color: AppColors.textGray,
@@ -283,13 +196,6 @@ class _FriendTile extends StatelessWidget {
               ),
             ),
           ),
-          if (onCompare != null) ...[
-            IconButton(
-              onPressed: onCompare,
-              icon: const Icon(Icons.compare_arrows, color: AppColors.black),
-            ),
-            const SizedBox(width: 4),
-          ],
           trailing,
         ],
       ),
@@ -298,15 +204,17 @@ class _FriendTile extends StatelessWidget {
 }
 
 class _RequestCard extends StatelessWidget {
-  final DummyFriendRequest request;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
-
   const _RequestCard({
     required this.request,
+    required this.onOpenProfile,
     required this.onAccept,
     required this.onReject,
   });
+
+  final DummyFriendRequest request;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
 
   @override
   Widget build(BuildContext context) {
@@ -321,33 +229,38 @@ class _RequestCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              PandaAvatar(size: 44),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      request.user.name,
-                      style: const TextStyle(
-                        fontSize: AppFontSize.md,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.black,
+          GestureDetector(
+            onTap: onOpenProfile,
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                PandaAvatar(size: 44),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.user.name,
+                        style: const TextStyle(
+                          fontSize: AppFontSize.md,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.black,
+                        ),
                       ),
-                    ),
-                    Text(
-                      request.message,
-                      style: const TextStyle(
-                        fontSize: AppFontSize.sm,
-                        color: AppColors.textGray,
+                      Text(
+                        request.message,
+                        style: const TextStyle(
+                          fontSize: AppFontSize.sm,
+                          color: AppColors.textGray,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const Icon(Icons.chevron_right, color: AppColors.textGray),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -362,31 +275,6 @@ class _RequestCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RequestedBadge extends StatelessWidget {
-  const _RequestedBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      padding: const EdgeInsets.symmetric(vertical: 13),
-      decoration: BoxDecoration(
-        color: AppColors.softGray,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        '申請済み',
-        style: TextStyle(
-          fontSize: AppFontSize.sm,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textGray,
-        ),
       ),
     );
   }

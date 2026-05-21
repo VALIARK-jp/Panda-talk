@@ -101,7 +101,8 @@ class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
                       final isMinority = isMinorityAnswer(
                         selected: selected,
                         question: q,
-                        percentA: percentA,
+                        countA: feedState.countAFor(q),
+                        countB: feedState.countBFor(q),
                       );
 
                       return Container(
@@ -168,31 +169,29 @@ class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isMinority
-                                        ? AppColors.black
-                                        : AppColors.softGray,
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.full,
+                                if (isMinority) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.black,
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.full,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '少数派 $selectedPercent%',
+                                      style: const TextStyle(
+                                        fontSize: AppFontSize.sm,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.white,
+                                      ),
                                     ),
                                   ),
-                                  child: Text(
-                                    '${isMinority ? '少数派' : '多数派'} $selectedPercent%',
-                                    style: TextStyle(
-                                      fontSize: AppFontSize.sm,
-                                      fontWeight: FontWeight.w800,
-                                      color: isMinority
-                                          ? AppColors.white
-                                          : AppColors.black,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
+                                  const SizedBox(width: 10),
+                                ],
                                 Expanded(
                                   child: _MiniRatioBar(
                                     percentA: percentA,

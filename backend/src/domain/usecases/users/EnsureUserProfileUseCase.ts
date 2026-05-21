@@ -16,7 +16,10 @@ export class EnsureUserProfileUseCase {
   async execute(input: EnsureUserProfileInput): Promise<User> {
     const existing = await this.userRepo.findById(input.userId)
     const username = await this.resolveUsername(input, existing)
-    const name = this.resolveName(input, existing, username)
+    const name =
+      existing?.name?.trim()
+        ? existing.name
+        : this.resolveName(input, existing, username)
 
     return this.userRepo.upsert({
       id: input.userId,

@@ -10,13 +10,17 @@ export class ToggleCommentLikeUseCase {
   async like(userId: string, commentId: string): Promise<ToggleResult> {
     const existing = await this.commentLikeRepo.find(userId, commentId)
     if (existing) {
-      throw Object.assign(new Error('Already liked'), { code: 'CONFLICT' })
+      return { liked: true }
     }
     await this.commentLikeRepo.create(userId, commentId)
     return { liked: true }
   }
 
   async unlike(userId: string, commentId: string): Promise<ToggleResult> {
+    const existing = await this.commentLikeRepo.find(userId, commentId)
+    if (!existing) {
+      return { liked: false }
+    }
     await this.commentLikeRepo.delete(userId, commentId)
     return { liked: false }
   }

@@ -38,13 +38,13 @@ export class SupabaseCommentRepository implements ICommentRepository {
       return comments.map((comment) => ({ ...comment, likedByMe: false }))
     }
 
-    const commentIds = comments.map((comment) => comment.id).join(',')
+    const quotedIds = comments.map((comment) => `"${comment.id}"`).join(',')
     const likedRows = await this.client.get<Array<{ comment_id: string }>>(
       'panda_comment_likes',
       {
         select: 'comment_id',
         user_id: `eq.${viewerUserId}`,
-        comment_id: `in.(${commentIds})`,
+        comment_id: `in.(${quotedIds})`,
       }
     )
     const likedIds = new Set(likedRows.map((row) => row.comment_id))

@@ -160,7 +160,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                           onOpenUser: (user) => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => UserDetailScreen(user: user),
+                              builder: (_) => UserDetailScreen(
+                                user: user,
+                                fromMatch: true,
+                              ),
                             ),
                           ),
                           onRequest: (user) => ref
@@ -205,7 +208,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => UserDetailScreen(user: u),
+                                    builder: (_) => UserDetailScreen(
+                                      user: u,
+                                      fromMatch: true,
+                                    ),
                                   ),
                                 ),
                               );

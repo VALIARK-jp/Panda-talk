@@ -25,7 +25,9 @@ import { SupabaseGroupRepository } from './supabase/repositories/SupabaseGroupRe
 import { SupabaseMessageRepository } from './supabase/repositories/SupabaseMessageRepository'
 import { SupabaseDirectMessageRepository } from './supabase/repositories/SupabaseDirectMessageRepository'
 
+import { GetDiagnosis16QuestionsUseCase } from '../domain/usecases/questions/GetDiagnosis16QuestionsUseCase'
 import { GetFeedUseCase } from '../domain/usecases/questions/GetFeedUseCase'
+import { GetFeedWindowUseCase } from '../domain/usecases/questions/GetFeedWindowUseCase'
 import { GetHotFeedUseCase } from '../domain/usecases/questions/GetHotFeedUseCase'
 import { GetAnsweredHistoryUseCase } from '../domain/usecases/questions/GetAnsweredHistoryUseCase'
 import { PostQuestionUseCase } from '../domain/usecases/questions/PostQuestionUseCase'
@@ -123,7 +125,9 @@ export function createContainer(env?: Env) {
     : new MockMatchRepository()
 
   return {
+    getDiagnosis16QuestionsUseCase: new GetDiagnosis16QuestionsUseCase(questionRepo),
     getFeedUseCase: new GetFeedUseCase(questionRepo),
+    getFeedWindowUseCase: new GetFeedWindowUseCase(questionRepo),
     getHotFeedUseCase: new GetHotFeedUseCase(questionRepo),
     getAnsweredHistoryUseCase: new GetAnsweredHistoryUseCase(questionRepo),
     postQuestionUseCase: new PostQuestionUseCase(questionRepo),
