@@ -37,7 +37,7 @@ class _AnswerRevealOverlayState extends State<AnswerRevealOverlay>
   late final Animation<double> _oddballOpacity;
   late final Animation<double> _backdropOpacity;
 
-  static const _totalMs = 2200;
+  static const _totalMs = 1600;
 
   @override
   void initState() {
@@ -58,17 +58,17 @@ class _AnswerRevealOverlayState extends State<AnswerRevealOverlay>
             .chain(CurveTween(curve: Curves.easeOut)),
         weight: 15,
       ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 50),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 18),
     ]).animate(_controller);
 
     _badgeOpacity = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween(0.0), weight: 22),
+      TweenSequenceItem(tween: ConstantTween(0.0), weight: 18),
       TweenSequenceItem(
         tween: Tween(begin: 0.0, end: 1.0)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 12,
+        weight: 10,
       ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 38),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 22),
       TweenSequenceItem(
         tween: Tween(begin: 1.0, end: 0.0)
             .chain(CurveTween(curve: Curves.easeIn)),
@@ -77,24 +77,24 @@ class _AnswerRevealOverlayState extends State<AnswerRevealOverlay>
     ]).animate(_controller);
 
     _oddballOpacity = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween(0.0), weight: 55),
+      TweenSequenceItem(tween: ConstantTween(0.0), weight: 35),
       TweenSequenceItem(
         tween: Tween(begin: 0.0, end: 1.0)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 20,
+        weight: 18,
       ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 15),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 12),
       TweenSequenceItem(
         tween: Tween(begin: 1.0, end: 0.0)
             .chain(CurveTween(curve: Curves.easeIn)),
-        weight: 10,
+        weight: 8,
       ),
     ]).animate(_controller);
 
     _backdropOpacity = Tween<double>(begin: 0.92, end: 0.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.82, 1.0, curve: Curves.easeIn),
+        curve: const Interval(0.72, 0.95, curve: Curves.easeIn),
       ),
     );
 

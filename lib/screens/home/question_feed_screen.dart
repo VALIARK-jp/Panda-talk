@@ -65,8 +65,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   PageController? _pageController;
   Timer? _nextQuestionTimer;
 
-  /// 回答演出（約2.2s）のあと、バー結果を読む余白。
-  static const _advanceAfterRevealDelay = Duration(milliseconds: 1200);
+  /// 回答オーバーレイ終了後、すぐ次の問へ（余白なし）。
+  static const _advanceAfterRevealDelay = Duration.zero;
   static const _nudgeMessages = {
     10: '10問答えたね！\n登録すると合致度が見られるよ。',
     20: 'あなたと合う人、\nもう見つかってるかも。',
