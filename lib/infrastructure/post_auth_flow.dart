@@ -34,10 +34,9 @@ class PostAuthFlow {
 
     try {
       final profile = await ref.read(profileRepositoryProvider).getProfile();
-      if (ProfileOnboardingStore.isProfileFieldsComplete(
+      if (ProfileOnboardingStore.hasRequiredFieldsFilled(
         username: profile.username,
         name: profile.name,
-        userId: userId,
       )) {
         await ProfileOnboardingStore.setCompleted(userId);
         return true;

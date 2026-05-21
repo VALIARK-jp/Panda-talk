@@ -9,6 +9,7 @@ import '../../../../infrastructure/auth/auth_service.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../infrastructure/profile_onboarding_store.dart';
 import '../../../../presentation/providers/auth_providers.dart';
+import '../../widgets/auth_app_bar.dart';
 import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_sent_screen.dart';
@@ -116,19 +117,10 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
 
     return Scaffold(
       backgroundColor: AuthColors.formScaffoldBg,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.maybePop(context),
-        ),
-        title: Text(
-          showTabs
-              ? 'メール認証'
-              : (widget.showLoginTab ? 'ログイン' : '新規登録'),
-        ),
-        backgroundColor: AuthColors.chrome,
-        elevation: 0,
-        foregroundColor: AppColors.white,
+      appBar: AuthAppBar(
+        title: showTabs
+            ? 'メール認証'
+            : (widget.showLoginTab ? 'ログイン' : '新規登録'),
         bottom: showTabs
             ? TabBar(
                 controller: _tabController,
@@ -161,7 +153,8 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 32),
+            const AuthFormBackButton(),
+            const SizedBox(height: AppSpacing.sm),
             TextFormField(
               controller: _loginEmailController,
               decoration: _fieldDecoration('メールアドレス', Icons.email),
@@ -271,7 +264,8 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 32),
+            const AuthFormBackButton(),
+            const SizedBox(height: AppSpacing.sm),
             TextFormField(
               controller: _displayNameController,
               decoration: _fieldDecoration('表示名', Icons.person),

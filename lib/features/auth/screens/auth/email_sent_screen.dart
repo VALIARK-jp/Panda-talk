@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
+import '../../widgets/auth_app_bar.dart';
 
 /// サインアップ確認メール送付後。メール内リンク（PKCE）でセッションが付いたらルートまで戻す。
 class EmailSentScreen extends ConsumerStatefulWidget {
@@ -100,17 +101,7 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AuthColors.formScaffoldBg,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: '戻る',
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
-        title: const Text('メール確認'),
-        backgroundColor: AuthColors.chrome,
-        foregroundColor: AppColors.white,
-        elevation: 0,
-      ),
+      appBar: const AuthAppBar(title: 'メール確認'),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -120,6 +111,8 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              const AuthFormBackButton(),
+              const SizedBox(height: AppSpacing.md),
               const Icon(
                 Icons.mark_email_unread_outlined,
                 size: 80,

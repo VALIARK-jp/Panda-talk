@@ -8,6 +8,7 @@ import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
+import '../../widgets/auth_app_bar.dart';
 import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_auth_screen.dart';
@@ -71,7 +72,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     children: [
                       Align(
                         alignment: Alignment.topLeft,
-                        child: _buildBackButton(context),
+                        child: const AuthFormBackButton(onDark: true),
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
@@ -181,24 +182,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackButton(BuildContext context) {
-    return TextButton.icon(
-      onPressed: () => Navigator.maybePop(context),
-      icon: const Icon(Icons.arrow_back, size: 20),
-      label: const Text('戻る'),
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        minimumSize: const Size(0, 44),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        textStyle: const TextStyle(
-          fontSize: AppFontSize.md,
-          fontWeight: FontWeight.w800,
         ),
       ),
     );

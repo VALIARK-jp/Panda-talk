@@ -51,7 +51,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final refreshed = Supabase.instance.client.auth.currentUser ?? user;
     final metadata = refreshed.userMetadata ?? const <String, dynamic>{};
     final provider = refreshed.appMetadata['provider'] as String? ?? 'email';
-    final isLine = provider == 'line';
 
     final displayName = metadata['displayName'] as String? ??
         metadata['name'] as String? ??
@@ -61,16 +60,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _nameController.text = displayName;
     }
 
-    final linePhoto = metadata['photoURL'] as String?;
-    if (isLine && linePhoto != null && linePhoto.isNotEmpty) {
-      setState(() => _remoteAvatarUrl = linePhoto);
-    }
-
     try {
       await ref.read(authServiceProvider).ensureBackendProfile(
         provider: provider,
         displayName: displayName.isEmpty ? null : displayName,
-        avatarUrl: isLine ? linePhoto : null,
       );
       final profile = await ref.read(profileRepositoryProvider).getProfile();
       if (!mounted) return;
@@ -91,14 +84,37 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           avatar.isNotEmpty &&
           (_remoteAvatarUrl == null || _remoteAvatarUrl!.isEmpty)) {
         setState(() => _remoteAvatarUrl = avatar);
-      } else if (isLine &&
-          _pickedAvatar == null &&
-          linePhoto != null &&
-          linePhoto.isNotEmpty) {
-        setState(() => _remoteAvatarUrl = linePhoto);
       }
+      await _tryAutoSkipIfAlreadyFilled();
     } catch (_) {
       // プロフィール行がまだ無くてもフォームは続行
+      await _tryAutoSkipIfAlreadyFilled();
+    }
+  }
+
+  Future<void> _tryAutoSkipIfAlreadyFilled() async {
+    final name = _nameController.text.trim();
+    final username = _usernameController.text.trim().toLowerCase();
+    if (!ProfileOnboardingStore.hasRequiredFieldsFilled(
+      username: username,
+      name: name,
+    )) {
+      return;
+    }
+
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    if (_submitting) return;
+    setState(() => _submitting = true);
+
+    try {
+      await ProfileOnboardingStore.setCompleted(userId);
+      await PostLoginOnboardingStore.setWelcomeCompleted();
+      if (!mounted) return;
+      await widget.onComplete();
+    } catch (_) {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 

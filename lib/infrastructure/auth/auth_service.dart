@@ -420,7 +420,7 @@ class AuthService {
       await ensurePandaProfileRow(
         client: _supabase,
         displayName: name,
-        avatarUrl: avatarUrl ?? metadata['photoURL'] as String?,
+        avatarUrl: avatarUrl,
       );
       return;
     }
@@ -435,7 +435,7 @@ class AuthService {
         'email': user.email,
         'name': name,
         'username': _usernameFrom(name, user.id),
-        'avatarUrl': avatarUrl ?? metadata['photoURL'],
+        'avatarUrl': ?avatarUrl,
         'provider': provider,
       }),
     );

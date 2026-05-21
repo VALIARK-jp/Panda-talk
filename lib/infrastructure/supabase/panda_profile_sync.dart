@@ -25,14 +25,10 @@ Future<void> ensurePandaProfileRow({
       .maybeSingle();
 
   if (existing != null) {
-    // 既存行の name / username はプロフィール編集の正。OAuth の表示名で上書きしない。
-    final patch = <String, dynamic>{'email': user.email};
-    if (avatarUrl != null) {
-      patch['avatar_url'] = avatarUrl;
-    } else if (metadata['photoURL'] != null) {
-      patch['avatar_url'] = metadata['photoURL'];
-    }
-    await supabase.from('panda_profiles').update(patch).eq('id', user.id);
+    // 既存行の name / username / avatar はプロフィール編集の正。OAuth で上書きしない。
+    await supabase.from('panda_profiles').update({
+      'email': user.email,
+    }).eq('id', user.id);
     return;
   }
 
@@ -43,8 +39,7 @@ Future<void> ensurePandaProfileRow({
     'email': user.email,
     'username': username,
     'name': name.trim().isEmpty ? username : name.trim(),
-    if (avatarUrl != null) 'avatar_url': avatarUrl,
-    if (avatarUrl == null) 'avatar_url': metadata['photoURL'],
+    'avatar_url': ?avatarUrl,
   });
 }
 
