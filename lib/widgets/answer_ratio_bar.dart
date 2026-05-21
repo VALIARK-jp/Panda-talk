@@ -1,3 +1,5 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
 
 import '../core/design_tokens.dart';
@@ -10,6 +12,7 @@ String answerRatioBarHeroTag(DummyQuestion question) =>
 /// 二択ボタンと比率バーで共通の高さ（レイアウトのジャンプを防ぐ）。
 const double kChoiceBlockHeight = 88;
 const double kLabelStripHeight = 36;
+const double kLabelStripWithPercentHeight = 54;
 
 class AnswerRatioBar extends StatefulWidget {
   final DummyQuestion question;
@@ -109,51 +112,51 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
             : 50;
         final rightPercent = 100 - leftPercent;
         final gap = AppSpacing.sm * (1 - morphT);
+        // 外側の高さと内側コンテンツを同期（内側だけ大きいと一瞬 OVERFLOW する）
+        final labelAreaHeight = hasAnswered
+            ? lerpDouble(0, kLabelStripWithPercentHeight, morphT)!
+            : 0.0;
+        final showPercents =
+            hasAnswered && labelAreaHeight >= kLabelStripWithPercentHeight - 4;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ClipRect(
-              child: SizedBox(
-                height: kLabelStripHeight * morphT,
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SizedBox(
-                    height: kLabelStripHeight,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: OptionLabelStrip(
-                            label: widget.question.optionA,
-                            opacity: morphT,
-                          ),
+            if (labelAreaHeight > 0.5)
+              ClipRect(
+                child: SizedBox(
+                  height: labelAreaHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: OptionLabelStrip(
+                          label: widget.question.optionA,
+                          opacity: morphT,
+                          percent: showPercents ? leftPercent : null,
+                          emphasized: selectedA,
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: OptionLabelStrip(
-                            label: widget.question.optionB,
-                            opacity: morphT,
-                          ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: OptionLabelStrip(
+                          label: widget.question.optionB,
+                          opacity: morphT,
+                          percent: showPercents ? rightPercent : null,
+                          emphasized: selectedB,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
             ClipRect(
+              clipBehavior: Clip.hardEdge,
               child: SizedBox(
                 height: kChoiceBlockHeight,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    MorphPercentSlot(
-                      percent: leftPercent,
-                      morphT: morphT,
-                      align: TextAlign.end,
-                      emphasized: selectedA,
-                    ),
                     Expanded(
                       child: Stack(
                         fit: StackFit.expand,
@@ -207,12 +210,6 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
                         ],
                       ),
                     ),
-                    MorphPercentSlot(
-                      percent: rightPercent,
-                      morphT: morphT,
-                      align: TextAlign.start,
-                      emphasized: selectedB,
-                    ),
                   ],
                 ),
               ),
@@ -224,75 +221,57 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
   }
 }
 
-/// モーフ中に幅が狭いときの % 表示オーバーフローを防ぐ。
-class MorphPercentSlot extends StatelessWidget {
-  final int percent;
-  final double morphT;
-  final TextAlign align;
-  final bool emphasized;
-
-  const MorphPercentSlot({
-    required this.percent,
-    required this.morphT,
-    required this.align,
-    required this.emphasized,
-  });
-
-  static const double _slotWidth = 44;
-
-  @override
-  Widget build(BuildContext context) {
-    if (morphT <= 0.01) return const SizedBox.shrink();
-
-    return ClipRect(
-      child: SizedBox(
-        width: _slotWidth * morphT,
-        child: Align(
-          alignment: align == TextAlign.end
-              ? Alignment.centerRight
-              : Alignment.centerLeft,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '$percent%',
-              textAlign: align,
-              maxLines: 1,
-              style: TextStyle(
-                fontSize: AppFontSize.sm,
-                fontWeight: FontWeight.w800,
-                color: emphasized ? AppColors.black : AppColors.textGray,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class OptionLabelStrip extends StatelessWidget {
   final String label;
   final double opacity;
+  final int? percent;
+  final bool emphasized;
 
   const OptionLabelStrip({
     required this.label,
     required this.opacity,
+    this.percent,
+    this.emphasized = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final o = opacity.clamp(0.0, 1.0);
+
     return Opacity(
-      opacity: opacity.clamp(0.0, 1.0),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: AppFontSize.sm,
-          fontWeight: FontWeight.w700,
-          color: AppColors.black,
-          height: 1.2,
+      opacity: o,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.bottomCenter,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w700,
+                color: AppColors.black,
+                height: 1.2,
+              ),
+            ),
+            if (percent != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                '$percent%',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: AppFontSize.md,
+                  fontWeight: FontWeight.w900,
+                  color: emphasized ? AppColors.black : AppColors.textGray,
+                  height: 1.1,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

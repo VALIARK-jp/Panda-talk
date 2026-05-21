@@ -250,6 +250,7 @@ class DummyProfile {
 
   DummyProfile copyWith({
     String? name,
+    String? username,
     String? bio,
     String? avatarUrl,
     String? pandaTypeSlug,
@@ -261,7 +262,7 @@ class DummyProfile {
   }) {
     return DummyProfile(
       name: name ?? this.name,
-      username: username,
+      username: username ?? this.username,
       bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       answerCount: answerCount,

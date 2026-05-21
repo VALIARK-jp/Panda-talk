@@ -26,6 +26,16 @@ class PersonalityAxisScore {
   final int firstPolePercent;
 
   int get secondPolePercent => 100 - firstPolePercent;
+
+  /// 過半数側の極ラベル（同票は第一極）。
+  String get majorityPoleLabel =>
+      firstPolePercent >= 50
+          ? definition.firstPoleLabel
+          : definition.secondPoleLabel;
+
+  /// 過半数側の割合（0–100）。
+  int get majorityPolePercent =>
+      firstPolePercent >= 50 ? firstPolePercent : secondPolePercent;
 }
 
 /// 現在アプリで表示する軸のレジストリ（将来ここに軸を追加可能）。

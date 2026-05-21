@@ -11,7 +11,8 @@ Future<void> ensurePandaProfileRow({
   if (user == null) return;
 
   final metadata = user.userMetadata ?? const <String, dynamic>{};
-  final name = displayName ??
+  final name =
+      displayName ??
       metadata['displayName'] as String? ??
       metadata['name'] as String? ??
       user.email?.split('@').first ??
@@ -68,7 +69,9 @@ Future<String> _resolveUsername(
 
     final tail = i == 0 ? shortSuffix : '$shortSuffix$i';
     final maxBase = 30 - tail.length - 1;
-    final trimmedBase = base.length <= maxBase ? base : base.substring(0, maxBase);
+    final trimmedBase = base.length <= maxBase
+        ? base
+        : base.substring(0, maxBase);
     candidate = '${trimmedBase}_$tail';
   }
   return '${base.substring(0, base.length.clamp(0, 22))}_$shortSuffix';
@@ -82,7 +85,9 @@ String _normalizeUsername(String value) {
       .replaceAll(RegExp(r'[^a-z0-9_]'), '_')
       .replaceAll(RegExp(r'_+'), '_')
       .replaceAll(RegExp(r'^_+|_+$'), '');
-  final sliced = normalized.length > 30 ? normalized.substring(0, 30) : normalized;
+  final sliced = normalized.length > 30
+      ? normalized.substring(0, 30)
+      : normalized;
   if (sliced.length >= 3) return sliced;
   final fallback = 'panda_${sliced.isEmpty ? 'user' : sliced}';
   return fallback.length > 30 ? fallback.substring(0, 30) : fallback;

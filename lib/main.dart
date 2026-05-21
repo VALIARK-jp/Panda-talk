@@ -65,8 +65,7 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _rootNavKey.currentState?.popUntil((route) => route.isFirst);
         });
-        final provider =
-            nextUser.appMetadata['provider'] as String? ?? 'email';
+        final provider = nextUser.appMetadata['provider'] as String? ?? 'email';
         Future.microtask(() async {
           await ProfileOnboardingStore.applyPendingEmailSignup(
             userId: nextUser.id,

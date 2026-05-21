@@ -50,6 +50,7 @@ class ApiProfileRepository implements ProfileRepository {
     required String name,
     required String bio,
     String? avatarUrl,
+    String? username,
   }) async {
     await _patchJson(
       Uri.parse('$_apiBaseUrl/users/me'),
@@ -57,6 +58,7 @@ class ApiProfileRepository implements ProfileRepository {
         'name': name,
         'bio': bio,
         if (avatarUrl != null) 'avatarUrl': avatarUrl,
+        if (username != null) 'username': username,
       },
       auth: true,
     );

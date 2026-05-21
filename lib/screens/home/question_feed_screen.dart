@@ -5,14 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
+import '../../core/category_poster_copy.dart';
+import '../../core/feed_panda_picker.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/oddball_score.dart';
 import '../../core/question_stats_utils.dart';
 import '../../core/share_utils.dart';
 import '../../infrastructure/diagnosis_16_completion.dart';
 import '../../infrastructure/diagnosis_16_store.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/diagnosis_providers.dart';
+import '../../presentation/providers/profile_providers.dart';
 import '../../presentation/providers/question_providers.dart';
 import '../../widgets/diagnosis_16_result_modal.dart';
 import '../../widgets/panda_avatar.dart';
@@ -21,6 +25,9 @@ import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/answer_ratio_bar.dart';
+import '../../widgets/answer_reveal_overlay.dart';
+import '../../widgets/comment_activity_hint.dart';
+import '../../widgets/question_poster_section.dart';
 import 'question_comments_screen.dart';
 import 'question_history_screen.dart';
 
@@ -45,6 +52,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   int _lastFeedQuestionCount = 0;
   bool _userHasNavigated = false;
   bool _pendingAdvanceAfterAnswer = false;
+  int? _revealQuestionNumber;
+  _AnswerRevealSnapshot? _revealSnapshot;
+
   bool get _isGuest {
     final asyncUser = ref.read(authUserProvider);
     return (asyncUser.valueOrNull ??
@@ -54,6 +64,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
   PageController? _pageController;
   Timer? _nextQuestionTimer;
+
+  /// 回答演出（約2.2s）のあと、バー結果を読む余白。
+  static const _advanceAfterRevealDelay = Duration(milliseconds: 1200);
   static const _nudgeMessages = {
     10: '10問答えたね！\n登録すると合致度が見られるよ。',
     20: 'あなたと合う人、\nもう見つかってるかも。',
@@ -79,6 +92,11 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     if (feedState.selectedOptionFor(q.number) != null || q.myAnswer != null) {
       return;
     }
+    final prevOddballScore = oddballScorePercent(
+      minorityAnswerCount: feedState.minorityCount,
+      totalAnswerCount: feedState.answeredCount,
+    );
+
     await controller.answer(q, selected);
     if (!mounted) return;
 
@@ -105,10 +123,55 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       }
     }
 
+    final after = ref.read(questionFeedControllerProvider);
+    final percentA = after.percentAFor(q);
+    final isMinority = isMinorityAnswer(
+      selected: selected,
+      question: q,
+      countA: after.countAFor(q),
+      countB: after.countBFor(q),
+    );
+    final selectedPercent = selectedSidePercent(
+      selected: selected,
+      question: q,
+      percentA: percentA,
+    );
+    final newOddballScore = oddballScorePercent(
+      minorityAnswerCount: after.minorityCount,
+      totalAnswerCount: after.answeredCount,
+    );
+
     _pendingAdvanceAfterAnswer = true;
     ref.invalidate(feedQuestionsProvider);
     _nextQuestionTimer?.cancel();
-    _nextQuestionTimer = Timer(const Duration(milliseconds: 850), () async {
+    setState(() {
+      _revealQuestionNumber = q.number;
+      _revealSnapshot = _AnswerRevealSnapshot(
+        selectedPercent: selectedPercent,
+        isMinority: isMinority,
+        prevOddballScore: prevOddballScore,
+        newOddballScore: newOddballScore,
+        oddballBumpLabel: oddballBumpCopy(
+          prevScore: prevOddballScore,
+          newScore: newOddballScore,
+          wasMinorityThisAnswer: isMinority,
+        ),
+      );
+    });
+  }
+
+  void _onRevealFinished() {
+    if (!mounted) return;
+    setState(() {
+      _revealQuestionNumber = null;
+      _revealSnapshot = null;
+    });
+    _scheduleAdvanceAfterReveal();
+  }
+
+  void _scheduleAdvanceAfterReveal() {
+    _nextQuestionTimer?.cancel();
+    _nextQuestionTimer = Timer(_advanceAfterRevealDelay, () async {
       if (!mounted) return;
       _pendingAdvanceAfterAnswer = false;
       final answeredCount = ref
@@ -124,6 +187,28 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         _showNudgeModal(answeredCount);
       }
     });
+  }
+
+  void _clearReveal() {
+    _revealQuestionNumber = null;
+    _revealSnapshot = null;
+  }
+
+  String _pandaExpressionFor(
+    String? selected,
+    DummyQuestion q,
+    QuestionFeedState feedState,
+  ) {
+    if (selected == null) return 'normal';
+    if (isMinorityAnswer(
+      selected: selected,
+      question: q,
+      countA: feedState.countAFor(q),
+      countB: feedState.countBFor(q),
+    )) {
+      return 'minority';
+    }
+    return 'majority';
   }
 
   bool _isQuestionAnswered(DummyQuestion q, QuestionFeedState feedState) {
@@ -256,6 +341,14 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final selected = feedState.selectedOptionFor(q.number) ?? q.myAnswer;
     final percentA = feedState.percentAFor(q);
     final likedQuestion = feedState.likedQuestionNumbers.contains(q.number);
+    final commentCount = feedState.commentCountFor(q);
+    final showingReveal =
+        _revealQuestionNumber == q.number && _revealSnapshot != null;
+    final reveal = _revealSnapshot;
+    final pandaExpression = _pandaExpressionFor(selected, q, feedState);
+    final feedPanda = FeedPandaChoice.forQuestion(q);
+    final revealExpression =
+        reveal?.isMinority == true ? 'minority' : 'majority';
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -272,11 +365,15 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            children: [
-              // 投稿者 + 番号 + カテゴリ
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    // 投稿者 + 番号 + カテゴリ
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -373,22 +470,16 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              Column(
-                children: [
-                  PandaMascot(size: 72),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    q.text,
-                    style: const TextStyle(
-                      fontSize: AppFontSize.xl,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.black,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+              Expanded(
+                child: QuestionPosterSection(
+                  question: q,
+                  feedPandaChoice: feedPanda,
+                  pandaExpression: pandaExpression,
+                  commentHint: CommentActivityHint.shouldShow(commentCount)
+                      ? CommentActivityHint(commentCount: commentCount)
+                      : null,
+                ),
               ),
-              const Spacer(),
               Hero(
                 tag: answerRatioBarHeroTag(q),
                 child: Material(
@@ -402,8 +493,25 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-            ],
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                ),
+                if (showingReveal && reveal != null)
+                  Positioned.fill(
+                    child: AnswerRevealOverlay(
+                      selectedPercent: reveal.selectedPercent,
+                      isMinority: reveal.isMinority,
+                      prevOddballScore: reveal.prevOddballScore,
+                      newOddballScore: reveal.newOddballScore,
+                      oddballBumpLabel: reveal.oddballBumpLabel,
+                      mascotAssetPath: feedPanda.assetPathForExpression(
+                        revealExpression,
+                      ),
+                      onFinished: _onRevealFinished,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -664,6 +772,12 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                   onPageChanged: (index) {
                     _userHasNavigated = true;
                     _nextQuestionTimer?.cancel();
+                    if (_revealQuestionNumber != null) {
+                      setState(_clearReveal);
+                      if (_pendingAdvanceAfterAnswer) {
+                        _scheduleAdvanceAfterReveal();
+                      }
+                    }
                     final notifier = ref.read(
                       questionFeedControllerProvider.notifier,
                     );
@@ -758,13 +872,36 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
   Future<void> _refreshFromServer() async {
     _lastSyncedQuestionKey = null;
+    _lastBuildFeedKey = null;
     _userHasNavigated = false;
     _activeFeedKey = null;
     _pageController?.dispose();
     _pageController = null;
-    ref.invalidate(feedBootstrapProvider);
+
+    // 診断完了後も unlock 状態が古いと Q1–16 のまま再取得される
+    ref.invalidate(diagnosis16UnlockedProvider);
+    ref.invalidate(profileControllerProvider);
+    ref.invalidate(questionFeedControllerProvider);
     ref.invalidate(feedQuestionsProvider);
-    await ref.read(feedQuestionsProvider.future);
+    ref.invalidate(feedBootstrapProvider);
+
+    try {
+      await ref.read(profileControllerProvider.future);
+      var unlocked = await ref.read(diagnosis16UnlockedProvider.future);
+      if (!unlocked) {
+        _checkedPendingDiagnosisModal = false;
+        await _maybeShowPendingDiagnosisResult();
+        unlocked = await ref.read(diagnosis16UnlockedProvider.future);
+      }
+      await ref.read(feedQuestionsProvider.future);
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('更新に失敗しました: $e')),
+      );
+    }
   }
 
   List<DummyQuestion> _orderForTab(List<DummyQuestion> questions) {
@@ -897,6 +1034,22 @@ class _EngagementIcon extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AnswerRevealSnapshot {
+  final int selectedPercent;
+  final bool isMinority;
+  final int prevOddballScore;
+  final int newOddballScore;
+  final String? oddballBumpLabel;
+
+  const _AnswerRevealSnapshot({
+    required this.selectedPercent,
+    required this.isMinority,
+    required this.prevOddballScore,
+    required this.newOddballScore,
+    this.oddballBumpLabel,
+  });
 }
 
 class _NudgeCard extends StatelessWidget {

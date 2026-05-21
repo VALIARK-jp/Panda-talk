@@ -123,12 +123,14 @@ class SupabaseProfileRepository implements ProfileRepository {
     required String name,
     required String bio,
     String? avatarUrl,
+    String? username,
   }) async {
     final userId = _requireUserId();
     await _client.from('panda_profiles').update({
       'name': name.trim(),
       'bio': bio,
       if (avatarUrl != null) 'avatar_url': avatarUrl,
+      if (username != null) 'username': username.trim().toLowerCase(),
     }).eq('id', userId);
   }
 

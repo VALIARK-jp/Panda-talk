@@ -6,7 +6,10 @@ import '../../core/share_utils.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/user_avatar.dart';
+import '../../core/personality_axis.dart';
 import '../../widgets/panda_type_profile_section.dart';
+import '../../widgets/personality_tendency_chips.dart';
+import '../../widgets/speech_bubble.dart';
 import '../../widgets/tag_chip.dart';
 import '../friends/friends_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -210,56 +213,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.softGray,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '自己紹介',
-                          style: TextStyle(
-                            fontSize: AppFontSize.sm,
-                            color: AppColors.textGray,
-                          ),
+                  if (profile.hasDiagnosis16)
+                    PandaTypeProfileSection(
+                      profile: profile,
+                      bio: profile.bio,
+                    )
+                  else
+                    _BioSection(bio: profile.bio),
+                  if (profile.hasDiagnosis16) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${profile.name}の傾向',
+                        style: const TextStyle(
+                          fontSize: AppFontSize.md,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.black,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          profile.bio,
-                          style: const TextStyle(
-                            fontSize: AppFontSize.md,
-                            color: AppColors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  PandaTypeProfileSection(profile: profile),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'あなたの傾向',
-                      style: TextStyle(
-                        fontSize: AppFontSize.md,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.black,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: profile.tags
-                        .map((t) => TagChip(label: t, filled: true))
-                        .toList(),
-                  ),
+                    const SizedBox(height: 8),
+                    PersonalityTendencyChips(
+                      scores: PersonalityAxisRegistry.scoresFromProfileFields(
+                        affectionPct: profile.typeAffectionPct,
+                        thinkingPct: profile.typeThinkingPct,
+                        actionPct: profile.typeActionPct,
+                        lifePct: profile.typeLifePct,
+                      ),
+                    ),
+                  ] else if (profile.tags.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'あなたの傾向',
+                        style: TextStyle(
+                          fontSize: AppFontSize.md,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.black,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: profile.tags
+                          .map((t) => TagChip(label: t, filled: true))
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -285,6 +289,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       '$tags'
       '$bio\n'
       '#パンダトーク',
+    );
+  }
+}
+
+class _BioSection extends StatelessWidget {
+  const _BioSection({required this.bio});
+
+  final String bio;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = bio.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSpacing.md),
+        const Text(
+          '自己紹介',
+          style: TextStyle(
+            fontSize: AppFontSize.sm,
+            color: AppColors.textGray,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SpeechBubble(
+          text: text.isEmpty ? 'まだ自己紹介がありません' : text,
+          tail: SpeechBubbleTail.bottomLeft,
+          maxLines: 3,
+          textStyle: TextStyle(
+            fontSize: AppFontSize.sm,
+            fontWeight: FontWeight.w600,
+            color: text.isEmpty ? AppColors.textGray : AppColors.black,
+            height: 1.4,
+          ),
+        ),
+      ],
     );
   }
 }

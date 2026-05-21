@@ -15,8 +15,7 @@ class CommentController
     extends AutoDisposeFamilyAsyncNotifier<CommentState, DummyQuestion> {
   @override
   Future<CommentState> build(DummyQuestion arg) async {
-    final comments =
-        await ref.read(commentRepositoryProvider).getComments(arg);
+    final comments = await ref.read(commentRepositoryProvider).getComments(arg);
     return CommentState(question: arg, comments: comments);
   }
 
@@ -32,9 +31,7 @@ class CommentController
     final newLiked = !comment.likedByMe;
     final updatedComments = current.comments.map((c) {
       if (c.id != comment.id) return c;
-      final likes = newLiked
-          ? c.likes + 1
-          : (c.likes > 0 ? c.likes - 1 : 0);
+      final likes = newLiked ? c.likes + 1 : (c.likes > 0 ? c.likes - 1 : 0);
       return c.copyWith(likedByMe: newLiked, likes: likes);
     }).toList();
 
@@ -43,7 +40,9 @@ class CommentController
     );
 
     try {
-      await ref.read(commentRepositoryProvider).toggleLike(
+      await ref
+          .read(commentRepositoryProvider)
+          .toggleLike(
             questionNumber: arg.number,
             commentId: comment.id,
             isLike: newLiked,
@@ -51,9 +50,10 @@ class CommentController
       ref.invalidateSelf();
     } catch (e, st) {
       final message = e.toString();
-      final alreadyLiked = newLiked &&
-          (message.contains('CONFLICT') || message.contains('409'));
-      final alreadyUnliked = !newLiked &&
+      final alreadyLiked =
+          newLiked && (message.contains('CONFLICT') || message.contains('409'));
+      final alreadyUnliked =
+          !newLiked &&
           (message.contains('NOT_FOUND') || message.contains('404'));
       if (alreadyLiked || alreadyUnliked) {
         ref.invalidateSelf();
@@ -70,10 +70,9 @@ class CommentController
 
     state = const AsyncValue.loading();
     try {
-      await ref.read(commentRepositoryProvider).deleteComment(
-            questionNumber: arg.number,
-            commentId: commentId,
-          );
+      await ref
+          .read(commentRepositoryProvider)
+          .deleteComment(questionNumber: arg.number, commentId: commentId);
       ref.invalidateSelf();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -86,7 +85,9 @@ class CommentController
     if (prev.value == null) return;
 
     try {
-      await ref.read(commentRepositoryProvider).postComment(
+      await ref
+          .read(commentRepositoryProvider)
+          .postComment(
             questionNumber: arg.number,
             option: option,
             body: body,
@@ -100,7 +101,7 @@ class CommentController
   }
 }
 
-final commentControllerProvider = AsyncNotifierProvider.family.autoDispose<
-    CommentController, CommentState, DummyQuestion>(
-  CommentController.new,
-);
+final commentControllerProvider = AsyncNotifierProvider.family
+    .autoDispose<CommentController, CommentState, DummyQuestion>(
+      CommentController.new,
+    );

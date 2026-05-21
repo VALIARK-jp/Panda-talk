@@ -81,9 +81,7 @@ Future<void> uploadPendingGuestAnswers(WidgetRef ref) async {
         }
       }
       if (kDebugMode) {
-        debugPrint(
-          'uploadPendingGuestAnswers: Q${entry.key} failed: $e',
-        );
+        debugPrint('uploadPendingGuestAnswers: Q${entry.key} failed: $e');
       }
     }
   }

@@ -34,17 +34,20 @@ class ResilientProfileRepository implements ProfileRepository {
     required String name,
     required String bio,
     String? avatarUrl,
+    String? username,
   }) =>
       _withFallbackVoid(
         () => _api.updateProfile(
           name: name,
           bio: bio,
           avatarUrl: avatarUrl,
+          username: username,
         ),
         () => _supabase.updateProfile(
           name: name,
           bio: bio,
           avatarUrl: avatarUrl,
+          username: username,
         ),
       );
 

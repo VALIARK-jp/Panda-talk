@@ -82,10 +82,7 @@ class ApiCommentRepository implements CommentRepository {
     required int questionNumber,
     required String commentId,
   }) async {
-    await _delete(
-      Uri.parse('$_apiBaseUrl/comments/$commentId'),
-      auth: true,
-    );
+    await _delete(Uri.parse('$_apiBaseUrl/comments/$commentId'), auth: true);
   }
 
   @override
@@ -106,10 +103,7 @@ class ApiCommentRepository implements CommentRepository {
 
     await _postJson(
       Uri.parse('$_apiBaseUrl/questions/$actualQuestionId/comments'),
-      body: {
-        'choice': choice,
-        'body': body,
-      },
+      body: {'choice': choice, 'body': body},
       auth: true,
     );
   }

@@ -7,57 +7,60 @@ import type {
   Question,
   QuestionWithUser,
   User,
-} from '../../../domain/entities/index'
+} from "../../../domain/entities/index";
 
 export type UserRow = {
-  id: string
-  email: string | null
-  username: string
-  name: string
-  avatar_url: string | null
-  bio: string | null
-  created_at: string
-}
+  id: string;
+  email: string | null;
+  username: string;
+  name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  created_at: string;
+};
 
 export type QuestionRow = {
-  id: string
-  question_number: number
-  user_id: string
-  text: string
-  option_a: string
-  option_b: string
-  category: string | null
-  created_at: string
-}
+  id: string;
+  question_number: number;
+  user_id: string;
+  text: string;
+  option_a: string;
+  option_b: string;
+  category: string | null;
+  created_at: string;
+};
 
 export type QuestionWithUserRow = QuestionRow & {
-  panda_profiles?: Pick<UserRow, 'id' | 'username' | 'name' | 'avatar_url'> | null
-}
+  panda_profiles?: Pick<
+    UserRow,
+    "id" | "username" | "name" | "avatar_url"
+  > | null;
+};
 
 export type HotQuestionRow = QuestionWithUserRow & {
-  username?: string
-  avatar_url?: string | null
-  like_count: number
-  comment_count: number
-}
+  username?: string;
+  avatar_url?: string | null;
+  like_count: number;
+  comment_count: number;
+};
 
 export type AnswerRow = {
-  id: string
-  user_id: string
-  question_id: string
-  choice: AnswerChoice
-  created_at: string
-}
+  id: string;
+  user_id: string;
+  question_id: string;
+  choice: AnswerChoice;
+  created_at: string;
+};
 
 export type MatchScoreRow = {
-  id: string
-  user_a_id: string
-  user_b_id: string
-  match_rate: number
-  common_answer_count: number
-  same_answer_count: number
-  updated_at: string
-}
+  id: string;
+  user_a_id: string;
+  user_b_id: string;
+  match_rate: number;
+  common_answer_count: number;
+  same_answer_count: number;
+  updated_at: string;
+};
 
 export function toUser(row: UserRow): User {
   return {
@@ -68,7 +71,7 @@ export function toUser(row: UserRow): User {
     avatarUrl: row.avatar_url,
     bio: row.bio,
     createdAt: row.created_at,
-  }
+  };
 }
 
 export function toQuestion(row: QuestionRow): Question {
@@ -81,13 +84,13 @@ export function toQuestion(row: QuestionRow): Question {
     optionB: row.option_b,
     category: row.category,
     createdAt: row.created_at,
-  }
+  };
 }
 
 export function toQuestionWithUser(row: QuestionWithUserRow): QuestionWithUser {
-  const profile = row.panda_profiles
-  const username = profile?.username ?? 'unknown'
-  const displayName = profile?.name?.trim()
+  const profile = row.panda_profiles;
+  const username = profile?.username ?? "unknown";
+  const displayName = profile?.name?.trim();
   return {
     ...toQuestion(row),
     poster: {
@@ -96,7 +99,7 @@ export function toQuestionWithUser(row: QuestionWithUserRow): QuestionWithUser {
       name: displayName && displayName.length > 0 ? displayName : username,
       avatarUrl: profile?.avatar_url ?? null,
     },
-  }
+  };
 }
 
 export function toHotQuestion(row: HotQuestionRow): HotQuestion {
@@ -104,7 +107,7 @@ export function toHotQuestion(row: HotQuestionRow): HotQuestion {
     ...toQuestionWithUser(row),
     likeCount: row.like_count,
     commentCount: row.comment_count,
-  }
+  };
 }
 
 export function toAnswer(row: AnswerRow): Answer {
@@ -114,7 +117,7 @@ export function toAnswer(row: AnswerRow): Answer {
     questionId: row.question_id,
     choice: row.choice,
     createdAt: row.created_at,
-  }
+  };
 }
 
 export function toMatchScore(row: MatchScoreRow): MatchScore {
@@ -126,17 +129,19 @@ export function toMatchScore(row: MatchScoreRow): MatchScore {
     commonAnswerCount: row.common_answer_count,
     sameAnswerCount: row.same_answer_count,
     updatedAt: row.updated_at,
-  }
+  };
 }
 
 export function toMatchResult(
   score: MatchScoreRow,
-  user: UserRow
+  user: UserRow,
 ): MatchResult {
   return {
     user: toUser(user),
     matchRate: score.match_rate,
     commonAnswerCount: score.common_answer_count,
-    displayScore: score.match_rate * (score.common_answer_count / (score.common_answer_count + 50)),
-  }
+    displayScore:
+      score.match_rate *
+      (score.common_answer_count / (score.common_answer_count + 50)),
+  };
 }

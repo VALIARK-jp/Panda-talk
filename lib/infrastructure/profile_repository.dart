@@ -7,6 +7,7 @@ abstract class ProfileRepository {
     required String name,
     required String bio,
     String? avatarUrl,
+    String? username,
   });
   Future<bool> isUsernameAvailable(String username);
   Future<void> completeProfileSetup({

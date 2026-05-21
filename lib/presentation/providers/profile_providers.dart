@@ -15,6 +15,7 @@ class ProfileController extends AsyncNotifier<DummyProfile> {
     required String name,
     required String bio,
     String? avatarUrl,
+    String? username,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -22,6 +23,7 @@ class ProfileController extends AsyncNotifier<DummyProfile> {
             name: name,
             bio: bio,
             avatarUrl: avatarUrl,
+            username: username,
           );
       return ref.read(profileRepositoryProvider).getProfile();
     });
