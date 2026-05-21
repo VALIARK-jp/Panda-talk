@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,7 +36,9 @@ Future<void> main() async {
       detectSessionInUri: false,
     ),
   );
-  await LineSDK.instance.setup(AppConfig.lineChannelId);
+  if (!kIsWeb) {
+    await LineSDK.instance.setup(AppConfig.lineChannelId);
+  }
   runApp(const ProviderScope(child: PandaTalkApp()));
 }
 
