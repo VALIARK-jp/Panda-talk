@@ -35,7 +35,10 @@ export class EnsureUserProfileUseCase {
     input: EnsureUserProfileInput,
     existing: User | null
   ): Promise<string> {
-    const requested = input.username ?? existing?.username ?? input.name ?? input.email ?? input.userId
+    if (existing?.username?.trim()) {
+      return existing.username
+    }
+    const requested = input.username ?? input.name ?? input.email ?? input.userId
     const base = normalizeUsername(requested)
     let candidate = base
     let suffix = input.userId.replace(/-/g, '').slice(0, 6)

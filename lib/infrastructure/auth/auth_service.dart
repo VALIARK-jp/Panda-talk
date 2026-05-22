@@ -416,13 +416,28 @@ class AuthService {
         user.email?.split('@').first ??
         'panda user';
 
+    final initialAvatar =
+        avatarUrl ?? metadata['photoURL'] as String?;
+
     if (AppConfig.usesLocalApiHost) {
       await ensurePandaProfileRow(
         client: _supabase,
         displayName: name,
-        avatarUrl: avatarUrl,
+        avatarUrl: initialAvatar,
       );
       return;
+    }
+
+    final profileExists = await _backendProfileExists(session.accessToken);
+    final body = <String, dynamic>{
+      'email': user.email,
+      'name': name,
+      'provider': provider,
+    };
+    if (!profileExists &&
+        initialAvatar != null &&
+        initialAvatar.trim().isNotEmpty) {
+      body['avatarUrl'] = initialAvatar.trim();
     }
 
     final response = await _client.post(
@@ -431,13 +446,7 @@ class AuthService {
         'Authorization': 'Bearer ${session.accessToken}',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'email': user.email,
-        'name': name,
-        'username': _usernameFrom(name, user.id),
-        'avatarUrl': ?avatarUrl,
-        'provider': provider,
-      }),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -445,20 +454,12 @@ class AuthService {
     }
   }
 
-  String _usernameFrom(String name, String userId) {
-    final base = name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9_]'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_+|_+$'), '');
-    final normalized = base.length >= 3 ? base : 'panda';
-    final compactId = userId.replaceAll('-', '');
-    final suffix = compactId.substring(0, compactId.length < 6 ? compactId.length : 6);
-    final maxBaseLength = 30 - suffix.length - 1;
-    final baseLength = normalized.length < maxBaseLength
-        ? normalized.length
-        : maxBaseLength;
-    return '${normalized.substring(0, baseLength)}_$suffix';
+  Future<bool> _backendProfileExists(String accessToken) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/users/me'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
+    return response.statusCode >= 200 && response.statusCode < 300;
   }
 
   Future<NativeAuthResponse> _verifyNativeOtp(http.Response response) async {

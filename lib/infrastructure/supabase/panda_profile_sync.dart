@@ -20,7 +20,7 @@ Future<void> ensurePandaProfileRow({
 
   final existing = await supabase
       .from('panda_profiles')
-      .select('username')
+      .select('username, avatar_url')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -33,13 +33,16 @@ Future<void> ensurePandaProfileRow({
   }
 
   final username = await _resolveUsername(supabase, user.id, name, user.email);
+  final photoFromOAuth =
+      avatarUrl ?? metadata['photoURL'] as String?;
 
   await supabase.from('panda_profiles').insert({
     'id': user.id,
     'email': user.email,
     'username': username,
     'name': name.trim().isEmpty ? username : name.trim(),
-    'avatar_url': ?avatarUrl,
+    if (photoFromOAuth != null && photoFromOAuth.trim().isNotEmpty)
+      'avatar_url': photoFromOAuth.trim(),
   });
 }
 

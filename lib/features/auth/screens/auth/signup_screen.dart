@@ -44,9 +44,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 
   Future<void> _finishNativeAuth() async {
-    await PostAuthFlow.withLoading(context, () async {
-      await PostAuthFlow.finishLogin(ref: ref, context: context);
-    });
+    await PostAuthFlow.finishLogin(ref: ref, context: context);
   }
 
   @override
