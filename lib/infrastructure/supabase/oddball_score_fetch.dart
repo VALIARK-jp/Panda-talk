@@ -9,6 +9,19 @@ Future<int> fetchOddballScoreForUser(
   String userId, {
   int? answerCountHint,
 }) async {
+  if (client.auth.currentUser?.id == userId) {
+    try {
+      final rows = await client.rpc<List<dynamic>>(
+        'get_my_panda_oddball_score',
+      );
+      final row = rows.isEmpty ? null : rows.first as Map<String, dynamic>;
+      final score = (row?['oddball_score'] as num?)?.round();
+      if (score != null) return score;
+    } catch (_) {
+      // RPC未適用のdev環境では既存ビューへフォールバックする。
+    }
+  }
+
   try {
     final row = await client
         .from('panda_user_oddball_scores')
@@ -37,8 +50,10 @@ Future<int> computeOddballScoreFromAnswers(
 
   if (myRows.isEmpty) return 0;
 
-  final questionIds =
-      myRows.map((r) => r['question_id'] as String).toSet().toList();
+  final questionIds = myRows
+      .map((r) => r['question_id'] as String)
+      .toSet()
+      .toList();
 
   final allRows = await client
       .from('panda_answers')
