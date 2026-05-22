@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
@@ -36,7 +37,9 @@ Future<void> main() async {
       detectSessionInUri: false,
     ),
   );
-  if (!kIsWeb) {
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android)) {
     await LineSDK.instance.setup(AppConfig.lineChannelId);
   }
   runApp(const ProviderScope(child: PandaTalkApp()));
@@ -54,6 +57,9 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
 
   @override
   Widget build(BuildContext context) {
+    final baseTextTheme = GoogleFonts.notoSansJpTextTheme();
+    final fontFamily = GoogleFonts.notoSansJp().fontFamily;
+
     ref.listen<AsyncValue<User?>>(authUserProvider, (previous, next) {
       final prevUser = previous?.valueOrNull;
       final nextUser = next.valueOrNull;
@@ -97,15 +103,31 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        fontFamily: fontFamily,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.black,
           brightness: Brightness.light,
         ).copyWith(surface: AppColors.white),
         scaffoldBackgroundColor: AppColors.white,
-        appBarTheme: const AppBarTheme(
+        textTheme: baseTextTheme,
+        primaryTextTheme: baseTextTheme,
+        appBarTheme: AppBarTheme(
           backgroundColor: AppColors.white,
           elevation: 0,
-          iconTheme: IconThemeData(color: AppColors.black),
+          iconTheme: const IconThemeData(color: AppColors.black),
+          titleTextStyle: baseTextTheme.titleLarge?.copyWith(
+            color: AppColors.black,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(textStyle: baseTextTheme.labelLarge),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(textStyle: baseTextTheme.labelLarge),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(textStyle: baseTextTheme.labelLarge),
         ),
       ),
       home: const AuthGate(),
