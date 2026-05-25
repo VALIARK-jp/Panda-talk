@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/app_config.dart';
 import '../core/design_tokens.dart';
 import '../widgets/panda_avatar.dart';
 import '../widgets/panda_button.dart';
@@ -84,14 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: AppSpacing.lg),
             ..._buildActions(),
             const SizedBox(height: AppSpacing.lg),
-            const Text(
-              '利用規約・プライバシーポリシー',
-              style: TextStyle(
-                fontSize: AppFontSize.sm,
-                color: AppColors.textGray,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            _buildLegalLinks(),
             const SizedBox(height: AppSpacing.md),
           ],
         ),
@@ -146,6 +141,76 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             onTap: () => widget.onOpenAuth(openSignup: false),
           ),
         ];
+    }
+  }
+
+  Widget _buildLegalLinks() {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
+      children: [
+        _buildLegalLink(label: '利用規約', url: AppConfig.termsOfServiceUrl),
+        const Text(
+          '・',
+          style: TextStyle(fontSize: AppFontSize.sm, color: AppColors.textGray),
+        ),
+        _buildLegalLink(label: 'プライバシーポリシー', url: AppConfig.privacyPolicyUrl),
+      ],
+    );
+  }
+
+  Widget _buildLegalLink({required String label, required String url}) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: AppColors.textGray,
+      ),
+      onPressed: () => _openUrl(url, label),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: AppFontSize.sm,
+          color: AppColors.textGray,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openUrl(String url, String label) async {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text('$label の掲載準備中です。')));
+      return;
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !(uri.isScheme('https') || uri.isScheme('http'))) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(const SnackBar(content: Text('リンク URL が未設定または不正です。')));
+      return;
+    }
+
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.maybeOf(
+          context,
+        )?.showSnackBar(const SnackBar(content: Text('ブラウザを開けませんでした')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text('ブラウザを開けませんでした: $e')));
     }
   }
 }
