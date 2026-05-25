@@ -24,6 +24,7 @@ class MainApp extends ConsumerStatefulWidget {
 
 class _MainAppState extends ConsumerState<MainApp> {
   int _currentNavIndex = 0;
+  int _homeOpenSerial = 0;
 
   static const _matchIndex = 1;
   static const _postIndex = 2;
@@ -67,15 +68,24 @@ class _MainAppState extends ConsumerState<MainApp> {
       screenIndex == _talkIndex ||
       screenIndex == _profileIndex;
 
+  void _openDiagnosisTab() {
+    ref.invalidate(feedQuestionsProvider);
+    setState(() {
+      _currentNavIndex = 0;
+      _homeOpenSerial++;
+    });
+  }
+
   Widget _screenForIndex(int screenIndex) {
     switch (screenIndex) {
       case 0:
         return QuestionFeedScreen(
+          homeOpenSerial: _homeOpenSerial,
           onOpenPost: () => setState(() => _currentNavIndex = _postIndex),
         );
       case _matchIndex:
         return MatchScreen(
-          onOpenDiagnosis: () => setState(() => _currentNavIndex = 0),
+          onOpenDiagnosis: _openDiagnosisTab,
         );
       case _postIndex:
         return const QuestionPostScreen();
@@ -87,6 +97,7 @@ class _MainAppState extends ConsumerState<MainApp> {
         return const ProfileScreen();
       default:
         return QuestionFeedScreen(
+          homeOpenSerial: _homeOpenSerial,
           onOpenPost: () => setState(() => _currentNavIndex = _postIndex),
         );
     }
@@ -110,6 +121,10 @@ class _MainAppState extends ConsumerState<MainApp> {
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentNavIndex,
         onTap: (navIndex) {
+          if (navIndex == 0) {
+            _openDiagnosisTab();
+            return;
+          }
           setState(() => _currentNavIndex = navIndex);
           if (navIndex == _profileNavIndex() && _isLoggedIn) {
             ref.invalidate(profileControllerProvider);

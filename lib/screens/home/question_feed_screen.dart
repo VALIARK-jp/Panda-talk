@@ -32,10 +32,15 @@ import 'question_comments_screen.dart';
 import 'question_history_screen.dart';
 
 class QuestionFeedScreen extends ConsumerStatefulWidget {
-  const QuestionFeedScreen({super.key, this.onOpenPost});
+  const QuestionFeedScreen({
+    super.key,
+    this.onOpenPost,
+    this.homeOpenSerial = 0,
+  });
 
   /// 未回答がなくなったとき、投稿タブへ誘導する。
   final VoidCallback? onOpenPost;
+  final int homeOpenSerial;
 
   @override
   ConsumerState<QuestionFeedScreen> createState() => _QuestionFeedScreenState();
@@ -81,6 +86,34 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant QuestionFeedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.homeOpenSerial != widget.homeOpenSerial) {
+      _resetHomeFeed();
+    }
+  }
+
+  void _resetHomeFeed() {
+    final resetSerial = widget.homeOpenSerial;
+    _nextQuestionTimer?.cancel();
+    _feedSyncDebounce?.cancel();
+    _lastSyncedQuestionKey = null;
+    _lastBuildFeedKey = null;
+    _activeFeedKey = null;
+    _lastFeedQuestionCount = 0;
+    _userHasNavigated = false;
+    _pendingAdvanceAfterAnswer = false;
+    _clearReveal();
+    _pageController?.dispose();
+    _pageController = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.homeOpenSerial != resetSerial) return;
+      ref.read(questionFeedControllerProvider.notifier).resetForTab();
+      ref.invalidate(feedQuestionsProvider);
+    });
+  }
+
   Future<void> _onAnswer(
     DummyQuestion q,
     String selected,
@@ -101,11 +134,11 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     if (!mounted) return;
 
     final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
-    if (!unlocked && q.number <= 16) {
+    if (!unlocked && isDiagnosisQuestionNumber(q.number)) {
       final choseA = selected == q.optionA;
       await Diagnosis16Store.saveAnswer(q.number, choseA);
 
-      if (q.number == 16) {
+      if (q.number == kDiagnosisQuestionCount) {
         _nextQuestionTimer?.cancel();
         final updated = ref.read(questionFeedControllerProvider);
         final result = await completeDiagnosis16FromFeed(
@@ -524,7 +557,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   ) {
     var count = 0;
     for (final q in questions) {
-      if (q.number < 1 || q.number > 16) continue;
+      if (!isDiagnosisQuestionNumber(q.number)) continue;
       if (feedState.selectedOptionFor(q.number) != null || q.myAnswer != null) {
         count++;
       }
@@ -533,7 +566,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   }
 
   Widget _buildDiagnosisProgressBar(int answered) {
-    const total = 16;
+    const total = kDiagnosisQuestionCount;
     final done = answered >= total;
     return Container(
       width: double.infinity,
@@ -843,7 +876,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     if (key == _lastSyncedQuestionKey) return;
 
     _feedSyncDebounce?.cancel();
-    _feedSyncDebounce = Timer(const Duration(milliseconds: 400), () {
+    _feedSyncDebounce = Timer(Duration.zero, () {
       if (!mounted) return;
       _lastSyncedQuestionKey = key;
       final notifier = ref.read(questionFeedControllerProvider.notifier);

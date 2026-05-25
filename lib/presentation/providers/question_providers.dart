@@ -13,6 +13,7 @@ import 'profile_providers.dart';
 
 const _feedWindowBefore = 10;
 const _feedWindowAfter = 12;
+const kDiagnosisQuestionCount = 16;
 
 /// 未回答フィードを cursor で最後まで取得する（ゲスト等のフォールバック）。
 Future<List<DummyQuestion>> loadAllUnansweredFeed(
@@ -57,7 +58,8 @@ Future<List<DummyQuestion>> loadAnsweredHistory(
 Future<List<DummyQuestion>> loadAllAnsweredHistory(QuestionRepository repo) =>
     loadAnsweredHistory(repo, pageSize: 200, maxPages: 20);
 
-bool isDiagnosisQuestionNumber(int number) => number >= 1 && number <= 16;
+bool isDiagnosisQuestionNumber(int number) =>
+    number >= 1 && number <= kDiagnosisQuestionCount;
 
 bool isDiagnosis16QuestionList(List<DummyQuestion> questions) {
   if (questions.isEmpty) return false;
@@ -77,7 +79,7 @@ Future<Set<String>> loadAnsweredQuestionIdsOnServer(
       final diagnosis = await repo.getFeedWindow(
         before: 0,
         after: 0,
-        maxQuestionNumber: 16,
+        maxQuestionNumber: kDiagnosisQuestionCount,
       );
       return diagnosis
           .where((q) => q.myAnswer != null && q.apiId != null)
@@ -112,15 +114,25 @@ final feedBootstrapProvider = FutureProvider<void>((ref) async {
 /// 診断中は [diagnosisProgressWindow] で「回答済み + 次の1問」だけ返す。
 final feedQuestionsProvider = FutureProvider<List<DummyQuestion>>((ref) async {
   final repo = ref.watch(questionRepositoryProvider);
-  final inDiagnosis16 =
+  var inDiagnosis16 =
       !(await ref.watch(diagnosis16UnlockedProvider.future));
   final session = Supabase.instance.client.auth.currentSession;
 
-  final window = await repo.getFeedWindow(
+  var window = await repo.getFeedWindow(
     before: _feedWindowBefore,
     after: _feedWindowAfter,
-    maxQuestionNumber: inDiagnosis16 ? 16 : null,
+    maxQuestionNumber: inDiagnosis16 ? kDiagnosisQuestionCount : null,
   );
+  if (inDiagnosis16 &&
+      session != null &&
+      hasCompletedDiagnosisQuestions(window)) {
+    // プロフィール同期だけ欠けているユーザーを Q1-16 に閉じ込めない。
+    inDiagnosis16 = false;
+    window = await repo.getFeedWindow(
+      before: _feedWindowBefore,
+      after: _feedWindowAfter,
+    );
+  }
   final sorted = [...window]..sort((a, b) => a.number.compareTo(b.number));
 
   if (inDiagnosis16) {
@@ -151,6 +163,18 @@ final feedQuestionsProvider = FutureProvider<List<DummyQuestion>>((ref) async {
   return window;
 });
 
+bool hasCompletedDiagnosisQuestions(List<DummyQuestion> questions) {
+  final answeredNumbers = <int>{};
+  for (final q in questions) {
+    if (!isDiagnosisQuestionNumber(q.number)) continue;
+    if (q.myAnswer != null) answeredNumbers.add(q.number);
+  }
+  for (var n = 1; n <= kDiagnosisQuestionCount; n++) {
+    if (!answeredNumbers.contains(n)) return false;
+  }
+  return true;
+}
+
 /// 初回診断: 回答済み + 次の1問まで（それより先の未回答は見せない）。
 List<DummyQuestion> diagnosisProgressWindow(
   List<DummyQuestion> sortedByNumber, {
@@ -165,7 +189,7 @@ List<DummyQuestion> diagnosisProgressWindow(
 
   int? firstUnansweredNumber;
   for (final q in sortedByNumber) {
-    if (q.number < 1 || q.number > 16) continue;
+    if (!isDiagnosisQuestionNumber(q.number)) continue;
     if (!isAnswered(q)) {
       firstUnansweredNumber = q.number;
       break;
@@ -179,7 +203,9 @@ List<DummyQuestion> diagnosisProgressWindow(
         .toList();
   }
 
-  return sortedByNumber.where((q) => q.number >= 1 && q.number <= 16).toList();
+  return sortedByNumber
+      .where((q) => isDiagnosisQuestionNumber(q.number))
+      .toList();
 }
 
 List<DummyQuestion> _filterUnansweredQuestions(
@@ -191,7 +217,7 @@ List<DummyQuestion> _filterUnansweredQuestions(
 
   if (hasSession) {
     final needsHistoryFilter = questions.every(
-      (q) => q.number >= 1 && q.number <= 16,
+      (q) => isDiagnosisQuestionNumber(q.number),
     );
     if (needsHistoryFilter && answeredIds.isNotEmpty) {
       return questions
@@ -421,7 +447,7 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
           final qs = await _ref.read(questionRepositoryProvider).getFeedWindow(
             before: 0,
             after: 0,
-            maxQuestionNumber: 16,
+            maxQuestionNumber: kDiagnosisQuestionCount,
           );
           final byNum = {for (final q in qs) q.number: q};
           final selected =
@@ -598,7 +624,7 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
     var changed = false;
 
     for (final q in visibleQuestions) {
-      if (isDiagnosis && (q.number < 1 || q.number > 16)) continue;
+      if (isDiagnosis && !isDiagnosisQuestionNumber(q.number)) continue;
       final ans = q.myAnswer ?? selectedOptions[q.number];
       if (ans == null) continue;
 
