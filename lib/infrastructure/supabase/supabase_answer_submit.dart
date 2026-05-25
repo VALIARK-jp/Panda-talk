@@ -39,46 +39,42 @@ Future<int> submitAnswerViaSupabase({
   return percent;
 }
 
-/// 質問の A/B 票数。ビューが RLS で欠ける場合は `panda_answers` から集計する。
+/// 質問の A/B 票数。`panda_answers` の生行は本人分しか読ませないため、
+/// 全体集計は security definer RPC から取得する。
 Future<QuestionVoteStats> fetchVoteStatsFromSupabase(String questionId) async {
   final client = Supabase.instance.client;
   try {
-    final row = await client
-        .from('panda_question_stats')
-        .select('count_a, count_b')
-        .eq('question_id', questionId)
-        .maybeSingle();
+    final rows = await client.rpc<List<dynamic>>(
+      'get_panda_question_stats',
+      params: {'p_question_id': questionId},
+    );
+    final row = rows.isEmpty ? null : rows.first as Map<String, dynamic>;
 
     if (row != null) {
       final countA = row['count_a'] as int? ?? 0;
       final countB = row['count_b'] as int? ?? 0;
-      if (countA + countB > 0) {
-        final percentA = (countA / (countA + countB) * 100).round();
-        return QuestionVoteStats(
-          percentA: percentA,
-          countA: countA,
-          countB: countB,
-        );
-      }
+      final total = countA + countB;
+      final percentA = total == 0 ? 50 : (countA / total * 100).round();
+      return QuestionVoteStats(
+        percentA: percentA,
+        countA: countA,
+        countB: countB,
+      );
     }
   } catch (_) {
-    // ビュー未適用時は下へ
+    // RPC未適用のdev環境では、旧ビューが読める場合だけ使う。
   }
 
-  final rows = await client
-      .from('panda_answers')
-      .select('choice')
-      .eq('question_id', questionId);
-
-  var countA = 0;
-  var countB = 0;
-  for (final row in rows) {
-    if (row['choice'] == 'a') {
-      countA++;
-    } else {
-      countB++;
-    }
+  final row = await client
+      .from('panda_question_stats')
+      .select('count_a, count_b')
+      .eq('question_id', questionId)
+      .maybeSingle();
+  if (row == null) {
+    return const QuestionVoteStats(percentA: 50, countA: 0, countB: 0);
   }
+  final countA = row['count_a'] as int? ?? 0;
+  final countB = row['count_b'] as int? ?? 0;
   final total = countA + countB;
   final percentA = total == 0 ? 50 : (countA / total * 100).round();
   return QuestionVoteStats(percentA: percentA, countA: countA, countB: countB);

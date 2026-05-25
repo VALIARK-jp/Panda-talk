@@ -18,11 +18,11 @@ class ApiNotificationRepository implements NotificationRepository {
   static String get _supabaseAnonKey => AppConfig.supabaseAnonKey;
   static const _devEmail = String.fromEnvironment(
     'PANDA_TALK_DEV_EMAIL',
-    defaultValue: 'alice.dev@panda-talk.local',
+    defaultValue: '',
   );
   static const _devPassword = String.fromEnvironment(
     'PANDA_TALK_DEV_PASSWORD',
-    defaultValue: 'PandaTalk_dev_2026!',
+    defaultValue: '',
   );
 
   String? _accessToken;
@@ -158,6 +158,12 @@ class ApiNotificationRepository implements NotificationRepository {
     if (session != null) return session.accessToken;
 
     if (_accessToken != null) return _accessToken!;
+
+    if (_devEmail.isEmpty || _devPassword.isEmpty) {
+      throw StateError(
+        "Authentication required. Set PANDA_TALK_DEV_EMAIL and PANDA_TALK_DEV_PASSWORD only for mock/dev fallback.",
+      );
+    }
 
     final response = await _client.post(
       Uri.parse('$_supabaseUrl/auth/v1/token?grant_type=password'),

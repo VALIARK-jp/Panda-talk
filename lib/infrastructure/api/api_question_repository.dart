@@ -22,11 +22,11 @@ class ApiQuestionRepository implements QuestionRepository {
   static String get _supabaseAnonKey => AppConfig.supabaseAnonKey;
   static const _devEmail = String.fromEnvironment(
     'PANDA_TALK_DEV_EMAIL',
-    defaultValue: 'alice.dev@panda-talk.local',
+    defaultValue: '',
   );
   static const _devPassword = String.fromEnvironment(
     'PANDA_TALK_DEV_PASSWORD',
-    defaultValue: 'PandaTalk_dev_2026!',
+    defaultValue: '',
   );
 
   String? _accessToken;
@@ -44,16 +44,13 @@ class ApiQuestionRepository implements QuestionRepository {
     int after = 10,
     int? maxQuestionNumber,
   }) async {
-    final params = <String, String>{
-      'before': '$before',
-      'after': '$after',
-    };
+    final params = <String, String>{'before': '$before', 'after': '$after'};
     if (maxQuestionNumber != null) {
       params['maxQuestionNumber'] = '$maxQuestionNumber';
     }
-    final uri = Uri.parse('$_apiBaseUrl/questions/window').replace(
-      queryParameters: params,
-    );
+    final uri = Uri.parse(
+      '$_apiBaseUrl/questions/window',
+    ).replace(queryParameters: params);
     final data = await _getJson(uri, auth: _hasSession);
     return _questionsFromResponse(data);
   }
@@ -65,9 +62,9 @@ class ApiQuestionRepository implements QuestionRepository {
   }) async {
     final params = <String, String>{'limit': '$limit'};
     if (cursor != null) params['cursor'] = cursor;
-    final uri = Uri.parse('$_apiBaseUrl/questions').replace(
-      queryParameters: params,
-    );
+    final uri = Uri.parse(
+      '$_apiBaseUrl/questions',
+    ).replace(queryParameters: params);
     // ログイン時は Authorization を付けて「自分の未回答」だけ返す
     final data = await _getJson(uri, auth: _hasSession);
     return _questionsFromResponse(data);
@@ -83,14 +80,17 @@ class ApiQuestionRepository implements QuestionRepository {
   }
 
   @override
-  Future<List<DummyQuestion>> getHistory({int limit = 20, String? cursor}) async {
+  Future<List<DummyQuestion>> getHistory({
+    int limit = 20,
+    String? cursor,
+  }) async {
     final params = <String, String>{
       'limit': '$limit',
       ...?cursor == null ? null : {'cursor': cursor},
     };
-    final uri = Uri.parse('$_apiBaseUrl/questions/history').replace(
-      queryParameters: params,
-    );
+    final uri = Uri.parse(
+      '$_apiBaseUrl/questions/history',
+    ).replace(queryParameters: params);
     final data = await _getJson(uri, auth: true);
     return _questionsFromResponse(data);
   }
@@ -252,8 +252,8 @@ class ApiQuestionRepository implements QuestionRepository {
     final percentA = stats['percentA'] is num
         ? (stats['percentA'] as num).round()
         : total == 0
-            ? 50
-            : (countA / total * 100).round();
+        ? 50
+        : (countA / total * 100).round();
     return QuestionVoteStats(
       percentA: percentA,
       countA: countA,
@@ -450,6 +450,12 @@ class ApiQuestionRepository implements QuestionRepository {
     if (session != null) return session.accessToken;
 
     if (_accessToken != null) return _accessToken!;
+
+    if (_devEmail.isEmpty || _devPassword.isEmpty) {
+      throw StateError(
+        "Authentication required. Set PANDA_TALK_DEV_EMAIL and PANDA_TALK_DEV_PASSWORD only for mock/dev fallback.",
+      );
+    }
 
     final response = await _client.post(
       Uri.parse('$_supabaseUrl/auth/v1/token?grant_type=password'),
