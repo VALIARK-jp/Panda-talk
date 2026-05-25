@@ -8,8 +8,7 @@ import '../../core/dummy_data.dart';
 import '../group_repository.dart';
 
 class ApiGroupRepository implements GroupRepository {
-  ApiGroupRepository({http.Client? client})
-      : _client = client ?? http.Client();
+  ApiGroupRepository({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
 
@@ -18,23 +17,22 @@ class ApiGroupRepository implements GroupRepository {
   static String get _supabaseAnonKey => AppConfig.supabaseAnonKey;
   static const _devEmail = String.fromEnvironment(
     'PANDA_TALK_DEV_EMAIL',
-    defaultValue: 'alice.dev@panda-talk.local',
+    defaultValue: '',
   );
   static const _devPassword = String.fromEnvironment(
     'PANDA_TALK_DEV_PASSWORD',
-    defaultValue: 'PandaTalk_dev_2026!',
+    defaultValue: '',
   );
 
   String? _accessToken;
 
   @override
   Future<List<DummyGroup>> getGroups() async {
-    final data = await _getJson(
-      Uri.parse('$_apiBaseUrl/groups'),
-      auth: true,
-    );
+    final data = await _getJson(Uri.parse('$_apiBaseUrl/groups'), auth: true);
     final groupsData = data['groups'] as List<dynamic>? ?? [];
-    return groupsData.map((json) => _parseGroup(json as Map<String, dynamic>)).toList();
+    return groupsData
+        .map((json) => _parseGroup(json as Map<String, dynamic>))
+        .toList();
   }
 
   DummyGroup _parseGroup(Map<String, dynamic> groupMap) {
@@ -48,7 +46,8 @@ class ApiGroupRepository implements GroupRepository {
       return '名無し';
     }).toList();
 
-    final avgMatchRate = groupMap['avgMatchRate'] as int? ??
+    final avgMatchRate =
+        groupMap['avgMatchRate'] as int? ??
         ((groupMap['matchRate'] as num?)?.toInt() ?? 0);
     final type = groupMap['type'] as String? ?? 'middle';
     final name = groupMap['name'] as String? ?? 'グループ';
@@ -83,6 +82,12 @@ class ApiGroupRepository implements GroupRepository {
     if (session != null) return session.accessToken;
 
     if (_accessToken != null) return _accessToken!;
+
+    if (_devEmail.isEmpty || _devPassword.isEmpty) {
+      throw StateError(
+        "Authentication required. Set PANDA_TALK_DEV_EMAIL and PANDA_TALK_DEV_PASSWORD only for mock/dev fallback.",
+      );
+    }
 
     final response = await _client.post(
       Uri.parse('$_supabaseUrl/auth/v1/token?grant_type=password'),

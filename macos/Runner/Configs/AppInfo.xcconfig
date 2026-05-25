@@ -4,8 +4,12 @@
 // future. If not, the values below would default to using the project name when this becomes a
 // 'flutter create' template.
 
-// The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = パンダトーク
+// The application's product name. Keep this ASCII so macOS codesign does not
+// trip over Unicode normalization differences in the executable path.
+PRODUCT_NAME = PandaTalk
+
+// The application's display name.
+APP_DISPLAY_NAME = パンダトーク
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.valiark.pandaTalk
