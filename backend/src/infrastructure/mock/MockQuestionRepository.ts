@@ -126,6 +126,27 @@ export class MockQuestionRepository implements IQuestionRepository {
       .map((q, index) => toQuestionWithUser(q, { likeCount: index, commentCount: index }))
   }
 
+  async getFeedWindowAround(
+    _userId: UUID,
+    before: number,
+    after: number,
+    target: { questionId?: UUID; questionNumber?: number }
+  ): Promise<FeedWindowQuestion[]> {
+    const sorted = [...questions].sort((a, b) => a.questionNumber - b.questionNumber)
+    let targetNumber = target.questionNumber
+    if ((targetNumber == null || targetNumber < 1) && target.questionId) {
+      targetNumber = sorted.find((q) => q.id === target.questionId)?.questionNumber
+    }
+    if (targetNumber == null || targetNumber < 1) {
+      return this.getFeedWindow(_userId, before, after)
+    }
+    const minNum = Math.max(1, targetNumber - before)
+    const maxNum = targetNumber + after
+    return sorted
+      .filter((q) => q.questionNumber >= minNum && q.questionNumber <= maxNum)
+      .map((q, index) => toQuestionWithUser(q, { likeCount: index, commentCount: index }))
+  }
+
   async getFeed(userId: UUID, limit: number, cursor?: UUID): Promise<QuestionWithUser[]> {
     let list = questions.map((q, index) =>
       toQuestionWithUser(q, {

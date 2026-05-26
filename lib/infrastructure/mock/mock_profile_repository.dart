@@ -86,6 +86,11 @@ class MockProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  @override
   Future<void> savePandaType16({
     required String slug,
     required int affectionPct,

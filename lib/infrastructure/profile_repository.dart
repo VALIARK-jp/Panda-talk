@@ -17,6 +17,8 @@ abstract class ProfileRepository {
     String? avatarUrl,
   });
 
+  Future<void> deleteAccount();
+
   Future<void> savePandaType16({
     required String slug,
     required int affectionPct,

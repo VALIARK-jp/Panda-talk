@@ -11,6 +11,7 @@ import '../screens/main_app.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/profile/profile_setup_screen.dart';
 import 'providers/auth_providers.dart';
+import 'session_reset.dart';
 
 /// Routes between onboarding, login (pushed), guest [MainApp], and signed-in [MainApp].
 class AuthGate extends ConsumerStatefulWidget {
@@ -34,16 +35,22 @@ class _AuthGateState extends ConsumerState<AuthGate> {
     final asyncUser = ref.watch(authUserProvider);
     final user = asyncUser.valueOrNull ?? Supabase.instance.client.auth.currentUser;
     final guest = ref.watch(guestModeProvider);
+    final sessionEpoch = ref.watch(appSessionEpochProvider);
 
     if (user != null) {
-      return const _LoggedInShell();
+      return _LoggedInShell(
+        key: ValueKey('logged-in-${user.id}-$sessionEpoch'),
+      );
     }
     if (guest) {
-      return const MainApp();
+      return MainApp(key: ValueKey('guest-$sessionEpoch'));
     }
 
     return OnboardingScreen(
-      onStartGuest: () => ref.read(guestModeProvider.notifier).state = true,
+      onStartGuest: () {
+        resetSessionScopedState(ref);
+        ref.read(guestModeProvider.notifier).state = true;
+      },
       onOpenAuth: ({required bool openSignup}) {
         Navigator.of(context).push<void>(
           MaterialPageRoute<void>(
@@ -58,7 +65,7 @@ class _AuthGateState extends ConsumerState<AuthGate> {
 
 /// ログイン済み: プロフィール未入力ならセットアップ → [MainApp]。
 class _LoggedInShell extends ConsumerStatefulWidget {
-  const _LoggedInShell();
+  const _LoggedInShell({super.key});
 
   @override
   ConsumerState<_LoggedInShell> createState() => _LoggedInShellState();
@@ -102,6 +109,11 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
     if (!_profileSetupDone) {
       return ProfileSetupScreen(onComplete: _completeProfileSetup);
     }
-    return const MainApp();
+    final sessionEpoch = ref.watch(appSessionEpochProvider);
+    return MainApp(
+      key: ValueKey(
+        'user-${Supabase.instance.client.auth.currentUser!.id}-$sessionEpoch',
+      ),
+    );
   }
 }

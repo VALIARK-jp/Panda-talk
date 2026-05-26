@@ -119,6 +119,41 @@ class MockQuestionRepository implements QuestionRepository {
   }
 
   @override
+  Future<List<DummyQuestion>> getFeedWindowAround({
+    int before = 15,
+    int after = 15,
+    int? questionNumber,
+    String? questionId,
+    int? currentQuestionNumber,
+  }) async {
+    final all = [..._myQuestions, ..._feedQuestions]
+      ..sort((a, b) => a.number.compareTo(b.number));
+    if (all.isEmpty) return const [];
+
+    var target = questionNumber;
+    if ((target == null || target < 1) && questionId != null) {
+      for (final q in all) {
+        if (q.apiId == questionId) {
+          target = q.number;
+          break;
+        }
+      }
+    }
+    if (target == null || target < 1) {
+      return getFeedWindow(before: before, after: after);
+    }
+
+    final minN = (target - before).clamp(1, 1 << 30);
+    final maxN = target + after;
+    return List.unmodifiable(
+      all
+          .where((q) => q.number >= minN && q.number <= maxN)
+          .map(_ensureVoteCounts)
+          .toList(),
+    );
+  }
+
+  @override
   Future<List<DummyQuestion>> getFeedQuestions({
     int limit = 200,
     String? cursor,

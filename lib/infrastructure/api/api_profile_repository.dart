@@ -105,6 +105,21 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    final response = await _client.delete(
+      Uri.parse('$_apiBaseUrl/users/me'),
+      headers: await _headers(auth: true),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw StateError(
+        response.body.isNotEmpty
+            ? response.body
+            : 'アカウント削除に失敗しました (${response.statusCode})',
+      );
+    }
+  }
+
+  @override
   Future<void> savePandaType16({
     required String slug,
     required int affectionPct,

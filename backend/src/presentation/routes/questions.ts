@@ -67,6 +67,43 @@ app.get('/search', async (c) => {
   }
 })
 
+// GET /questions/window/around - 指定した質問番号の前後（履歴からのジャンプ用）
+app.get('/window/around', async (c) => {
+  try {
+    const before = Number(c.req.query('before') ?? '15')
+    const after = Number(c.req.query('after') ?? '15')
+    const questionNumberRaw = c.req.query('questionNumber')
+    const questionId = c.req.query('questionId')
+    const currentQuestionNumberRaw = c.req.query('currentQuestionNumber')
+    const questionNumber =
+      questionNumberRaw != null && questionNumberRaw !== ''
+        ? Number(questionNumberRaw)
+        : undefined
+    const token = c.req.header('Authorization')?.replace('Bearer ', '')
+    const userId = token ? await resolveUserId(c.env, token) : 'anonymous'
+    const { getFeedWindowAroundUseCase } = createContainer(c.env)
+    const currentQuestionNumber =
+      currentQuestionNumberRaw != null && currentQuestionNumberRaw !== ''
+        ? Number(currentQuestionNumberRaw)
+        : undefined
+    const questions = await getFeedWindowAroundUseCase.execute(
+      userId ?? 'anonymous',
+      before,
+      after,
+      {
+        questionId: questionId || undefined,
+        questionNumber: Number.isFinite(questionNumber) ? questionNumber : undefined,
+        currentQuestionNumber: Number.isFinite(currentQuestionNumber)
+          ? currentQuestionNumber
+          : undefined,
+      }
+    )
+    return c.json({ questions })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
 // GET /questions/window - 未回答フロンティア前後の質問（認証推奨）
 app.get('/window', async (c) => {
   try {

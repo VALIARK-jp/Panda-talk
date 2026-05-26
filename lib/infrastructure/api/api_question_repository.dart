@@ -56,6 +56,35 @@ class ApiQuestionRepository implements QuestionRepository {
   }
 
   @override
+  Future<List<DummyQuestion>> getFeedWindowAround({
+    int before = 15,
+    int after = 15,
+    int? questionNumber,
+    String? questionId,
+    int? currentQuestionNumber,
+  }) async {
+    final params = <String, String>{
+      'before': '$before',
+      'after': '$after',
+    };
+    if (questionNumber != null) {
+      params['questionNumber'] = '$questionNumber';
+    }
+    if (questionId != null && questionId.isNotEmpty) {
+      params['questionId'] = questionId;
+    }
+    final reported = currentQuestionNumber ?? questionNumber;
+    if (reported != null) {
+      params['currentQuestionNumber'] = '$reported';
+    }
+    final uri = Uri.parse(
+      '$_apiBaseUrl/questions/window/around',
+    ).replace(queryParameters: params);
+    final data = await _getJson(uri, auth: _hasSession);
+    return _questionsFromResponse(data);
+  }
+
+  @override
   Future<List<DummyQuestion>> getFeedQuestions({
     int limit = 200,
     String? cursor,

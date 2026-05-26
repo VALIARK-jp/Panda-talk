@@ -149,7 +149,8 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
         }
       })
 
-    // 16type 診断中: Q1–max だけ。ログイン時はフロンティアまで、ゲストは全問返して端末で進捗を切る。
+    // 16type 診断: Q1–max をすべて返す（表示の切り詰めはクライアントの clipFeedProgressView）。
+    // ログイン後のゲスト回答アップロードで全問の question_id が必要なため、フロンティアで切らない。
     if (maxQuestionNumber != null && maxQuestionNumber > 0) {
       const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
         select: QUESTION_SELECT,
@@ -157,21 +158,9 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
         order: 'question_number.asc,id.asc',
         limit: maxQuestionNumber + 5,
       })
-      const questions = attachAnswers(
+      return attachAnswers(
         await this.attachEngagementCounts(rows.map(toQuestionWithUser))
       )
-      if (!isUuid(userId)) {
-        return questions
-      }
-
-      let frontier = maxQuestionNumber
-      for (const question of questions) {
-        if (!answeredByQuestionId.has(question.id)) {
-          frontier = question.questionNumber
-          break
-        }
-      }
-      return questions.filter((q) => q.questionNumber <= frontier)
     }
 
     const answeredIds = [...answeredByQuestionId.keys()]
@@ -207,6 +196,58 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
     }
     const minNum = Math.max(1, frontier - before)
     const maxNum = frontier + after
+
+    const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
+      select: QUESTION_SELECT,
+      and: `(question_number.gte.${minNum},question_number.lte.${maxNum})`,
+      order: 'question_number.asc,id.asc',
+      limit: before + after + 5,
+    })
+
+    return attachAnswers(await this.attachEngagementCounts(rows.map(toQuestionWithUser)))
+  }
+
+  async getFeedWindowAround(
+    userId: UUID,
+    before: number,
+    after: number,
+    target: { questionId?: UUID; questionNumber?: number }
+  ): Promise<FeedWindowQuestion[]> {
+    let targetNumber = target.questionNumber
+    if ((targetNumber == null || targetNumber < 1) && target.questionId) {
+      const row = await this.findQuestionRow(target.questionId)
+      targetNumber = row?.question_number
+    }
+    if (targetNumber == null || targetNumber < 1) {
+      return this.getFeedWindow(userId, before, after)
+    }
+
+    const answeredByQuestionId = new Map<string, 'a' | 'b'>()
+    if (isUuid(userId)) {
+      const answeredRows = await this.client.get<
+        Array<{ question_id: string; choice: 'a' | 'b' }>
+      >('panda_answers', {
+        select: 'question_id,choice',
+        user_id: `eq.${userId}`,
+        limit: 10000,
+      })
+      for (const row of answeredRows) {
+        answeredByQuestionId.set(row.question_id, row.choice)
+      }
+    }
+
+    const attachAnswers = <T extends QuestionWithUser>(questions: T[]): T[] =>
+      questions.map((question) => {
+        const choice = answeredByQuestionId.get(question.id)
+        if (!choice) return question
+        return {
+          ...question,
+          myAnswer: choice === 'a' ? question.optionA : question.optionB,
+        }
+      })
+
+    const minNum = Math.max(1, targetNumber - before)
+    const maxNum = targetNumber + after
 
     const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
       select: QUESTION_SELECT,

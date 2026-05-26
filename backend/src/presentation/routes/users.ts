@@ -64,6 +64,18 @@ app.get('/:id', authMiddleware, async (c) => {
   }
 })
 
+// DELETE /users/me - アカウント削除（認証必要）
+app.delete('/me', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const { deleteUserUseCase } = createContainer(c.env)
+    await deleteUserUseCase.execute(userId)
+    return c.body(null, 204)
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
 // PATCH /users/me - プロフィール更新（認証必要）
 app.patch('/me', authMiddleware, async (c) => {
   try {

@@ -35,6 +35,11 @@ class ProfileOnboardingStore {
     await prefs.remove(_key(userId));
   }
 
+  static Future<void> clearLocalForUser(String userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key(userId));
+  }
+
   /// メール確認待ちの新規登録（セッション未発行）用。
   static Future<void> markPendingEmailSignup(String email) async {
     final prefs = await SharedPreferences.getInstance();

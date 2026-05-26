@@ -14,22 +14,27 @@ import '../presentation/providers/question_providers.dart';
 Future<void> uploadPendingDiagnosis16Answers(WidgetRef ref) async {
   if (Supabase.instance.client.auth.currentSession == null) return;
 
+  await Diagnosis16Store.migrateGuestScopeToCurrentUser();
+
   final answers = await Diagnosis16Store.loadAnswers();
   if (answers.isEmpty) return;
 
   final repo = ref.read(questionRepositoryProvider);
   List<DummyQuestion> questions;
   try {
-    questions = await repo.getFeedWindow(
-      before: 0,
-      after: 0,
-      maxQuestionNumber: 16,
-    );
+    questions = await repo.getDiagnosis16Questions();
   } catch (e, st) {
     if (kDebugMode) {
       debugPrint('uploadPendingDiagnosis16Answers: load failed: $e\n$st');
     }
     return;
+  }
+
+  if (kDebugMode) {
+    debugPrint(
+      'uploadPendingDiagnosis16Answers: ${answers.length} local, '
+      '${questions.length} catalog (Q1–16)',
+    );
   }
 
   final byNumber = {for (final q in questions) q.number: q};
@@ -82,9 +87,20 @@ Future<void> uploadPendingDiagnosis16Answers(WidgetRef ref) async {
     }
   }
 
+  if (kDebugMode) {
+    debugPrint(
+      'uploadPendingDiagnosis16Answers: uploaded ${handled.length}/'
+      '${pendingKeys.length}',
+    );
+  }
+
   if (handled.containsAll(pendingKeys)) {
     await Diagnosis16Store.clear();
   }
+
+  ref.invalidate(questionHistoryProvider);
+  ref.invalidate(feedWindowControllerProvider);
+  ref.invalidate(questionFeedControllerProvider);
 }
 
 /// ローカルで完了した16type結果をログイン後にサーバーへ保存する。

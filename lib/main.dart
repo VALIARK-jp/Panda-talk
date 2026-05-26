@@ -8,13 +8,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
 import 'core/design_tokens.dart';
+import 'infrastructure/diagnosis_16_store.dart';
 import 'infrastructure/diagnosis_16_sync.dart';
 import 'infrastructure/guest_answer_sync.dart';
 import 'infrastructure/profile_onboarding_store.dart';
 import 'presentation/auth_gate.dart';
 import 'presentation/providers/auth_providers.dart';
-import 'presentation/providers/profile_providers.dart';
-import 'presentation/providers/question_providers.dart';
+import 'presentation/session_reset.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,38 +63,41 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
     ref.listen<AsyncValue<User?>>(authUserProvider, (previous, next) {
       final prevUser = previous?.valueOrNull;
       final nextUser = next.valueOrNull;
-      if (prevUser != null && nextUser == null) {
-        ref.invalidate(questionFeedControllerProvider);
-        ref.invalidate(feedQuestionsProvider);
+      if (!didAuthUserChange(prevUser, nextUser)) return;
+
+      if (nextUser == null) {
+        resetSessionScopedState(ref, clearGuestMode: true);
+        return;
       }
-      if (nextUser != null && prevUser == null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _rootNavKey.currentState?.popUntil((route) => route.isFirst);
-        });
-        final provider = nextUser.appMetadata['provider'] as String? ?? 'email';
-        Future.microtask(() async {
-          await ProfileOnboardingStore.applyPendingEmailSignup(
-            userId: nextUser.id,
-            email: nextUser.email,
-          );
-          try {
-            await ref
-                .read(authServiceProvider)
-                .ensureBackendProfile(provider: provider);
-            await uploadPendingDiagnosis16Answers(ref);
-            await uploadPendingGuestAnswers(ref);
-            await syncDiagnosis16Result(ref);
-            ref.invalidate(profileControllerProvider);
-            ref.invalidate(feedQuestionsProvider);
-            ref.invalidate(questionFeedControllerProvider);
-          } catch (e, st) {
-            assert(() {
-              debugPrint('ensureBackendProfile: $e $st');
-              return true;
-            }());
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _rootNavKey.currentState?.popUntil((route) => route.isFirst);
+      });
+      final provider = nextUser.appMetadata['provider'] as String? ?? 'email';
+      Future.microtask(() async {
+        await ProfileOnboardingStore.applyPendingEmailSignup(
+          userId: nextUser.id,
+          email: nextUser.email,
+        );
+        try {
+          await Diagnosis16Store.migrateGuestScopeToCurrentUser();
+          await ref
+              .read(authServiceProvider)
+              .ensureBackendProfile(provider: provider);
+          await uploadPendingDiagnosis16Answers(ref);
+          await uploadPendingGuestAnswers(ref);
+          await syncDiagnosis16Result(ref);
+        } catch (e, st) {
+          assert(() {
+            debugPrint('post-login sync: $e $st');
+            return true;
+          }());
+        } finally {
+          if (mounted) {
+            resetSessionScopedState(ref);
           }
-        });
-      }
+        }
+      });
     });
 
     return MaterialApp(

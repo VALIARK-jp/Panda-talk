@@ -6,7 +6,9 @@ import '../config/feature_flags.dart';
 import '../core/design_tokens.dart';
 import '../presentation/providers/auth_providers.dart';
 import '../presentation/providers/profile_providers.dart';
+import '../presentation/providers/feed_window_controller.dart';
 import '../presentation/providers/question_providers.dart';
+import '../presentation/session_reset.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/login_required_gate.dart';
 import 'home/question_feed_screen.dart';
@@ -69,7 +71,7 @@ class _MainAppState extends ConsumerState<MainApp> {
       screenIndex == _profileIndex;
 
   void _openDiagnosisTab() {
-    ref.invalidate(feedQuestionsProvider);
+    ref.invalidate(feedWindowControllerProvider);
     setState(() {
       _currentNavIndex = 0;
       _homeOpenSerial++;
@@ -77,9 +79,11 @@ class _MainAppState extends ConsumerState<MainApp> {
   }
 
   Widget _screenForIndex(int screenIndex) {
+    final sessionEpoch = ref.watch(appSessionEpochProvider);
     switch (screenIndex) {
       case 0:
         return QuestionFeedScreen(
+          key: ValueKey('feed-$sessionEpoch'),
           homeOpenSerial: _homeOpenSerial,
           onOpenPost: () => setState(() => _currentNavIndex = _postIndex),
         );
@@ -97,6 +101,7 @@ class _MainAppState extends ConsumerState<MainApp> {
         return const ProfileScreen();
       default:
         return QuestionFeedScreen(
+          key: ValueKey('feed-$sessionEpoch'),
           homeOpenSerial: _homeOpenSerial,
           onOpenPost: () => setState(() => _currentNavIndex = _postIndex),
         );

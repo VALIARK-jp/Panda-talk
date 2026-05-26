@@ -167,6 +167,13 @@ class SupabaseProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    throw UnsupportedError(
+      'アカウント削除は API 経由で行ってください（DELETE /users/me）',
+    );
+  }
+
+  @override
   Future<void> savePandaType16({
     required String slug,
     required int affectionPct,

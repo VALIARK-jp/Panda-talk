@@ -29,7 +29,7 @@ class QuestionPostController extends StateNotifier<List<DummyQuestion>> {
           category: category,
         );
     await reload();
-    _ref.invalidate(feedQuestionsProvider);
+    _ref.invalidate(feedWindowControllerProvider);
     _ref.invalidate(questionHistoryProvider);
   }
 
@@ -50,14 +50,14 @@ class QuestionPostController extends StateNotifier<List<DummyQuestion>> {
           category: category,
         );
     await reload();
-    _ref.invalidate(feedQuestionsProvider);
+    _ref.invalidate(feedWindowControllerProvider);
     _ref.invalidate(questionHistoryProvider);
   }
 
   Future<void> deleteQuestion(int number) async {
     await _ref.read(questionRepositoryProvider).deleteQuestion(number);
     await reload();
-    _ref.invalidate(feedQuestionsProvider);
+    _ref.invalidate(feedWindowControllerProvider);
     _ref.invalidate(questionHistoryProvider);
   }
 }

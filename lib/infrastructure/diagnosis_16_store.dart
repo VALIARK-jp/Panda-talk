@@ -19,6 +19,33 @@ class Diagnosis16Store {
 
   static String _key(String suffix) => '$_prefix${_scopeKey()}_$suffix';
 
+  static String _scopedKey(String scope, String suffix) =>
+      '$_prefix${scope}_$suffix';
+
+  /// ゲストで保存した16問の回答・結果を、ログイン後のユーザー scope へ移す。
+  static Future<void> migrateGuestScopeToCurrentUser() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    for (final suffix in ['answers', 'result']) {
+      final guestKey = _scopedKey('guest', suffix);
+      final userKey = _scopedKey(userId, suffix);
+      final raw = prefs.getString(guestKey);
+      if (raw != null && !prefs.containsKey(userKey)) {
+        await prefs.setString(userKey, raw);
+      }
+      await prefs.remove(guestKey);
+    }
+
+    final guestSeenKey = _scopedKey('guest', 'result_seen');
+    final userSeenKey = _scopedKey(userId, 'result_seen');
+    if (prefs.containsKey(guestSeenKey) && !prefs.containsKey(userSeenKey)) {
+      await prefs.setBool(userSeenKey, prefs.getBool(guestSeenKey) ?? false);
+    }
+    await prefs.remove(guestSeenKey);
+  }
+
   static Future<Map<int, bool>> loadAnswers() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key('answers'));

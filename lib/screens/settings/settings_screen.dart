@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
-import '../../presentation/providers/auth_providers.dart';
-import '../../presentation/providers/question_providers.dart';
 import '../../presentation/providers/settings_providers.dart';
+import '../../presentation/session_reset.dart';
 import '../../widgets/panda_button.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -78,17 +77,14 @@ class SettingsScreen extends ConsumerWidget {
             PandaOutlinedButton(
               label: 'ログアウト',
               onTap: () async {
-                await ref.read(authServiceProvider).signOut();
-                ref.read(guestModeProvider.notifier).state = false;
-                ref.invalidate(questionFeedControllerProvider);
-                ref.invalidate(feedQuestionsProvider);
+                await performSignOut(ref);
                 if (context.mounted) Navigator.pop(context);
               },
             ),
             const SizedBox(height: AppSpacing.sm),
             PandaButton(
               label: 'アカウントを削除',
-              onTap: () => _showDeleteDialog(context),
+              onTap: () => _showDeleteDialog(context, ref),
             ),
           ],
         ),
@@ -96,24 +92,60 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context) {
+  void _showDeleteDialog(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('アカウントを削除しますか？'),
-        content: const Text('すべてのデータが削除されます。'),
+        content: const Text(
+          '回答・投稿・プロフィールなど、すべてのデータが削除されます。\n'
+          'この操作は取り消せません。',
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('キャンセル'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('削除'),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _runAccountDeletion(context, ref);
+            },
+            child: const Text(
+              '削除する',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _runAccountDeletion(BuildContext context, WidgetRef ref) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    );
+
+    try {
+      await performAccountDeletion(ref);
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('アカウントを削除しました')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('削除に失敗しました: $e')),
+      );
+    }
   }
 }
 

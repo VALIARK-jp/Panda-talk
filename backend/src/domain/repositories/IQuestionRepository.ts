@@ -16,6 +16,12 @@ export interface IQuestionRepository {
     after: number,
     maxQuestionNumber?: number,
   ): Promise<FeedWindowQuestion[]>;
+  getFeedWindowAround(
+    userId: UUID,
+    before: number,
+    after: number,
+    target: { questionId?: UUID; questionNumber?: number },
+  ): Promise<FeedWindowQuestion[]>;
   getFeed(
     userId: UUID,
     limit: number,

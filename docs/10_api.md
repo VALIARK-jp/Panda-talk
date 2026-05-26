@@ -146,6 +146,9 @@ export interface IQuestionRepository {
 | メソッド | パス | 説明 |
 |---|---|---|
 | GET | /questions | 診断フィード（未回答・投稿順） |
+| GET | /questions/diagnosis-16 | 初回診断用の固定16問 |
+| GET | /questions/window | 未回答フロンティア前後の質問 |
+| GET | /questions/window/around?questionId=:id または questionNumber=:number | 指定質問前後の質問 |
 | GET | /questions/hot | Hotフィード（いいね+コメント数順） |
 | GET | /questions/:id/stats | 回答比率取得 |
 | GET | /questions/:id/comments | コメント一覧 |
@@ -162,6 +165,7 @@ export interface IQuestionRepository {
 | GET | /users/me | 自分のプロフィール |
 | GET | /users/:id | 他ユーザーのプロフィール |
 | GET | /users/search?q=:prefix&limit=20 | usernameの前方一致でユーザーを検索する |
+| DELETE | /users/me | 自分のアカウントを削除する |
 | GET | /matches | 合致度一覧 |
 | POST | /friendships/:userId | 友達申請を送る |
 | PATCH | /friendships/:userId/accept | 友達申請を承認する |

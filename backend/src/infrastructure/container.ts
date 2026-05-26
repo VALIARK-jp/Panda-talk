@@ -28,6 +28,7 @@ import { SupabaseDirectMessageRepository } from './supabase/repositories/Supabas
 import { GetDiagnosis16QuestionsUseCase } from '../domain/usecases/questions/GetDiagnosis16QuestionsUseCase'
 import { GetFeedUseCase } from '../domain/usecases/questions/GetFeedUseCase'
 import { GetFeedWindowUseCase } from '../domain/usecases/questions/GetFeedWindowUseCase'
+import { GetFeedWindowAroundUseCase } from '../domain/usecases/questions/GetFeedWindowAroundUseCase'
 import { GetHotFeedUseCase } from '../domain/usecases/questions/GetHotFeedUseCase'
 import { GetAnsweredHistoryUseCase } from '../domain/usecases/questions/GetAnsweredHistoryUseCase'
 import { PostQuestionUseCase } from '../domain/usecases/questions/PostQuestionUseCase'
@@ -42,6 +43,7 @@ import { GetProfileUseCase } from '../domain/usecases/users/GetProfileUseCase'
 import { UpdateProfileUseCase } from '../domain/usecases/users/UpdateProfileUseCase'
 import { SearchUsersUseCase } from '../domain/usecases/users/SearchUsersUseCase'
 import { EnsureUserProfileUseCase } from '../domain/usecases/users/EnsureUserProfileUseCase'
+import { DeleteUserUseCase } from '../domain/usecases/users/DeleteUserUseCase'
 import { GetCommentsUseCase } from '../domain/usecases/comments/GetCommentsUseCase'
 import { PostCommentUseCase } from '../domain/usecases/comments/PostCommentUseCase'
 import { DeleteCommentUseCase } from '../domain/usecases/comments/DeleteCommentUseCase'
@@ -128,6 +130,7 @@ export function createContainer(env?: Env) {
     getDiagnosis16QuestionsUseCase: new GetDiagnosis16QuestionsUseCase(questionRepo),
     getFeedUseCase: new GetFeedUseCase(questionRepo),
     getFeedWindowUseCase: new GetFeedWindowUseCase(questionRepo),
+    getFeedWindowAroundUseCase: new GetFeedWindowAroundUseCase(questionRepo),
     getHotFeedUseCase: new GetHotFeedUseCase(questionRepo),
     getAnsweredHistoryUseCase: new GetAnsweredHistoryUseCase(questionRepo),
     postQuestionUseCase: new PostQuestionUseCase(questionRepo),
@@ -142,6 +145,7 @@ export function createContainer(env?: Env) {
     getProfileUseCase: new GetProfileUseCase(userRepo),
     updateProfileUseCase: new UpdateProfileUseCase(userRepo),
     searchUsersUseCase: new SearchUsersUseCase(userRepo),
+    deleteUserUseCase: new DeleteUserUseCase(userRepo, env),
     getCommentsUseCase: new GetCommentsUseCase(commentRepo),
     postCommentUseCase: new PostCommentUseCase(commentRepo),
     deleteCommentUseCase: new DeleteCommentUseCase(commentRepo),

@@ -80,6 +80,9 @@ class ResilientProfileRepository implements ProfileRepository {
       );
 
   @override
+  Future<void> deleteAccount() => _api.deleteAccount();
+
+  @override
   Future<void> savePandaType16({
     required String slug,
     required int affectionPct,

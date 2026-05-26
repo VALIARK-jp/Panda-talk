@@ -9,15 +9,18 @@ import '../../core/category_poster_copy.dart';
 import '../../core/feed_panda_picker.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/panda_type.dart';
 import '../../core/oddball_score.dart';
 import '../../core/question_stats_utils.dart';
 import '../../core/share_utils.dart';
 import '../../infrastructure/diagnosis_16_completion.dart';
 import '../../infrastructure/diagnosis_16_store.dart';
+import '../../infrastructure/diagnosis_16_sync.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/diagnosis_providers.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../presentation/providers/question_providers.dart';
+import '../../widgets/diagnosis_16_login_gate.dart';
 import '../../widgets/diagnosis_16_result_modal.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
@@ -49,6 +52,7 @@ class QuestionFeedScreen extends ConsumerStatefulWidget {
 class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   int _tabIndex = 0; // 0=診断 1=Hot
   bool _checkedPendingDiagnosisModal = false;
+  bool _presentingDiagnosisResult = false;
 
   Timer? _feedSyncDebounce;
   String? _lastSyncedQuestionKey;
@@ -69,6 +73,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
   PageController? _pageController;
   Timer? _nextQuestionTimer;
+  int? _pendingJumpTarget;
 
   /// 回答オーバーレイ終了後、すぐ次の問へ（余白なし）。
   static const _advanceAfterRevealDelay = Duration.zero;
@@ -95,6 +100,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   }
 
   void _resetHomeFeed() {
+    resetFeedWindowNavigation(ref);
     final resetSerial = widget.homeOpenSerial;
     _nextQuestionTimer?.cancel();
     _feedSyncDebounce?.cancel();
@@ -110,7 +116,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || widget.homeOpenSerial != resetSerial) return;
       ref.read(questionFeedControllerProvider.notifier).resetForTab();
-      ref.invalidate(feedQuestionsProvider);
+      ref.invalidate(feedWindowControllerProvider);
     });
   }
 
@@ -135,23 +141,27 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
     final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
     if (!unlocked && isDiagnosisQuestionNumber(q.number)) {
-      final choseA = selected == q.optionA;
-      await Diagnosis16Store.saveAnswer(q.number, choseA);
+      await Diagnosis16Store.saveAnswer(
+        q.number,
+        selected == q.optionA,
+      );
+    }
 
-      if (q.number == kDiagnosisQuestionCount) {
+    if (q.number == kDiagnosisQuestionCount && !unlocked) {
+      final updated = ref.read(questionFeedControllerProvider);
+      if (_allDiagnosisQuestionsAnswered(updated)) {
         _nextQuestionTimer?.cancel();
-        final updated = ref.read(questionFeedControllerProvider);
         final result = await completeDiagnosis16FromFeed(
           ref: ref,
           diagnosisQuestions: questions,
           selectedOptionsByQuestion: updated.selectedOptionsByQuestion,
         );
         if (!mounted) return;
-        await showDiagnosis16ResultModal(context, result);
-        await Diagnosis16Store.markResultSeen();
-        ref.invalidate(diagnosis16UnlockedProvider);
-        ref.invalidate(feedQuestionsProvider);
-        ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(0);
+        if (_isGuest) {
+          await showDiagnosis16LoginGate(context);
+          return;
+        }
+        await _presentDiagnosisResult(result);
         return;
       }
     }
@@ -175,7 +185,6 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     );
 
     _pendingAdvanceAfterAnswer = true;
-    ref.invalidate(feedQuestionsProvider);
     _nextQuestionTimer?.cancel();
     setState(() {
       _revealQuestionNumber = q.number;
@@ -206,16 +215,18 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     _nextQuestionTimer?.cancel();
     _nextQuestionTimer = Timer(_advanceAfterRevealDelay, () async {
       if (!mounted) return;
-      _pendingAdvanceAfterAnswer = false;
       final answeredCount = ref
           .read(questionFeedControllerProvider)
           .answeredCount;
-      final latest = await ref.read(feedQuestionsProvider.future);
+      final latest = ref
+          .read(feedWindowControllerProvider.notifier)
+          .displayForDiagnosisTab();
       if (!mounted || latest.isEmpty) return;
       final feedState = ref.read(questionFeedControllerProvider);
       final currentIndex = feedState.questionIndex.clamp(0, latest.length - 1);
       final nextIndex = _nextPageIndexAfterAnswer(latest, feedState, currentIndex);
       _animateToQuestion(nextIndex);
+      _pendingAdvanceAfterAnswer = false;
       if (_isGuest && _nudgeMessages.containsKey(answeredCount)) {
         _showNudgeModal(answeredCount);
       }
@@ -304,6 +315,33 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     return false;
   }
 
+  Future<void> _presentDiagnosisResult(PandaTypeResult result) async {
+    await showDiagnosis16ResultModal(context, result);
+    await Diagnosis16Store.markResultSeen();
+    resetFeedWindowNavigation(ref);
+    ref.invalidate(diagnosis16UnlockedProvider);
+    ref.invalidate(feedWindowControllerProvider);
+    ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(0);
+  }
+
+  Future<void> _presentDiagnosisResultAfterLogin() async {
+    if (_presentingDiagnosisResult) return;
+    if (await Diagnosis16Store.isResultSeen()) return;
+    _presentingDiagnosisResult = true;
+    try {
+      await Diagnosis16Store.migrateGuestScopeToCurrentUser();
+      await syncDiagnosis16Result(ref);
+      if (!mounted) return;
+      if (!await Diagnosis16Store.isComplete()) return;
+      if (await Diagnosis16Store.isResultSeen()) return;
+      final result = await Diagnosis16Store.loadResult();
+      if (result == null || !mounted) return;
+      await _presentDiagnosisResult(result);
+    } finally {
+      _presentingDiagnosisResult = false;
+    }
+  }
+
   Future<void> _maybeShowPendingDiagnosisResult() async {
     if (_checkedPendingDiagnosisModal) return;
     _checkedPendingDiagnosisModal = true;
@@ -312,13 +350,15 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     if (unlocked || !mounted) return;
     if (!await Diagnosis16Store.isComplete()) return;
 
-    final result = await Diagnosis16Store.loadResult();
-    if (result == null || !mounted) return;
+    if (_isGuest) {
+      if (!await Diagnosis16Store.isResultSeen()) {
+        if (!mounted) return;
+        await showDiagnosis16LoginGate(context);
+      }
+      return;
+    }
 
-    await showDiagnosis16ResultModal(context, result);
-    await Diagnosis16Store.markResultSeen();
-    ref.invalidate(diagnosis16UnlockedProvider);
-    ref.invalidate(feedQuestionsProvider);
+    await _presentDiagnosisResultAfterLogin();
   }
 
   void _showNudgeModal(int count) {
@@ -375,13 +415,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final percentA = feedState.percentAFor(q);
     final likedQuestion = feedState.likedQuestionNumbers.contains(q.number);
     final commentCount = feedState.commentCountFor(q);
-    final showingReveal =
-        _revealQuestionNumber == q.number && _revealSnapshot != null;
-    final reveal = _revealSnapshot;
     final pandaExpression = _pandaExpressionFor(selected, q, feedState);
     final feedPanda = FeedPandaChoice.forQuestion(q);
-    final revealExpression =
-        reveal?.isMinority == true ? 'minority' : 'majority';
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -529,26 +564,19 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                     const SizedBox(height: AppSpacing.md),
                   ],
                 ),
-                if (showingReveal && reveal != null)
-                  Positioned.fill(
-                    child: AnswerRevealOverlay(
-                      selectedPercent: reveal.selectedPercent,
-                      isMinority: reveal.isMinority,
-                      prevOddballScore: reveal.prevOddballScore,
-                      newOddballScore: reveal.newOddballScore,
-                      oddballBumpLabel: reveal.oddballBumpLabel,
-                      mascotAssetPath: feedPanda.assetPathForExpression(
-                        revealExpression,
-                      ),
-                      onFinished: _onRevealFinished,
-                    ),
-                  ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  bool _allDiagnosisQuestionsAnswered(QuestionFeedState feedState) {
+    for (var n = 1; n <= kDiagnosisQuestionCount; n++) {
+      if (feedState.selectedOptionFor(n) == null) return false;
+    }
+    return true;
   }
 
   int _diagnosisAnsweredCount(
@@ -692,11 +720,43 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     );
   }
 
+  void _schedulePendingFeedJump(List<DummyQuestion> questions) {
+    final targetNumber = ref.read(feedJumpToQuestionNumberProvider);
+    if (targetNumber == null || questions.isEmpty) return;
+    if (_pendingJumpTarget == targetNumber) return;
+    _pendingJumpTarget = targetNumber;
+
+    final index = questions.indexWhere((q) => q.number == targetNumber);
+    _pageController?.dispose();
+    _pageController = null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pendingJumpTarget = null;
+      ref.read(feedJumpToQuestionNumberProvider.notifier).state = null;
+      if (index < 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('質問をフィードに読み込めませんでした。もう一度お試しください。'),
+          ),
+        );
+        setState(() {});
+        return;
+      }
+      _userHasNavigated = true;
+      _pageController = PageController(initialPage: index);
+      ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(index);
+      setState(() {});
+    });
+  }
+
   void _ensurePageController(
     List<DummyQuestion> questions,
     QuestionFeedState feedState,
   ) {
     if (questions.isEmpty) return;
+    if (ref.read(feedJumpToQuestionNumberProvider) != null) return;
+
     if (_pageController != null) return;
 
     final frontier = _unansweredFrontierIndex(questions, feedState)
@@ -795,7 +855,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
               _buildDiagnosisProgressBar(diagnosisAnswered),
             if (showAllAnsweredBanner) _buildAllAnsweredBanner(),
             Expanded(
-              child: PageView.builder(
+              child: Stack(
+                children: [
+                  PageView.builder(
                   controller: pageController,
                   scrollDirection: Axis.vertical,
                   physics: total > 1
@@ -805,30 +867,63 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                   onPageChanged: (index) {
                     _userHasNavigated = true;
                     _nextQuestionTimer?.cancel();
-                    if (_revealQuestionNumber != null) {
+                    // 回答後の演出中は onPageChanged で overlay を消さない（rebuild 由来の
+                    // ページ通知でアニメが飛ぶのを防ぐ）。手動スワイプ時のみクリア。
+                    if (_revealQuestionNumber != null &&
+                        !_pendingAdvanceAfterAnswer) {
                       setState(_clearReveal);
-                      if (_pendingAdvanceAfterAnswer) {
-                        _scheduleAdvanceAfterReveal();
-                      }
                     }
                     final notifier = ref.read(
                       questionFeedControllerProvider.notifier,
                     );
-                    notifier.setQuestionIndex(index);
-                    Future.microtask(
-                      () => notifier.prefetchAround(questions, index),
-                    );
+                    final centerNumber = questions[index].number;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      ref
+                          .read(questionFeedControllerProvider.notifier)
+                          .setQuestionIndex(index);
+                      unawaited(
+                        notifier.prefetchAround(questions, index),
+                      );
+                      unawaited(
+                        ref
+                            .read(feedWindowControllerProvider.notifier)
+                            .onViewportCenter(centerNumber),
+                      );
+                    });
                   },
                   itemBuilder: (context, index) {
-                    final currentFeed = ref.watch(questionFeedControllerProvider);
                     return _buildQuestionPage(
                       questions[index],
                       questions,
                       total,
-                      currentFeed,
+                      feedState,
                     );
                   },
                 ),
+                  if (_revealQuestionNumber != null && _revealSnapshot != null)
+                    Positioned.fill(
+                      child: AnswerRevealOverlay(
+                        key: ValueKey('reveal-$_revealQuestionNumber'),
+                        selectedPercent: _revealSnapshot!.selectedPercent,
+                        isMinority: _revealSnapshot!.isMinority,
+                        prevOddballScore: _revealSnapshot!.prevOddballScore,
+                        newOddballScore: _revealSnapshot!.newOddballScore,
+                        oddballBumpLabel: _revealSnapshot!.oddballBumpLabel,
+                        mascotAssetPath: FeedPandaChoice.forQuestion(
+                          questions.firstWhere(
+                            (q) => q.number == _revealQuestionNumber,
+                            orElse: () => questions[feedState.questionIndex
+                                .clamp(0, questions.length - 1)],
+                          ),
+                        ).assetPathForExpression(
+                          _revealSnapshot!.isMinority ? 'minority' : 'majority',
+                        ),
+                        onFinished: _onRevealFinished,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -904,6 +999,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   }
 
   Future<void> _refreshFromServer() async {
+    resetFeedWindowNavigation(ref);
     _lastSyncedQuestionKey = null;
     _lastBuildFeedKey = null;
     _userHasNavigated = false;
@@ -915,7 +1011,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     ref.invalidate(diagnosis16UnlockedProvider);
     ref.invalidate(profileControllerProvider);
     ref.invalidate(questionFeedControllerProvider);
-    ref.invalidate(feedQuestionsProvider);
+    ref.invalidate(feedWindowControllerProvider);
     ref.invalidate(feedBootstrapProvider);
 
     try {
@@ -926,7 +1022,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         await _maybeShowPendingDiagnosisResult();
         unlocked = await ref.read(diagnosis16UnlockedProvider.future);
       }
-      await ref.read(feedQuestionsProvider.future);
+      await ref.read(feedWindowControllerProvider.future);
       if (!mounted) return;
       setState(() {});
     } catch (e) {
@@ -935,6 +1031,13 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         SnackBar(content: Text('更新に失敗しました: $e')),
       );
     }
+  }
+
+  List<DummyQuestion> _questionsForCurrentTab() {
+    final notifier = ref.read(feedWindowControllerProvider.notifier);
+    return _tabIndex == 1
+        ? notifier.displayForHotTab()
+        : notifier.displayForDiagnosisTab();
   }
 
   List<DummyQuestion> _orderForTab(List<DummyQuestion> questions) {
@@ -947,9 +1050,19 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<User?>>(authUserProvider, (previous, next) {
+      final wasLoggedOut = previous?.valueOrNull == null;
+      final nowLoggedIn = next.valueOrNull != null;
+      if (wasLoggedOut && nowLoggedIn) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(_presentDiagnosisResultAfterLogin());
+        });
+      }
+    });
+
     final feedState = ref.watch(questionFeedControllerProvider);
     final bootstrap = ref.watch(feedBootstrapProvider);
-    final feedAsync = ref.watch(feedQuestionsProvider);
+    final windowAsync = ref.watch(feedWindowControllerProvider);
     final inDiagnosis16 = !(ref.watch(diagnosis16UnlockedProvider).valueOrNull ??
         false);
 
@@ -960,7 +1073,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       );
     }
 
-    return feedAsync.when(
+    return windowAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
@@ -979,7 +1092,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
           ),
         ),
       ),
-      data: (feedQuestions) {
+      data: (_) {
+        final feedQuestions = _questionsForCurrentTab();
         if (feedQuestions.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _maybeShowPendingDiagnosisResult();
@@ -998,14 +1112,22 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
           if (inDiagnosis16 &&
               prevKey != null &&
               prevKey != feedKey &&
-              ordered.length != _lastFeedQuestionCount) {
+              ordered.length != _lastFeedQuestionCount &&
+              _revealQuestionNumber == null &&
+              !_pendingAdvanceAfterAnswer) {
             _pageController?.dispose();
             _pageController = null;
           }
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _scheduleFeedSync(ordered);
-          });
+          _lastFeedQuestionCount = ordered.length;
+          if (_revealQuestionNumber == null && !_pendingAdvanceAfterAnswer) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (_revealQuestionNumber != null || _pendingAdvanceAfterAnswer) {
+                return;
+              }
+              _scheduleFeedSync(ordered);
+            });
+          }
         }
 
         if (inDiagnosis16) {
@@ -1016,6 +1138,10 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
         final allAnswered = !inDiagnosis16 &&
             _feedIsAllAnswered(ordered, feedState);
+
+        if (ref.read(feedJumpToQuestionNumberProvider) != null) {
+          _schedulePendingFeedJump(ordered);
+        }
 
         return _buildScreen(
           ordered,

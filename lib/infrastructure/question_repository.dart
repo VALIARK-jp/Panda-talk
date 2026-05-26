@@ -17,6 +17,15 @@ abstract class QuestionRepository {
     int after = 10,
     int? maxQuestionNumber,
   });
+
+  /// 指定した質問の前後（履歴タップ・過去へのジャンプ用）。
+  Future<List<DummyQuestion>> getFeedWindowAround({
+    int before = 15,
+    int after = 15,
+    int? questionNumber,
+    String? questionId,
+    int? currentQuestionNumber,
+  });
   Future<DummyQuestion> getCurrentQuestion();
   /// [limit] / [cursor] はバックエンドの `/questions/history` にそのまま渡す。
   Future<List<DummyQuestion>> getHistory({int limit = 20, String? cursor});

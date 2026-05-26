@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../infrastructure/diagnosis_16_store.dart';
+import '../session_reset.dart';
 import '../../infrastructure/providers/repositories.dart';
 import '../../infrastructure/question_progress_store.dart';
 import '../../infrastructure/question_repository.dart';
 import '../../core/dummy_data.dart';
 import '../../core/oddball_score.dart';
-import 'diagnosis_providers.dart';
+import 'feed_window_controller.dart';
 import 'profile_providers.dart';
 
-const _feedWindowBefore = 10;
-const _feedWindowAfter = 12;
+export 'feed_window_controller.dart';
+
 const kDiagnosisQuestionCount = 16;
 
 /// 未回答フィードを cursor で最後まで取得する（ゲスト等のフォールバック）。
@@ -102,67 +105,6 @@ final currentQuestionProvider = FutureProvider<DummyQuestion>((ref) {
   return ref.watch(questionRepositoryProvider).getCurrentQuestion();
 });
 
-/// アプリ起動時に診断フィードを先読み（診断タブ初回表示での古い GET 再利用を防ぐ）。
-final feedBootstrapProvider = FutureProvider<void>((ref) async {
-  ref.keepAlive();
-  await ref.watch(diagnosis16UnlockedProvider.future);
-  ref.invalidate(feedQuestionsProvider);
-  await ref.read(feedQuestionsProvider.future);
-});
-
-/// フィード: 常に [getFeedWindow]。16type 中は maxQuestionNumber=16 のみ。
-/// 診断中は [diagnosisProgressWindow] で「回答済み + 次の1問」だけ返す。
-final feedQuestionsProvider = FutureProvider<List<DummyQuestion>>((ref) async {
-  final repo = ref.watch(questionRepositoryProvider);
-  var inDiagnosis16 =
-      !(await ref.watch(diagnosis16UnlockedProvider.future));
-  final session = Supabase.instance.client.auth.currentSession;
-
-  var window = await repo.getFeedWindow(
-    before: _feedWindowBefore,
-    after: _feedWindowAfter,
-    maxQuestionNumber: inDiagnosis16 ? kDiagnosisQuestionCount : null,
-  );
-  if (inDiagnosis16 &&
-      session != null &&
-      hasCompletedDiagnosisQuestions(window)) {
-    // プロフィール同期だけ欠けているユーザーを Q1-16 に閉じ込めない。
-    inDiagnosis16 = false;
-    window = await repo.getFeedWindow(
-      before: _feedWindowBefore,
-      after: _feedWindowAfter,
-    );
-  }
-  final sorted = [...window]..sort((a, b) => a.number.compareTo(b.number));
-
-  if (inDiagnosis16) {
-    final answeredIds = sorted
-        .where((q) => q.apiId != null && q.myAnswer != null)
-        .map((q) => q.apiId!)
-        .toSet();
-    final guestAnswers = session == null
-        ? await Diagnosis16Store.loadAnswers()
-        : const <int, bool>{};
-    return diagnosisProgressWindow(
-      sorted,
-      answeredIds: answeredIds,
-      guestAnsweredNumbers: guestAnswers.keys.toSet(),
-    );
-  }
-
-  if (session == null) {
-    final candidates = await loadAllUnansweredFeed(repo);
-    var result = _filterUnansweredQuestions(
-      candidates,
-      answeredIds: const {},
-      hasSession: false,
-    );
-    return filterUnansweredForGuest(result);
-  }
-
-  return window;
-});
-
 bool hasCompletedDiagnosisQuestions(List<DummyQuestion> questions) {
   final answeredNumbers = <int>{};
   for (final q in questions) {
@@ -173,70 +115,6 @@ bool hasCompletedDiagnosisQuestions(List<DummyQuestion> questions) {
     if (!answeredNumbers.contains(n)) return false;
   }
   return true;
-}
-
-/// 初回診断: 回答済み + 次の1問まで（それより先の未回答は見せない）。
-List<DummyQuestion> diagnosisProgressWindow(
-  List<DummyQuestion> sortedByNumber, {
-  required Set<String> answeredIds,
-  Set<int> guestAnsweredNumbers = const {},
-}) {
-  bool isAnswered(DummyQuestion q) {
-    if (guestAnsweredNumbers.contains(q.number)) return true;
-    if (q.apiId != null && answeredIds.contains(q.apiId)) return true;
-    return q.myAnswer != null;
-  }
-
-  int? firstUnansweredNumber;
-  for (final q in sortedByNumber) {
-    if (!isDiagnosisQuestionNumber(q.number)) continue;
-    if (!isAnswered(q)) {
-      firstUnansweredNumber = q.number;
-      break;
-    }
-  }
-
-  if (firstUnansweredNumber != null) {
-    final frontier = firstUnansweredNumber;
-    return sortedByNumber
-        .where((q) => q.number >= 1 && q.number <= frontier)
-        .toList();
-  }
-
-  return sortedByNumber
-      .where((q) => isDiagnosisQuestionNumber(q.number))
-      .toList();
-}
-
-List<DummyQuestion> _filterUnansweredQuestions(
-  List<DummyQuestion> questions, {
-  required Set<String> answeredIds,
-  required bool hasSession,
-}) {
-  if (questions.isEmpty) return questions;
-
-  if (hasSession) {
-    final needsHistoryFilter = questions.every(
-      (q) => isDiagnosisQuestionNumber(q.number),
-    );
-    if (needsHistoryFilter && answeredIds.isNotEmpty) {
-      return questions
-          .where((q) => q.apiId == null || !answeredIds.contains(q.apiId))
-          .toList();
-    }
-    return questions.where((q) => q.myAnswer == null).toList();
-  }
-
-  // ゲストは同期的にフィルタできないため別途（診断16の番号ベース）
-  return questions;
-}
-
-/// ゲスト用: 診断16の未回答だけ残す。
-Future<List<DummyQuestion>> filterUnansweredForGuest(
-  List<DummyQuestion> questions,
-) async {
-  final guestAnswers = await Diagnosis16Store.loadAnswers();
-  return questions.where((q) => !guestAnswers.containsKey(q.number)).toList();
 }
 
 final questionHistoryProvider = FutureProvider<List<DummyQuestion>>((ref) async {
@@ -524,53 +402,83 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
     }
   }
 
+  QuestionVoteStats _optimisticVoteStats(
+    DummyQuestion question,
+    String selected,
+  ) {
+    final choseA = selected == question.optionA;
+    final base = voteCountsForQuestion(
+      percentA: question.percentA,
+      countA: question.countA,
+      countB: question.countB,
+    );
+    final after = voteCountsAfterGuestAnswer(
+      choseA: choseA,
+      baseCountA: base.$1,
+      baseCountB: base.$2,
+    );
+    final total = after.$1 + after.$2;
+    final percentA =
+        total == 0 ? question.percentA : (after.$1 / total * 100).round();
+    return QuestionVoteStats(
+      percentA: percentA,
+      countA: after.$1,
+      countB: after.$2,
+    );
+  }
+
+  Future<void> _recordAnswerInFeedWindow(
+    DummyQuestion question,
+    String selected,
+    QuestionVoteStats stats,
+  ) async {
+    await _ref.read(feedWindowControllerProvider.notifier).recordAnswerLocally(
+          question: question,
+          selectedOption: selected,
+          percentA: stats.percentA,
+          countA: stats.countA,
+          countB: stats.countB,
+        );
+  }
+
+  Future<void> _syncAnswerToServer(
+    DummyQuestion question,
+    String selected,
+  ) async {
+    try {
+      final stats = await _ref
+          .read(questionRepositoryProvider)
+          .answerQuestion(question: question, selectedOption: selected);
+      _applyAnswerLocally(question, selected, stats, countAsNew: false);
+      await _recordAnswerInFeedWindow(question, selected, stats);
+      _ref.invalidate(profileControllerProvider);
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('QuestionFeed: answer sync failed Q${question.number}: $e $st');
+      }
+    }
+  }
+
   Future<void> answer(DummyQuestion question, String selected) async {
     if (state.selectedOptionsByQuestion.containsKey(question.number)) return;
     if (!_answerInFlight.add(question.number)) return;
 
     try {
-      final session = Supabase.instance.client.auth.currentSession;
-      if (session == null || question.apiId == null) {
+      final optimistic = _optimisticVoteStats(question, selected);
+      _applyAnswerLocally(question, selected, optimistic, countAsNew: true);
+      await _recordAnswerInFeedWindow(question, selected, optimistic);
+
+      if (!hasValidAuthSession() || question.apiId == null) {
         if (kDebugMode) {
           debugPrint(
             'QuestionFeed: answer local-only (guest or missing apiId) '
             'Q${question.number}',
           );
         }
-        final choseA = selected == question.optionA;
-        final base = voteCountsForQuestion(
-          percentA: question.percentA,
-          countA: question.countA,
-          countB: question.countB,
-        );
-        final after = voteCountsAfterGuestAnswer(
-          choseA: choseA,
-          baseCountA: base.$1,
-          baseCountB: base.$2,
-        );
-        final total = after.$1 + after.$2;
-        final percentA =
-            total == 0 ? question.percentA : (after.$1 / total * 100).round();
-        _applyAnswerLocally(
-          question,
-          selected,
-          QuestionVoteStats(
-            percentA: percentA,
-            countA: after.$1,
-            countB: after.$2,
-          ),
-          countAsNew: true,
-        );
-        _ref.invalidate(feedQuestionsProvider);
         return;
       }
 
-      final stats = await _ref
-          .read(questionRepositoryProvider)
-          .answerQuestion(question: question, selectedOption: selected);
-      _applyAnswerLocally(question, selected, stats, countAsNew: true);
-      _ref.invalidate(profileControllerProvider);
-      _ref.invalidate(feedQuestionsProvider);
+      unawaited(_syncAnswerToServer(question, selected));
     } finally {
       _answerInFlight.remove(question.number);
     }
@@ -928,7 +836,7 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
 
     final questionId = question.apiId;
     if (questionId == null) return;
-    if (Supabase.instance.client.auth.currentSession == null) return;
+    if (!hasValidAuthSession()) return;
 
     try {
       await _ref.read(questionRepositoryProvider).toggleQuestionLike(

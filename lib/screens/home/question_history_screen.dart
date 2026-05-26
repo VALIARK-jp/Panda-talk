@@ -81,7 +81,8 @@ class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
                 data: (historyQuestions) {
                   final filtered = historyQuestions
                       .where((q) => q.myAnswer != null)
-                      .toList();
+                      .toList()
+                    ..sort((a, b) => a.number.compareTo(b.number));
 
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(
@@ -105,7 +106,17 @@ class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
                         countB: feedState.countBFor(q),
                       );
 
-                      return Container(
+                      return GestureDetector(
+                        onTap: () async {
+                          await openQuestionInFeed(
+                            ref,
+                            questionNumber: q.number,
+                            questionId: q.apiId,
+                          );
+                          if (!context.mounted) return;
+                          Navigator.pop(context);
+                        },
+                        child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -203,6 +214,7 @@ class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
                             ),
                           ],
                         ),
+                      ),
                       );
                     },
                   );
