@@ -66,7 +66,7 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
     if (Supabase.instance.client.auth.currentSession == null) return;
     _poppedToRoot = true;
     await PostAuthFlow.withLoading(context, () async {
-      await PostAuthFlow.finishLogin(ref: ref, context: context);
+      await PostAuthFlow.finishLogin(context: context);
     });
   }
 

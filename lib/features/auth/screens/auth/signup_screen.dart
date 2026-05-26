@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
@@ -21,30 +20,31 @@ class SignupScreen extends ConsumerStatefulWidget {
 }
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
-  StreamSubscription<AuthState>? _authSubscription;
+  bool _authCompletionInFlight = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
-      data,
-    ) async {
-      if (data.event == AuthChangeEvent.signedIn && mounted) {
-        await PostAuthFlow.withLoading(context, () async {
-          await PostAuthFlow.finishLogin(ref: ref, context: context);
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _authSubscription?.cancel();
-    super.dispose();
-  }
-
+  /// メール確認は [EmailAuthScreen] 側。LINE / Apple のみここで完了する。
   Future<void> _finishNativeAuth() async {
-    await PostAuthFlow.finishLogin(ref: ref, context: context);
+    if (!mounted || _authCompletionInFlight) return;
+    _authCompletionInFlight = true;
+    try {
+      if (!mounted) return;
+      await PostAuthFlow.finishLogin(
+        context: context,
+      ).timeout(const Duration(seconds: 12));
+    } on TimeoutException {
+      if (mounted) {
+        _showErrorDialog(
+          context,
+          'ログイン後の画面遷移がタイムアウトしました。通信状態を確認してもう一度お試しください。',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) _authCompletionInFlight = false;
+    }
   }
 
   @override
@@ -187,23 +187,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _signUpWithLine(BuildContext context) async {
     try {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) =>
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-      );
-
       await ref
           .read(authServiceProvider)
           .signInWithLine(flow: NativeAuthFlow.signup);
 
-      if (context.mounted) Navigator.pop(context);
-      if (!context.mounted) return;
-      _finishNativeAuth();
+      if (!mounted) return;
+      await _finishNativeAuth();
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context);
         _showErrorDialog(context, e.toString().replaceFirst('Exception: ', ''));
       }
     }
@@ -211,23 +202,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _signUpWithApple(BuildContext context) async {
     try {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) =>
-            const Center(child: CircularProgressIndicator(color: Colors.white)),
-      );
-
       await ref
           .read(authServiceProvider)
           .signInWithApple(flow: NativeAuthFlow.signup);
 
-      if (context.mounted) Navigator.pop(context);
-      if (!context.mounted) return;
-      _finishNativeAuth();
+      if (!mounted) return;
+      await _finishNativeAuth();
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context);
         _showErrorDialog(context, e.toString().replaceFirst('Exception: ', ''));
       }
     }

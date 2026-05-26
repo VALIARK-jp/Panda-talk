@@ -1,0 +1,11 @@
+# Copy to backend/.dev.vars (gitignore). Values can match root .env:
+#   PANDA_TALK_SUPABASE_URL     → SUPABASE_URL
+#   PANDA_TALK_SUPABASE_ANON_KEY → SUPABASE_ANON_KEY
+#
+# Or run from repo root: node backend/scripts/sync-dev-vars-from-env.mjs
+
+SUPABASE_URL=https://rothadmykmuxncagbwqd.supabase.co
+SUPABASE_ANON_KEY=
+
+# Optional for local wrangler dev without sync script (never commit):
+# SUPABASE_SERVICE_ROLE_KEY=

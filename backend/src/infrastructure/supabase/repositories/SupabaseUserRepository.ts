@@ -31,16 +31,25 @@ export class SupabaseUserRepository implements IUserRepository {
     })
     if (!rows[0]) return null
 
-    // Fetch counts from other tables
-    const [answerCount, postCount, friendCount, oddballScore] = await Promise.all([
-      this.client.count('panda_answers', { user_id: `eq.${id}` }),
-      this.client.count('panda_questions', { user_id: `eq.${id}` }),
-      this.client.count('panda_friendships', {
-        or: `(user_a_id.eq.${id},user_b_id.eq.${id})`,
-        status: 'eq.accepted',
-      }),
-      this.fetchOddballScore(id),
-    ])
+    // Fetch counts from other tables.
+    // Keep profile lookup resilient: stats failures should not break auth/profile bootstrap.
+    let answerCount = 0
+    let postCount = 0
+    let friendCount = 0
+    let oddballScore = 0
+    try {
+      ;[answerCount, postCount, friendCount, oddballScore] = await Promise.all([
+        this.client.count('panda_answers', { user_id: `eq.${id}` }),
+        this.client.count('panda_questions', { user_id: `eq.${id}` }),
+        this.client.count('panda_friendships', {
+          or: `(user_a_id.eq.${id},user_b_id.eq.${id})`,
+          status: 'eq.accepted',
+        }),
+        this.fetchOddballScore(id),
+      ])
+    } catch (e) {
+      console.warn('findById stats fallback:', e)
+    }
 
     return mapUser(rows[0], {
       answerCount,
@@ -90,16 +99,31 @@ export class SupabaseUserRepository implements IUserRepository {
   }
 
   async upsert(data: Omit<User, 'createdAt'>): Promise<User> {
+    const rowData = toRow(data)
+
     const patchRows = await this.client.update<UserRow>(
       this.resource,
       { id: `eq.${data.id}` },
-      toRow(data)
+      rowData
     )
     if (patchRows[0]) return mapUser(patchRows[0])
 
-    const rows = await this.client.insert<UserRow>(this.resource, toRow(data))
-    if (!rows[0]) throw new Error('Failed to upsert user')
-    return mapUser(rows[0])
+    try {
+      const rows = await this.client.insert<UserRow>(this.resource, rowData)
+      if (!rows[0]) throw new Error('Failed to upsert user')
+      return mapUser(rows[0])
+    } catch (e) {
+      // Race-safe fallback:
+      // if another path inserted the profile row between UPDATE and INSERT,
+      // retry UPDATE once and continue.
+      const retryRows = await this.client.update<UserRow>(
+        this.resource,
+        { id: `eq.${data.id}` },
+        rowData
+      )
+      if (retryRows[0]) return mapUser(retryRows[0])
+      throw e
+    }
   }
 
   async update(

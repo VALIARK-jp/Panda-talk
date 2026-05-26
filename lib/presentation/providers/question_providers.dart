@@ -478,7 +478,7 @@ class QuestionFeedController extends StateNotifier<QuestionFeedState> {
         return;
       }
 
-      unawaited(_syncAnswerToServer(question, selected));
+      await _syncAnswerToServer(question, selected);
     } finally {
       _answerInFlight.remove(question.number);
     }

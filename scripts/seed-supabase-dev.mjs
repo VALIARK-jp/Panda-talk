@@ -2,21 +2,29 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { loadProjectRef } from '../backend/scripts/read-supabase-config.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-function readProjectRefFromWrangler() {
-  const tomlPath = path.join(__dirname, '..', 'backend', 'wrangler.toml')
-  const text = fs.readFileSync(tomlPath, 'utf8')
-  const m = text.match(/SUPABASE_URL\s*=\s*"https:\/\/([^.]+)\.supabase\.co"/)
-  return m ? m[1] : null
-}
+const VALIARK_DEV_PROJECT_REF = 'rothadmykmuxncagbwqd'
 
-const projectRef = process.env.SUPABASE_PROJECT_REF ?? readProjectRefFromWrangler()
+const projectRef = process.env.SUPABASE_PROJECT_REF ?? loadProjectRef()
 if (!projectRef) {
   throw new Error(
     'Set SUPABASE_PROJECT_REF or SUPABASE_URL in backend/wrangler.toml (https://<ref>.supabase.co)'
   )
+}
+
+if (
+  projectRef !== VALIARK_DEV_PROJECT_REF &&
+  process.env.ALLOW_DEV_SEED_ON_PROJECT !== projectRef
+) {
+  console.error(
+    `seed:dev is restricted to valiark-dev (${VALIARK_DEV_PROJECT_REF}). ` +
+      `Target was ${projectRef}. For prod use manual Q1–16 (docs/16_valiark_prod_panda_talk_setup.md). ` +
+      `To override: ALLOW_DEV_SEED_ON_PROJECT=${projectRef} npm run seed:dev`
+  )
+  process.exit(1)
 }
 const supabaseUrl =
   process.env.SUPABASE_URL ?? `https://${projectRef}.supabase.co`

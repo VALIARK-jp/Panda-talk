@@ -81,6 +81,13 @@ PANDA_TALK_API_BASE_URL=https://panda-talk-backend.valiark.workers.dev
 
 `workers.dev` のサブドメイン（例: `valiark`）は **Cloudflare アカウントで1回** 登録する。dev / prod の切り分けは **Worker 名・Supabase プロジェクト** で行い、サブドメインを2つ取る必要は通常ない。
 
+| 環境 | Worker 名 | Supabase |
+|------|-----------|----------|
+| 日常開発 | `panda-talk-backend` | valiark-dev |
+| テスター配布 | `panda-talk-backend-prod`（`npm run deploy:prod`） | valiark-prod |
+
+詳細: [16_valiark_prod_panda_talk_setup.md](./16_valiark_prod_panda_talk_setup.md)
+
 ---
 
 ## 4. 例外: プロフィールだけ Supabase 直（localhost 時）

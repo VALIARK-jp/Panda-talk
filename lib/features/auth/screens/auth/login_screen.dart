@@ -24,7 +24,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _authInFlightProvider;
 
   Future<void> _finishNativeAuth() async {
-    await PostAuthFlow.finishLogin(ref: ref, context: context);
+    if (!mounted) return;
+    await PostAuthFlow.withLoading(context, () async {
+      if (!mounted) return;
+      await PostAuthFlow.finishLogin(context: context);
+    });
   }
 
   @override

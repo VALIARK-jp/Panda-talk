@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -75,13 +76,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   Timer? _nextQuestionTimer;
   int? _pendingJumpTarget;
 
-  /// 回答オーバーレイ終了後、すぐ次の問へ（余白なし）。
-  static const _advanceAfterRevealDelay = Duration.zero;
-  static const _nudgeMessages = {
-    10: '10問答えたね！\n登録すると合致度が見られるよ。',
-    20: 'あなたと合う人、\nもう見つかってるかも。',
-    30: '異端児スコアが本格的になってきた。\n記録しておこう。',
-  };
+  /// 回答オーバーレイ終了後、比率演出の余韻を残してから次の問へ。
+  static const _advanceAfterRevealDelay = Duration(milliseconds: 300);
 
   @override
   void dispose() {
@@ -126,9 +122,13 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     int total,
     List<DummyQuestion> questions,
   ) async {
+    _pendingAdvanceAfterAnswer = true;
+    _nextQuestionTimer?.cancel();
+
     final controller = ref.read(questionFeedControllerProvider.notifier);
     final feedState = ref.read(questionFeedControllerProvider);
     if (feedState.selectedOptionFor(q.number) != null || q.myAnswer != null) {
+      _pendingAdvanceAfterAnswer = false;
       return;
     }
     final prevOddballScore = oddballScorePercent(
@@ -136,7 +136,12 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       totalAnswerCount: feedState.answeredCount,
     );
 
-    await controller.answer(q, selected);
+    try {
+      await controller.answer(q, selected);
+    } catch (_) {
+      _pendingAdvanceAfterAnswer = false;
+      rethrow;
+    }
     if (!mounted) return;
 
     final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
@@ -184,21 +189,23 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       totalAnswerCount: after.answeredCount,
     );
 
-    _pendingAdvanceAfterAnswer = true;
-    _nextQuestionTimer?.cancel();
-    setState(() {
-      _revealQuestionNumber = q.number;
-      _revealSnapshot = _AnswerRevealSnapshot(
-        selectedPercent: selectedPercent,
-        isMinority: isMinority,
-        prevOddballScore: prevOddballScore,
-        newOddballScore: newOddballScore,
-        oddballBumpLabel: oddballBumpCopy(
-          prevScore: prevOddballScore,
-          newScore: newOddballScore,
-          wasMinorityThisAnswer: isMinority,
-        ),
-      );
+    // Let the ratio bar morph first, then start full-screen reveal.
+    Future.delayed(const Duration(milliseconds: 520), () {
+      if (!mounted) return;
+      setState(() {
+        _revealQuestionNumber = q.number;
+        _revealSnapshot = _AnswerRevealSnapshot(
+          selectedPercent: selectedPercent,
+          isMinority: isMinority,
+          prevOddballScore: prevOddballScore,
+          newOddballScore: newOddballScore,
+          oddballBumpLabel: oddballBumpCopy(
+            prevScore: prevOddballScore,
+            newScore: newOddballScore,
+            wasMinorityThisAnswer: isMinority,
+          ),
+        );
+      });
     });
   }
 
@@ -215,9 +222,6 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     _nextQuestionTimer?.cancel();
     _nextQuestionTimer = Timer(_advanceAfterRevealDelay, () async {
       if (!mounted) return;
-      final answeredCount = ref
-          .read(questionFeedControllerProvider)
-          .answeredCount;
       final latest = ref
           .read(feedWindowControllerProvider.notifier)
           .displayForDiagnosisTab();
@@ -227,9 +231,6 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       final nextIndex = _nextPageIndexAfterAnswer(latest, feedState, currentIndex);
       _animateToQuestion(nextIndex);
       _pendingAdvanceAfterAnswer = false;
-      if (_isGuest && _nudgeMessages.containsKey(answeredCount)) {
-        _showNudgeModal(answeredCount);
-      }
     });
   }
 
@@ -359,15 +360,6 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     }
 
     await _presentDiagnosisResultAfterLogin();
-  }
-
-  void _showNudgeModal(int count) {
-    final message = _nudgeMessages[count]!;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _NudgeCard(message: message),
-    );
   }
 
   void _shareQuestion({
@@ -1066,6 +1058,23 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final inDiagnosis16 = !(ref.watch(diagnosis16UnlockedProvider).valueOrNull ??
         false);
 
+    if (kDebugMode) {
+      final bootstrapState = bootstrap.isLoading
+          ? 'loading'
+          : bootstrap.hasError
+          ? 'error'
+          : 'data';
+      final windowState = windowAsync.isLoading
+          ? 'loading'
+          : windowAsync.hasError
+          ? 'error'
+          : 'data';
+      debugPrint(
+        '[QuestionFeed] bootstrap=$bootstrapState window=$windowState '
+        'inDiagnosis16=$inDiagnosis16',
+      );
+    }
+
     if (!bootstrap.hasValue && bootstrap.isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.softGray,
@@ -1211,54 +1220,3 @@ class _AnswerRevealSnapshot {
   });
 }
 
-class _NudgeCard extends StatelessWidget {
-  final String message;
-
-  const _NudgeCard({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.borderGray,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          PandaMascot(size: 72, expression: 'default'),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: AppFontSize.lg,
-              fontWeight: FontWeight.w700,
-              color: AppColors.black,
-              height: 1.6,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          PandaButton(label: '登録する', onTap: () => Navigator.pop(context)),
-          const SizedBox(height: AppSpacing.sm),
-          PandaOutlinedButton(
-            label: '続ける',
-            onTap: () => Navigator.pop(context),
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ],
-      ),
-    );
-  }
-}

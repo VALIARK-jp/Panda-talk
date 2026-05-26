@@ -65,7 +65,7 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       if (data.event == AuthChangeEvent.signedIn && mounted) {
         await PostAuthFlow.withLoading(context, () async {
-          await PostAuthFlow.finishLogin(ref: ref, context: context);
+          await PostAuthFlow.finishLogin(context: context);
         });
       }
     });
@@ -411,7 +411,7 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
       );
       if (!mounted) return;
       await PostAuthFlow.withLoading(context, () async {
-        await PostAuthFlow.finishLogin(ref: ref, context: context);
+        await PostAuthFlow.finishLogin(context: context);
       });
     } catch (e) {
       if (mounted) {
@@ -448,7 +448,7 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
         }
         if (!mounted) return;
         await PostAuthFlow.withLoading(context, () async {
-          await PostAuthFlow.finishLogin(ref: ref, context: context);
+          await PostAuthFlow.finishLogin(context: context);
         });
         return;
       }

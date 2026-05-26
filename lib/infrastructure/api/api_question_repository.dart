@@ -16,6 +16,7 @@ class ApiQuestionRepository implements QuestionRepository {
 
   final http.Client _client;
   final List<DummyQuestion> _myQuestions = [];
+  static const _requestTimeout = Duration(seconds: 10);
 
   static String get _apiBaseUrl => AppConfig.apiBaseUrl;
   static String get _supabaseUrl => AppConfig.supabaseUrl;
@@ -423,10 +424,12 @@ class ApiQuestionRepository implements QuestionRepository {
   }
 
   Future<Map<String, dynamic>> _getJson(Uri uri, {bool auth = false}) async {
-    final response = await _client.get(
-      uri,
-      headers: await _headers(auth: auth),
-    );
+    final response = await _client
+        .get(
+          uri,
+          headers: await _headers(auth: auth),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
@@ -435,11 +438,13 @@ class ApiQuestionRepository implements QuestionRepository {
     required Map<String, Object?> body,
     bool auth = false,
   }) async {
-    final response = await _client.post(
-      uri,
-      headers: await _headers(auth: auth),
-      body: jsonEncode(body),
-    );
+    final response = await _client
+        .post(
+          uri,
+          headers: await _headers(auth: auth),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
@@ -448,19 +453,23 @@ class ApiQuestionRepository implements QuestionRepository {
     required Map<String, Object?> body,
     bool auth = false,
   }) async {
-    final response = await _client.patch(
-      uri,
-      headers: await _headers(auth: auth),
-      body: jsonEncode(body),
-    );
+    final response = await _client
+        .patch(
+          uri,
+          headers: await _headers(auth: auth),
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
   Future<void> _delete(Uri uri, {bool auth = false}) async {
-    final response = await _client.delete(
-      uri,
-      headers: await _headers(auth: auth),
-    );
+    final response = await _client
+        .delete(
+          uri,
+          headers: await _headers(auth: auth),
+        )
+        .timeout(_requestTimeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(response.body);
     }

@@ -10,6 +10,7 @@
 
 | ドキュメント | 内容 |
 |-------------|------|
+| **[valiark-prod テスター配布](./docs/16_valiark_prod_panda_talk_setup.md)** | **テスター30人** — prod のみ・DB/Worker/ビルド手順 |
 | **[開発: API・実機・localhost](./docs/14_development_api_and_devices.md)** | **必読** — なぜ 2 ホストあるか、シミュレータ vs 実機、deploy / ngrok |
 | [valiark_client_secrets_playbook.md](docs/valiark_client_secrets_playbook.md) | 秘密の配布・Git に載せないもの |
 | [05_auth.md](docs/05_auth.md) | 認証（メール / LINE / Apple）の構築・運用 |

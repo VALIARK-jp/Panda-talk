@@ -2,6 +2,16 @@
 
 このディレクトリには、Supabase/PostgreSQL に適用する SQL migration を置く。
 
+## valiark-prod（テスター配布・本番相当）
+
+Panda Talk テスターは **valiark-prod のみ**を使う（投稿者 `user_id` を prod 正本にする）。手順の正本:
+
+- [docs/16_valiark_prod_panda_talk_setup.md](../docs/16_valiark_prod_panda_talk_setup.md)
+- CLI: `./scripts/valiark-prod-supabase-setup.sh db` / `functions`
+- **`npm run seed:dev` は prod 向けに実行しない**（dev ref のみ許可）
+
+空の valiark-prod には **migration を一括 `db push`** する（他アプリ用 stub は `select 1` のみ）。
+
 ## valiark-dev プロジェクト
 
 Valiark 組織の **`valiark-dev`** に Panda Talk（および将来の他アプリ）の DB を集約する。
@@ -127,9 +137,12 @@ npm run seed:dev
 ```sh
 cd /path/to/panda_talk
 supabase secrets set LINE_CHANNEL_ID="2010102462"
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY="<service-role>"
 supabase functions deploy line-auth-native --no-verify-jwt
 supabase functions deploy apple-auth-native --no-verify-jwt
 ```
+
+`SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` は Edge 実行時にプラットフォーム注入（`supabase secrets set` では `SUPABASE_` 接頭辞は不可）。
+
+**valiark-prod:** `./scripts/valiark-prod-set-edge-secrets.sh` → `./scripts/valiark-prod-supabase-setup.sh functions`
 
 pedal_share と同型: **LINE / Apple の秘密は Supabase Secrets のみ**。Flutter `.env` には載せない。`--no-verify-jwt` でクライアントは `Content-Type` のみで POST する。

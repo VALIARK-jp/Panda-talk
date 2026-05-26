@@ -1,21 +1,14 @@
 import { execFileSync, spawn } from 'node:child_process'
-import fs from 'node:fs'
-import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+import { loadProjectRef } from './read-supabase-config.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-function readProjectRefFromWrangler() {
-  const tomlPath = path.join(__dirname, '..', 'wrangler.toml')
-  const text = fs.readFileSync(tomlPath, 'utf8')
-  const m = text.match(/SUPABASE_URL\s*=\s*"https:\/\/([^.]+)\.supabase\.co"/)
-  return m ? m[1] : null
-}
-
-const projectRef = process.env.SUPABASE_PROJECT_REF ?? readProjectRefFromWrangler()
+const projectRef = loadProjectRef()
 if (!projectRef) {
   throw new Error(
-    'Set SUPABASE_PROJECT_REF or SUPABASE_URL in backend/wrangler.toml (https://<ref>.supabase.co)'
+    'Set SUPABASE_PROJECT_REF, scripts/valiark-project-refs.env, backend/.dev.vars, or root .env PANDA_TALK_SUPABASE_URL'
   )
 }
 

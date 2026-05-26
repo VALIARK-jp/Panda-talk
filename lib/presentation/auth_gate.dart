@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -74,6 +75,7 @@ class _LoggedInShell extends ConsumerStatefulWidget {
 class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
   bool? _routeResolved;
   bool _profileSetupDone = false;
+  static const _resolveTimeout = Duration(seconds: 12);
 
   @override
   void initState() {
@@ -82,7 +84,25 @@ class _LoggedInShellState extends ConsumerState<_LoggedInShell> {
   }
 
   Future<void> _resolveRoute() async {
-    final done = await PostAuthFlow.isProfileSetupComplete(ref);
+    if (kDebugMode) {
+      debugPrint('[AuthGate] resolveRoute:start');
+    }
+    bool done = false;
+    try {
+      done = await PostAuthFlow.isProfileSetupComplete(ref).timeout(
+        _resolveTimeout,
+      );
+      if (kDebugMode) {
+        debugPrint('[AuthGate] resolveRoute:done=$done');
+      }
+    } catch (_) {
+      // Fallback: if profile check hangs/fails on network, route to setup
+      // instead of keeping an infinite spinner.
+      done = false;
+      if (kDebugMode) {
+        debugPrint('[AuthGate] resolveRoute:fallback-to-setup');
+      }
+    }
     if (mounted) {
       setState(() {
         _profileSetupDone = done;

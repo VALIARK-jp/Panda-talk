@@ -3,4 +3,5 @@ export type Env = {
   SUPABASE_ANON_KEY?: string
   SUPABASE_SERVICE_ROLE_KEY?: string
   REPOSITORY_MODE?: 'mock' | 'supabase'
+  APP_ENV?: 'development' | 'production'
 }

@@ -7,7 +7,12 @@
     "dev:db:lan": "WRANGLER_DEV_IP=0.0.0.0 node scripts/dev-with-supabase.mjs",
     "dev:mock": "wrangler dev --var REPOSITORY_MODE:mock",
     "dev:mock:lan": "wrangler dev --ip 0.0.0.0 --var REPOSITORY_MODE:mock",
-    "deploy": "wrangler deploy",
+    "sync:dev-vars": "node scripts/sync-dev-vars-from-env.mjs",
+    "deploy": "node scripts/deploy-with-env.mjs",
+    "deploy:prod": "node scripts/deploy-with-env.mjs --env production",
+    "check:prod": "node ../scripts/check-prod-config.mjs",
+    "secret:service-role": "node scripts/put-wrangler-service-role.mjs",
+    "secret:service-role:prod": "node scripts/put-wrangler-service-role.mjs --env production",
     "seed:dev": "node ../scripts/seed-supabase-dev.mjs"
   },
   "dependencies": {

@@ -72,4 +72,5 @@
 
 ## 7. 関連ドキュメント（このリポジトリ）
 
+- **テスター配布（valiark-prod）:** [16_valiark_prod_panda_talk_setup.md](16_valiark_prod_panda_talk_setup.md) — `.env.prod.example` / prod Worker `deploy:prod`
 - 認証の技術手順（Supabase、LINE、Apple、ダッシュボード）: [05_auth.md](05_auth.md)
