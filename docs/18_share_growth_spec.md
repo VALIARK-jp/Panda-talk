@@ -139,26 +139,33 @@ https://valiark.jp/panda-talk/u/panda_042fdd
 ### 4-3. 配信スタック
 
 ```
-SNS共有URL: https://valiark.jp/panda-talk/q/17
+【prod】SNS共有URL: https://valiark.jp/panda-talk/q/17
             ↓
-Vercel (legal-site, valiark.jp)
-            ↓  vercel.json rewrite
+Vercel (legal-site, valiark.jp)  … 本番テスター・TestFlight 向け
+            ↓  vercel.json rewrite → prod Worker
+https://panda-talk-backend-prod.valiark.workers.dev/share/q/17
+            ↓
+valiark-prod Supabase
+
+【dev】日常開発の共有文:
 https://panda-talk-backend.valiark.workers.dev/share/q/17
             ↓
-Cloudflare Worker (Hono, panda-talk-backend)
+dev Worker 直（valiark.jp は触らない）
             ↓
-Supabase REST から該当データ取得
-            ↓
-OGP メタ付き HTML を返す
-            ↓
-SNSクローラは og:* を読む / 人間は LP を見る
+valiark-dev Supabase
 ```
 
-- **ドメイン**: `valiark.jp/panda-talk/...`（既存 Vercel）
-- **Web受け皿**: Vercel が `/panda-talk/q/:id` `/panda-talk/u/:username` `/panda-talk/type/:slug` を Cloudflare Worker に rewrite proxy
-- **Worker側のルート**: `/share/q/:number` `/share/u/:username` `/share/type/:slug`
-- **データ取得**: 既存の `createContainer` 経由でユースケース呼び出し（`getQuestionByNumberUseCase` / `getQuestionStatsUseCase` / `getUserByUsernameUseCase`）
-- **共存**: 既存の `https://valiark.jp/panda-talk` (Flutter Web LP) と `/panda-talk/privacy_policy` 等は温存
+**dev/prod 分離（重要）**
+
+| 環境 | アプリ設定 | 共有URL | Worker | DB |
+|---|---|---|---|---|
+| dev | `.env` | `{API_BASE}/share/q/17` | `panda-talk-backend` | valiark-dev |
+| prod | `.env.prod` | `valiark.jp/panda-talk/q/17` | `panda-talk-backend-prod` | valiark-prod |
+
+Flutter: `PANDA_TALK_SHARE_BASE_URL`（[AppConfig.shareBaseUrl](../lib/config/app_config.dart)）  
+Worker: `SHARE_PUBLIC_BASE_URL`（`npm run deploy` / `deploy:prod` で注入）
+
+**valiark.jp の rewrite は prod Worker のみ向ける。** dev デプロイで本番 URL を上書きしない。
 
 ---
 

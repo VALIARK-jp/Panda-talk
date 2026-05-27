@@ -100,4 +100,28 @@ class AppConfig {
     if (fromDefine.isNotEmpty) return fromDefine;
     return dotenv.env['PANDA_TALK_PRIVACY_URL']?.trim() ?? '';
   }
+
+  /// SNS共有URLのベース。
+  ///
+  /// - dev (`.env`): Worker 直 `https://…-backend….workers.dev/share`
+  /// - prod (`.env.prod` / TestFlight): `https://valiark.jp/panda-talk`
+  ///
+  /// 未設定時は [apiBaseUrl]/share にフォールバック（dev と同じ Worker を指す）。
+  static String get shareBaseUrl {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_SHARE_BASE_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) {
+      return fromDefine.replaceAll(RegExp(r'/+$'), '');
+    }
+    final fromFile = dotenv.env['PANDA_TALK_SHARE_BASE_URL']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) {
+      return fromFile.replaceAll(RegExp(r'/+$'), '');
+    }
+    if (usesLocalApiHost) {
+      return '${apiBaseUrl}/share';
+    }
+    return '${apiBaseUrl}/share';
+  }
 }

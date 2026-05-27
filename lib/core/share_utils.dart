@@ -4,17 +4,17 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'dummy_data.dart';
 import 'panda_type.dart';
+import '../config/app_config.dart';
 
 /// 共有URL組み立て（[docs/18_share_growth_spec.md] §4 URL設計）。
 ///
-/// パスは `valiark.jp/panda-talk/` 配下に固定する。Vercel(legal-site) が
-/// `/panda-talk/q/:id` 等を Cloudflare Worker(`panda-talk-backend`)の
-/// `/share/...` に rewrite し、Worker が OGP 付き HTML を返す。
-/// `?from=share` 等のクエリは Phase 2 で計測を入れる時に付与する想定。
+/// ベース URL は [AppConfig.shareBaseUrl]（`.env` / `.env.prod` で dev/prod を分離）。
+/// - dev: `https://panda-talk-backend….workers.dev/share/q/17`（valiark-dev のデータ）
+/// - prod: `https://valiark.jp/panda-talk/q/17`（valiark-prod・本番テスター向け）
 class ShareUrls {
   const ShareUrls._();
 
-  static const String base = 'https://valiark.jp/panda-talk';
+  static String get base => AppConfig.shareBaseUrl;
 
   static String question(int number) => '$base/q/$number';
   static String pandaType(String slug) => '$base/type/$slug';

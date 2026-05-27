@@ -39,6 +39,14 @@ if (!fs.existsSync(envFile)) {
 const fileEnv = parseEnv(fs.readFileSync(envFile, 'utf8'))
 const supabaseUrl = fileEnv.PANDA_TALK_SUPABASE_URL
 const supabaseAnon = fileEnv.PANDA_TALK_SUPABASE_ANON_KEY
+const apiBaseUrl = fileEnv.PANDA_TALK_API_BASE_URL?.replace(/\/+$/, '')
+const defaultShareBase = isProd
+  ? 'https://valiark.jp/panda-talk'
+  : apiBaseUrl
+    ? `${apiBaseUrl}/share`
+    : 'https://panda-talk-backend.valiark.workers.dev/share'
+const sharePublicBase =
+  fileEnv.PANDA_TALK_SHARE_BASE_URL?.replace(/\/+$/, '') || defaultShareBase
 
 if (!supabaseUrl || !supabaseAnon) {
   console.error(`${envFile} needs PANDA_TALK_SUPABASE_URL and PANDA_TALK_SUPABASE_ANON_KEY`)
@@ -59,14 +67,18 @@ const wranglerArgs = [
   `SUPABASE_ANON_KEY:${supabaseAnon}`,
   '--var',
   `APP_ENV:${isProd ? 'production' : 'development'}`,
+  '--var',
+  `SHARE_PUBLIC_BASE_URL:${sharePublicBase}`,
 ]
 
 if (isProd) {
   wranglerArgs.push('--env', 'production')
   console.error('Deploying production Worker (panda-talk-backend-prod)…')
+  console.error(`SHARE_PUBLIC_BASE_URL=${sharePublicBase}`)
   console.error('Ensure: npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production')
 } else {
   console.error('Deploying dev Worker (panda-talk-backend)…')
+  console.error(`SHARE_PUBLIC_BASE_URL=${sharePublicBase}`)
   console.error('Ensure: npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY')
 }
 

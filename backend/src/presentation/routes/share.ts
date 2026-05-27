@@ -23,7 +23,13 @@ import {
  */
 const app = new Hono<{ Bindings: Env }>()
 
-const PUBLIC_BASE = 'https://valiark.jp/panda-talk'
+/** OGP canonical / og:url のベース。deploy 時に SHARE_PUBLIC_BASE_URL で注入。 */
+function publicBase(env: Env): string {
+  return (
+    env.SHARE_PUBLIC_BASE_URL?.replace(/\/+$/, '') ??
+    'https://valiark.jp/panda-talk'
+  )
+}
 
 function htmlResponse(body: string, status = 200) {
   return new Response(body, {
@@ -43,6 +49,8 @@ function clamp01to100(n: number | undefined | null): number {
   return Math.round(n)
 }
 
+const STATIC_ASSET_BASE = 'https://valiark.jp/panda-talk'
+
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text
   return text.slice(0, max - 1) + '…'
@@ -50,6 +58,7 @@ function truncate(text: string, max: number): string {
 
 // GET /share/q/:number - 質問共有 LP
 app.get('/q/:number', async (c) => {
+  const base = publicBase(c.env)
   const numberParam = c.req.param('number')
   const questionNumber = Number(numberParam)
   if (!Number.isInteger(questionNumber) || questionNumber <= 0) {
@@ -57,7 +66,7 @@ app.get('/q/:number', async (c) => {
       renderShareHtml({
         title: 'パンダトーク',
         description: '白黒つけるほど、仲良くなるSNS。',
-        canonicalUrl: `${PUBLIC_BASE}/q/${encodeURIComponent(numberParam)}`,
+        canonicalUrl: `${base}/q/${encodeURIComponent(numberParam)}`,
         imageUrl: APP_LINKS.defaultOgImage,
         bodyHtml: renderNotFoundBody('質問IDが正しくありません。'),
       }),
@@ -74,7 +83,7 @@ app.get('/q/:number', async (c) => {
         renderShareHtml({
           title: `Q.${questionNumber} | パンダトーク`,
           description: 'この質問は見つかりませんでした。',
-          canonicalUrl: `${PUBLIC_BASE}/q/${questionNumber}`,
+          canonicalUrl: `${base}/q/${questionNumber}`,
           imageUrl: APP_LINKS.defaultOgImage,
           bodyHtml: renderNotFoundBody('指定の質問は見つかりませんでした。'),
         }),
@@ -98,7 +107,7 @@ app.get('/q/:number', async (c) => {
       renderShareHtml({
         title,
         description,
-        canonicalUrl: `${PUBLIC_BASE}/q/${question.questionNumber}`,
+        canonicalUrl: `${base}/q/${question.questionNumber}`,
         imageUrl: APP_LINKS.defaultOgImage,
         bodyHtml: renderQuestionBody({
           text: question.text,
@@ -114,7 +123,7 @@ app.get('/q/:number', async (c) => {
       renderShareHtml({
         title: 'パンダトーク',
         description: '一時的にページを表示できませんでした。',
-        canonicalUrl: `${PUBLIC_BASE}/q/${questionNumber}`,
+        canonicalUrl: `${base}/q/${questionNumber}`,
         imageUrl: APP_LINKS.defaultOgImage,
         bodyHtml: renderNotFoundBody('一時的にページを表示できませんでした。'),
       }),
@@ -125,6 +134,7 @@ app.get('/q/:number', async (c) => {
 
 // GET /share/u/:username - プロフィール共有 LP
 app.get('/u/:username', async (c) => {
+  const base = publicBase(c.env)
   const username = c.req.param('username')
 
   try {
@@ -135,7 +145,7 @@ app.get('/u/:username', async (c) => {
         renderShareHtml({
           title: `@${username} | パンダトーク`,
           description: 'プロフィールが見つかりませんでした。',
-          canonicalUrl: `${PUBLIC_BASE}/u/${encodeURIComponent(username)}`,
+          canonicalUrl: `${base}/u/${encodeURIComponent(username)}`,
           imageUrl: APP_LINKS.defaultOgImage,
           bodyHtml: renderNotFoundBody(
             'このプロフィールは見つかりませんでした。'
@@ -166,7 +176,7 @@ app.get('/u/:username', async (c) => {
       renderShareHtml({
         title,
         description: truncate(descriptionParts.join(' / '), 120),
-        canonicalUrl: `${PUBLIC_BASE}/u/${encodeURIComponent(user.username)}`,
+        canonicalUrl: `${base}/u/${encodeURIComponent(user.username)}`,
         imageUrl: APP_LINKS.defaultOgImage,
         bodyHtml: renderProfileBody({
           name: user.name,
@@ -183,7 +193,7 @@ app.get('/u/:username', async (c) => {
       renderShareHtml({
         title: 'パンダトーク',
         description: '一時的にページを表示できませんでした。',
-        canonicalUrl: `${PUBLIC_BASE}/u/${encodeURIComponent(username)}`,
+        canonicalUrl: `${base}/u/${encodeURIComponent(username)}`,
         imageUrl: APP_LINKS.defaultOgImage,
         bodyHtml: renderNotFoundBody('一時的にページを表示できませんでした。'),
       }),
@@ -194,6 +204,7 @@ app.get('/u/:username', async (c) => {
 
 // GET /share/type/:slug - 16type 診断結果の共有 LP（DB引かず静的）
 app.get('/type/:slug', (c) => {
+  const base = publicBase(c.env)
   const slug = c.req.param('slug')
   const def = findPandaTypeBySlug(slug)
   if (!def) {
@@ -201,7 +212,7 @@ app.get('/type/:slug', (c) => {
       renderShareHtml({
         title: 'パンダトーク 16type 診断',
         description: 'この診断タイプは見つかりませんでした。',
-        canonicalUrl: `${PUBLIC_BASE}/type/${encodeURIComponent(slug)}`,
+        canonicalUrl: `${base}/type/${encodeURIComponent(slug)}`,
         imageUrl: APP_LINKS.defaultOgImage,
         bodyHtml: renderNotFoundBody(
           '指定の診断タイプは見つかりませんでした。'
@@ -213,13 +224,13 @@ app.get('/type/:slug', (c) => {
 
   // 公開済みのパンダ画像（Flutter Web の assets をそのまま使う）。
   // 実体パスは legal-site/panda-talk/assets/assets/images/panda/{N}.PNG（ゼロパディング無し）。
-  const imageUrl = `${PUBLIC_BASE}/assets/assets/images/panda/${def.imageIndex}.PNG`
+  const imageUrl = `${STATIC_ASSET_BASE}/assets/assets/images/panda/${def.imageIndex}.PNG`
 
   return htmlResponse(
     renderShareHtml({
       title: `${def.displayName} | パンダトーク 16type 診断`,
       description: truncate(def.tagline, 120),
-      canonicalUrl: `${PUBLIC_BASE}/type/${def.slug}`,
+      canonicalUrl: `${base}/type/${def.slug}`,
       imageUrl,
       bodyHtml: renderPandaTypeBody({
         displayName: def.displayName,
