@@ -11,6 +11,18 @@
     {
       "source": "/panda-talk/terms_of_service",
       "destination": "/panda-talk/terms_of_service/index.html"
+    },
+    {
+      "source": "/panda-talk/q/:id",
+      "destination": "https://panda-talk-backend.valiark.workers.dev/share/q/:id"
+    },
+    {
+      "source": "/panda-talk/u/:username",
+      "destination": "https://panda-talk-backend.valiark.workers.dev/share/u/:username"
+    },
+    {
+      "source": "/panda-talk/type/:slug",
+      "destination": "https://panda-talk-backend.valiark.workers.dev/share/type/:slug"
     }
   ],
   "headers": [

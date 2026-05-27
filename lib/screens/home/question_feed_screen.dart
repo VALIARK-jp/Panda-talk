@@ -27,6 +27,7 @@ import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/share_action_sheet.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/user_avatar.dart';
 import '../../widgets/answer_ratio_bar.dart';
@@ -372,31 +373,23 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final hasAnswered = selected != null;
     final selectedA = selected == question.optionA;
     final feedState = ref.read(questionFeedControllerProvider);
-    final selectedPercent = selectedSidePercent(
-      selected: selected ?? question.optionA,
-      question: question,
-      percentA: percentA,
-    );
-    final isMinority =
-        hasAnswered &&
+    final isMinority = hasAnswered &&
         isMinorityFromSide(
           selectedA: selectedA,
           percentA: percentA,
           countA: feedState.countAFor(question),
           countB: feedState.countBFor(question),
         );
-    final resultText = hasAnswered
-        ? '\n私は$selected派（${isMinority ? '少数派 ' : ''}$selectedPercent%）'
-        : '';
 
-    AppShare.text(
+    // SNS向け共有文（[docs/18_share_growth_spec.md] §3-1）。
+    showShareActionSheet(
       context,
-      'Q.${question.number} ${question.text}\n'
-      'A: ${question.optionA}\n'
-      'B: ${question.optionB}'
-      '$resultText\n'
-      'あなたはどっち？\n'
-      '#パンダトーク',
+      text: ShareTexts.question(
+        q: question,
+        selected: selected,
+        percentA: percentA,
+        isMinority: isMinority,
+      ),
     );
   }
 

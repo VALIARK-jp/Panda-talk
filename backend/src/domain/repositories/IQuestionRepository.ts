@@ -34,6 +34,8 @@ export interface IQuestionRepository {
     cursor?: UUID,
   ): Promise<AnsweredQuestion[]>;
   findById(id: UUID): Promise<QuestionWithUser | null>;
+  /** 共有URL `/q/:number` 用に questionNumber でユニーク取得。 */
+  findByNumber(questionNumber: number): Promise<QuestionWithUser | null>;
   getStats(questionId: UUID): Promise<QuestionStats>;
   search(keyword: string, limit: number): Promise<QuestionWithUser[]>;
   create(

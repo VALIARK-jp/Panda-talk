@@ -5,6 +5,7 @@ import '../../core/question_stats_utils.dart';
 import '../../core/share_utils.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
+import '../../widgets/share_action_sheet.dart';
 
 class AnswerResultScreen extends StatefulWidget {
   final String selected;
@@ -303,10 +304,13 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
               PandaButton(
                 label: 'シェアする',
                 onTap: () {
-                  final minority = isMinority ? '少数派' : '多数派';
-                  AppShare.text(
+                  showShareActionSheet(
                     context,
-                    '私は${widget.selected}派！（$minority $selectedPercent%）\nあなたはどっち？\n#パンダトーク',
+                    text: ShareTexts.answerResult(
+                      selected: widget.selected,
+                      selectedPercent: selectedPercent,
+                      isMinority: isMinority,
+                    ),
                   );
                 },
               ),

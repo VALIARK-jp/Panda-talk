@@ -196,6 +196,11 @@ export class MockQuestionRepository implements IQuestionRepository {
     return q ? toQuestionWithUser(q) : null
   }
 
+  async findByNumber(questionNumber: number): Promise<QuestionWithUser | null> {
+    const q = questions.find((q) => q.questionNumber === questionNumber)
+    return q ? toQuestionWithUser(q) : null
+  }
+
   async getStats(questionId: UUID): Promise<QuestionStats> {
     return {
       questionId,
