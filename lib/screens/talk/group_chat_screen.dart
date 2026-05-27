@@ -29,6 +29,67 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     _messageController.clear();
   }
 
+  void _showGroupInfo() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.white,
+      showDragHandle: true,
+      builder: (context) {
+        final group = widget.group;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.name,
+                  style: const TextStyle(
+                    fontSize: AppFontSize.xl,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.black,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  '${group.members.length}人 / 平均合致度 ${group.avgMatchRate}%',
+                  style: const TextStyle(
+                    fontSize: AppFontSize.md,
+                    color: AppColors.textGray,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: group.members
+                      .map(
+                        (member) => Chip(
+                          label: Text(member),
+                          backgroundColor: AppColors.softGray,
+                          side: const BorderSide(color: AppColors.borderGray),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _onMenuSelected(String value) {
+    if (value == 'info') _showGroupInfo();
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(groupMessagesProvider(widget.group.id));
@@ -73,7 +134,15 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                       ],
                     ),
                   ),
-                  const Icon(Icons.more_horiz, color: AppColors.black),
+                  PopupMenuButton<String>(
+                    tooltip: 'メニュー',
+                    icon: const Icon(Icons.more_horiz, color: AppColors.black),
+                    color: AppColors.white,
+                    onSelected: _onMenuSelected,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'info', child: Text('グループ情報')),
+                    ],
+                  ),
                 ],
               ),
             ),

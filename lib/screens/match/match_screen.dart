@@ -12,6 +12,7 @@ import '../../widgets/login_required_gate.dart';
 import '../../widgets/match_user_tile.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/user_avatar.dart';
 import '../friends/friends_screen.dart';
 import 'user_detail_screen.dart';
 
@@ -160,10 +161,8 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                           onOpenUser: (user) => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => UserDetailScreen(
-                                user: user,
-                                fromMatch: true,
-                              ),
+                              builder: (_) =>
+                                  UserDetailScreen(user: user, fromMatch: true),
                             ),
                           ),
                           onRequest: (user) => ref
@@ -205,6 +204,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                                 rank: i + 1,
                                 name: u.name,
                                 matchRate: u.matchRate,
+                                avatarUrl: u.avatarUrl,
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -306,7 +306,7 @@ class _FriendSearchResults extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () => onOpenUser(user),
-                child: PandaAvatar(size: 44),
+                child: UserAvatar(size: 44, imageUrl: user.avatarUrl),
               ),
               const SizedBox(width: 12),
               Expanded(

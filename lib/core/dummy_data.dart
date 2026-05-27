@@ -4,10 +4,12 @@ class DummyUser {
   final String name;
   final String id;
   final int matchRate;
+  final String? avatarUrl;
   const DummyUser({
     required this.name,
     required this.id,
     required this.matchRate,
+    this.avatarUrl,
   });
 }
 
@@ -17,6 +19,7 @@ class DummyQuestion {
   final String category;
   final String authorName;
   final String authorUsername;
+  final String? authorAvatarUrl;
   final String text;
   final String optionA;
   final String optionB;
@@ -32,6 +35,7 @@ class DummyQuestion {
     required this.category,
     this.authorName = 'ぱんだ好き',
     this.authorUsername = 'panda_love',
+    this.authorAvatarUrl,
     required this.text,
     required this.optionA,
     required this.optionB,
@@ -61,6 +65,7 @@ class DummyQuestion {
       category: category ?? this.category,
       authorName: authorName,
       authorUsername: authorUsername,
+      authorAvatarUrl: authorAvatarUrl,
       text: text ?? this.text,
       optionA: optionA ?? this.optionA,
       optionB: optionB ?? this.optionB,

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../core/design_tokens.dart';
-import 'panda_avatar.dart';
+import 'user_avatar.dart';
 
 class MatchUserTile extends StatelessWidget {
   final int rank;
   final String name;
   final int matchRate;
+  final String? avatarUrl;
   final VoidCallback? onTap;
 
   const MatchUserTile({
@@ -13,6 +14,7 @@ class MatchUserTile extends StatelessWidget {
     required this.rank,
     required this.name,
     required this.matchRate,
+    this.avatarUrl,
     this.onTap,
   });
 
@@ -42,7 +44,7 @@ class MatchUserTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            PandaAvatar(size: 40),
+            UserAvatar(size: 40, imageUrl: avatarUrl),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

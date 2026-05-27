@@ -4,7 +4,8 @@ import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/talk_providers.dart';
 import '../../widgets/chat_bubble.dart';
-import '../../widgets/panda_avatar.dart';
+import '../../widgets/user_avatar.dart';
+import '../match/user_detail_screen.dart';
 
 class DirectChatScreen extends ConsumerStatefulWidget {
   final DummyUser user;
@@ -30,6 +31,14 @@ class _DirectChatScreenState extends ConsumerState<DirectChatScreen> {
     _messageController.clear();
   }
 
+  void _onMenuSelected(String value) {
+    if (value != 'profile') return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserDetailScreen(user: widget.user)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(directMessagesProvider(widget.user.id));
@@ -51,7 +60,7 @@ class _DirectChatScreenState extends ConsumerState<DirectChatScreen> {
                     child: const Icon(Icons.arrow_back, color: AppColors.black),
                   ),
                   const SizedBox(width: 12),
-                  PandaAvatar(size: 32),
+                  UserAvatar(size: 32, imageUrl: widget.user.avatarUrl),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -63,7 +72,15 @@ class _DirectChatScreenState extends ConsumerState<DirectChatScreen> {
                       ),
                     ),
                   ),
-                  const Icon(Icons.more_horiz, color: AppColors.black),
+                  PopupMenuButton<String>(
+                    tooltip: 'メニュー',
+                    icon: const Icon(Icons.more_horiz, color: AppColors.black),
+                    color: AppColors.white,
+                    onSelected: _onMenuSelected,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'profile', child: Text('プロフィールを見る')),
+                    ],
+                  ),
                 ],
               ),
             ),

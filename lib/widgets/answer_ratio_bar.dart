@@ -79,7 +79,8 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
       _morph.forward(from: 0);
     } else if (widget.selectedOption != null) {
       _targetPercentA = widget.percentA;
-    } else if (widget.selectedOption == null && oldWidget.selectedOption != null) {
+    } else if (widget.selectedOption == null &&
+        oldWidget.selectedOption != null) {
       _morph.reverse(from: 1);
       _pulse.repeat(reverse: true);
     }
@@ -169,6 +170,8 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
                               child: RatioBarWithYourChoice(
                                 leftPercent: leftPercent,
                                 selectedA: selectedA,
+                                leftLabel: widget.question.optionA,
+                                rightLabel: widget.question.optionB,
                                 showMarker: morphT > 0.75,
                               ),
                             ),
@@ -185,7 +188,10 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
                                       label: widget.question.optionA,
                                       dark: false,
                                       pulseT: pulseT,
-                                      labelOpacity: (1 - morphT).clamp(0.0, 1.0),
+                                      labelOpacity: (1 - morphT).clamp(
+                                        0.0,
+                                        1.0,
+                                      ),
                                       onTap: () => widget.onSelect?.call(
                                         widget.question.optionA,
                                       ),
@@ -197,7 +203,10 @@ class AnswerRatioBarState extends State<AnswerRatioBar>
                                       label: widget.question.optionB,
                                       dark: true,
                                       pulseT: pulseT,
-                                      labelOpacity: (1 - morphT).clamp(0.0, 1.0),
+                                      labelOpacity: (1 - morphT).clamp(
+                                        0.0,
+                                        1.0,
+                                      ),
                                       onTap: () => widget.onSelect?.call(
                                         widget.question.optionB,
                                       ),
@@ -281,18 +290,20 @@ class OptionLabelStrip extends StatelessWidget {
 class RatioBarWithYourChoice extends StatelessWidget {
   final int leftPercent;
   final bool selectedA;
+  final String leftLabel;
+  final String rightLabel;
   final bool showMarker;
 
   const RatioBarWithYourChoice({
     required this.leftPercent,
     required this.selectedA,
+    required this.leftLabel,
+    required this.rightLabel,
     required this.showMarker,
   });
 
   @override
   Widget build(BuildContext context) {
-    final onDarkSide = !selectedA;
-
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.full),
@@ -304,12 +315,13 @@ class RatioBarWithYourChoice extends StatelessWidget {
           builder: (context, constraints) {
             final w = constraints.maxWidth;
             final split = (w * leftPercent / 100).clamp(0.0, w);
-            final markerCenterX =
-                selectedA ? split / 2 : split + (w - split) / 2;
-            final markerColor = onDarkSide ? AppColors.white : AppColors.black;
-            final segmentWide = selectedA
-                ? split >= 56
-                : (w - split) >= 56;
+            final selectedWidth = selectedA ? split : w - split;
+            final selectedLeft = selectedA ? 0.0 : split;
+            final selectedPercent = selectedA ? leftPercent : 100 - leftPercent;
+            final selectedLabel = selectedA ? leftLabel : rightLabel;
+            final selectedOnDark = !selectedA;
+            final selectedIsMajority = selectedPercent >= 50;
+            final showSelectedCallout = showMarker && selectedWidth >= 96;
 
             return Stack(
               clipBehavior: Clip.hardEdge,
@@ -334,38 +346,114 @@ class RatioBarWithYourChoice extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (showMarker && segmentWide)
+                if (showSelectedCallout)
                   Positioned(
-                    left: (markerCenterX - 30).clamp(2.0, w - 62),
+                    left: selectedLeft,
+                    width: selectedWidth,
                     top: 8,
                     bottom: 8,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '君の選択',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: markerColor,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_drop_down,
-                            size: 18,
-                            color: markerColor,
-                          ),
-                        ],
-                      ),
+                    child: _SelectedResultCallout(
+                      label: selectedLabel,
+                      percent: selectedPercent,
+                      isMajority: selectedIsMajority,
+                      onDark: selectedOnDark,
                     ),
                   ),
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedResultCallout extends StatelessWidget {
+  final String label;
+  final int percent;
+  final bool isMajority;
+  final bool onDark;
+
+  const _SelectedResultCallout({
+    required this.label,
+    required this.percent,
+    required this.isMajority,
+    required this.onDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = onDark ? AppColors.white : AppColors.black;
+    final mutedColor = primaryColor.withValues(alpha: 0.78);
+    final chipColor = onDark ? AppColors.white : AppColors.black;
+    final chipTextColor = onDark ? AppColors.black : AppColors.white;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: chipColor,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                '✓ あなた',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  color: chipTextColor,
+                  height: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$percent%',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppFontSize.xxl,
+                fontWeight: FontWeight.w900,
+                color: primaryColor,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w900,
+                color: primaryColor,
+                height: 1.1,
+              ),
+            ),
+            Text(
+              isMajority ? '多数派' : '少数派',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: mutedColor,
+                height: 1.15,
+              ),
+            ),
+          ],
         ),
       ),
     );

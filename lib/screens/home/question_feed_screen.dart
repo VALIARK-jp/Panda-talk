@@ -28,6 +28,7 @@ import '../../widgets/panda_button.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
+import '../../widgets/user_avatar.dart';
 import '../../widgets/answer_ratio_bar.dart';
 import '../../widgets/answer_reveal_overlay.dart';
 import '../../widgets/comment_activity_hint.dart';
@@ -146,10 +147,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
     final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
     if (!unlocked && isDiagnosisQuestionNumber(q.number)) {
-      await Diagnosis16Store.saveAnswer(
-        q.number,
-        selected == q.optionA,
-      );
+      await Diagnosis16Store.saveAnswer(q.number, selected == q.optionA);
     }
 
     if (q.number == kDiagnosisQuestionCount && !unlocked) {
@@ -228,7 +226,11 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       if (!mounted || latest.isEmpty) return;
       final feedState = ref.read(questionFeedControllerProvider);
       final currentIndex = feedState.questionIndex.clamp(0, latest.length - 1);
-      final nextIndex = _nextPageIndexAfterAnswer(latest, feedState, currentIndex);
+      final nextIndex = _nextPageIndexAfterAnswer(
+        latest,
+        feedState,
+        currentIndex,
+      );
       _animateToQuestion(nextIndex);
       _pendingAdvanceAfterAnswer = false;
     });
@@ -375,7 +377,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       question: question,
       percentA: percentA,
     );
-    final isMinority = hasAnswered &&
+    final isMinority =
+        hasAnswered &&
         isMinorityFromSide(
           selectedA: selectedA,
           percentA: percentA,
@@ -410,157 +413,202 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final pandaExpression = _pandaExpressionFor(selected, q, feedState);
     final feedPanda = FeedPandaChoice.forQuestion(q);
 
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    // 投稿者 + 番号 + カテゴリ
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      PandaAvatar(size: 28),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            q.authorName,
-                            style: const TextStyle(
-                              fontSize: AppFontSize.sm,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.black,
-                            ),
-                          ),
-                          Text(
-                            '@${q.authorUsername}',
-                            style: const TextStyle(
-                              fontSize: AppFontSize.sm,
-                              color: AppColors.textGray,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        'Q.${q.number}',
-                        style: const TextStyle(
-                          fontSize: AppFontSize.sm,
-                          color: AppColors.textGray,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      TagChip(label: q.category),
-                    ],
-                  ),
-                ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideLayout = constraints.maxWidth >= 700;
+        final horizontalPadding = isWideLayout ? AppSpacing.xl : AppSpacing.md;
+        final cardMaxWidth = isWideLayout ? 680.0 : double.infinity;
+        final categoryColor = categoryAccentColor(q.category);
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: cardMaxWidth),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: AppSpacing.md,
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    tooltip: '共有',
-                    onPressed: () => _shareQuestion(
-                      question: q,
-                      selected: selected,
-                      percentA: percentA,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: categoryColor.withValues(alpha: 0.22),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: categoryColor.withValues(alpha: 0.10),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    icon: const Icon(Icons.ios_share, color: AppColors.black),
-                  ),
-                  _EngagementIcon(
-                    icon: likedQuestion
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    count: feedState.likeCountFor(q),
-                    highlighted: likedQuestion,
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      try {
-                        await ref
-                            .read(questionFeedControllerProvider.notifier)
-                            .toggleQuestionLike(q);
-                      } catch (_) {
-                        messenger.showSnackBar(
-                          const SnackBar(content: Text('いいねに失敗しました')),
-                        );
-                      }
-                    },
-                  ),
-                  _EngagementIcon(
-                    icon: Icons.mode_comment_outlined,
-                    count: feedState.commentCountFor(q),
-                    onTap: () async {
-                      final posted = await QuestionCommentsScreen.openFocus(
-                        context,
-                        question: q,
-                        percentA: percentA,
-                        selectedOption: selected,
-                      );
-                      if (posted && context.mounted) {
-                        ref
-                            .read(questionFeedControllerProvider.notifier)
-                            .incrementCommentCount(q);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Expanded(
-                child: QuestionPosterSection(
-                  question: q,
-                  feedPandaChoice: feedPanda,
-                  pandaExpression: pandaExpression,
-                  commentHint: CommentActivityHint.shouldShow(commentCount)
-                      ? CommentActivityHint(commentCount: commentCount)
-                      : null,
-                ),
-              ),
-              Hero(
-                tag: answerRatioBarHeroTag(q),
-                child: Material(
-                  color: Colors.transparent,
-                  child: AnswerRatioBar(
-                    question: q,
-                    percentA: percentA,
-                    selectedOption: selected,
-                    onSelect: (option) =>
-                        _onAnswer(q, option, total, questions),
-                  ),
-                ),
-              ),
-                    const SizedBox(height: AppSpacing.md),
                   ],
                 ),
-              ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Stack(
+                      children: [
+                        Column(
+                          children: [
+                            // 投稿者 + 番号 + カテゴリ
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    UserAvatar(
+                                      size: 28,
+                                      imageUrl: q.authorAvatarUrl,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          q.authorName,
+                                          style: const TextStyle(
+                                            fontSize: AppFontSize.sm,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.black,
+                                          ),
+                                        ),
+                                        Text(
+                                          '@${q.authorUsername}',
+                                          style: const TextStyle(
+                                            fontSize: AppFontSize.sm,
+                                            color: AppColors.textGray,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Q.${q.number}',
+                                      style: const TextStyle(
+                                        fontSize: AppFontSize.sm,
+                                        color: AppColors.textGray,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    TagChip(
+                                      label: q.category,
+                                      color: categoryColor,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  tooltip: '共有',
+                                  onPressed: () => _shareQuestion(
+                                    question: q,
+                                    selected: selected,
+                                    percentA: percentA,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.ios_share,
+                                    color: AppColors.black,
+                                  ),
+                                ),
+                                _EngagementIcon(
+                                  icon: likedQuestion
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  count: feedState.likeCountFor(q),
+                                  highlighted: likedQuestion,
+                                  onTap: () async {
+                                    final messenger = ScaffoldMessenger.of(
+                                      context,
+                                    );
+                                    try {
+                                      await ref
+                                          .read(
+                                            questionFeedControllerProvider
+                                                .notifier,
+                                          )
+                                          .toggleQuestionLike(q);
+                                    } catch (_) {
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text('いいねに失敗しました'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                                _EngagementIcon(
+                                  icon: Icons.mode_comment_outlined,
+                                  count: feedState.commentCountFor(q),
+                                  onTap: () async {
+                                    final posted =
+                                        await QuestionCommentsScreen.openFocus(
+                                          context,
+                                          question: q,
+                                          percentA: percentA,
+                                          selectedOption: selected,
+                                        );
+                                    if (posted && context.mounted) {
+                                      ref
+                                          .read(
+                                            questionFeedControllerProvider
+                                                .notifier,
+                                          )
+                                          .incrementCommentCount(q);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Expanded(
+                              child: QuestionPosterSection(
+                                question: q,
+                                feedPandaChoice: feedPanda,
+                                pandaExpression: pandaExpression,
+                                commentHint:
+                                    CommentActivityHint.shouldShow(commentCount)
+                                    ? CommentActivityHint(
+                                        commentCount: commentCount,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Hero(
+                              tag: answerRatioBarHeroTag(q),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: AnswerRatioBar(
+                                  question: q,
+                                  percentA: percentA,
+                                  selectedOption: selected,
+                                  onSelect: (option) =>
+                                      _onAnswer(q, option, total, questions),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -653,9 +701,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         onTap: widget.onOpenPost,
         behavior: HitTestBehavior.opaque,
         child: Text(
-          widget.onOpenPost != null
-              ? '未解答はありません。二択を投稿してみよう →'
-              : '未解答はありません',
+          widget.onOpenPost != null ? '未解答はありません。二択を投稿してみよう →' : '未解答はありません',
           textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: AppFontSize.sm,
@@ -699,10 +745,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                 ),
                 if (widget.onOpenPost != null) ...[
                   const SizedBox(height: AppSpacing.lg),
-                  PandaButton(
-                    label: '二択を投稿する',
-                    onTap: widget.onOpenPost,
-                  ),
+                  PandaButton(label: '二択を投稿する', onTap: widget.onOpenPost),
                 ],
               ],
             ),
@@ -728,9 +771,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       ref.read(feedJumpToQuestionNumberProvider.notifier).state = null;
       if (index < 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('質問をフィードに読み込めませんでした。もう一度お試しください。'),
-          ),
+          const SnackBar(content: Text('質問をフィードに読み込めませんでした。もう一度お試しください。')),
         );
         setState(() {});
         return;
@@ -751,8 +792,10 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
     if (_pageController != null) return;
 
-    final frontier = _unansweredFrontierIndex(questions, feedState)
-        .clamp(0, questions.length - 1);
+    final frontier = _unansweredFrontierIndex(
+      questions,
+      feedState,
+    ).clamp(0, questions.length - 1);
     final initial = _userHasNavigated
         ? feedState.questionIndex.clamp(0, questions.length - 1)
         : frontier;
@@ -761,7 +804,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     // build 中に StateNotifier を更新しない（Riverpod の制約）
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(questionFeedControllerProvider.notifier).setQuestionIndex(initial);
+      ref
+          .read(questionFeedControllerProvider.notifier)
+          .setQuestionIndex(initial);
     });
   }
 
@@ -817,7 +862,10 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                   IconButton(
                     tooltip: '更新',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
+                    ),
                     onPressed: _refreshFromServer,
                     icon: const Icon(
                       Icons.refresh,
@@ -850,49 +898,47 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
               child: Stack(
                 children: [
                   PageView.builder(
-                  controller: pageController,
-                  scrollDirection: Axis.vertical,
-                  physics: total > 1
-                      ? const ClampingScrollPhysics()
-                      : const NeverScrollableScrollPhysics(),
-                  itemCount: total,
-                  onPageChanged: (index) {
-                    _userHasNavigated = true;
-                    _nextQuestionTimer?.cancel();
-                    // 回答後の演出中は onPageChanged で overlay を消さない（rebuild 由来の
-                    // ページ通知でアニメが飛ぶのを防ぐ）。手動スワイプ時のみクリア。
-                    if (_revealQuestionNumber != null &&
-                        !_pendingAdvanceAfterAnswer) {
-                      setState(_clearReveal);
-                    }
-                    final notifier = ref.read(
-                      questionFeedControllerProvider.notifier,
-                    );
-                    final centerNumber = questions[index].number;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted) return;
-                      ref
-                          .read(questionFeedControllerProvider.notifier)
-                          .setQuestionIndex(index);
-                      unawaited(
-                        notifier.prefetchAround(questions, index),
+                    controller: pageController,
+                    scrollDirection: Axis.vertical,
+                    physics: total > 1
+                        ? const ClampingScrollPhysics()
+                        : const NeverScrollableScrollPhysics(),
+                    itemCount: total,
+                    onPageChanged: (index) {
+                      _userHasNavigated = true;
+                      _nextQuestionTimer?.cancel();
+                      // 回答後の演出中は onPageChanged で overlay を消さない（rebuild 由来の
+                      // ページ通知でアニメが飛ぶのを防ぐ）。手動スワイプ時のみクリア。
+                      if (_revealQuestionNumber != null &&
+                          !_pendingAdvanceAfterAnswer) {
+                        setState(_clearReveal);
+                      }
+                      final notifier = ref.read(
+                        questionFeedControllerProvider.notifier,
                       );
-                      unawaited(
+                      final centerNumber = questions[index].number;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
                         ref
-                            .read(feedWindowControllerProvider.notifier)
-                            .onViewportCenter(centerNumber),
+                            .read(questionFeedControllerProvider.notifier)
+                            .setQuestionIndex(index);
+                        unawaited(notifier.prefetchAround(questions, index));
+                        unawaited(
+                          ref
+                              .read(feedWindowControllerProvider.notifier)
+                              .onViewportCenter(centerNumber),
+                        );
+                      });
+                    },
+                    itemBuilder: (context, index) {
+                      return _buildQuestionPage(
+                        questions[index],
+                        questions,
+                        total,
+                        feedState,
                       );
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    return _buildQuestionPage(
-                      questions[index],
-                      questions,
-                      total,
-                      feedState,
-                    );
-                  },
-                ),
+                    },
+                  ),
                   if (_revealQuestionNumber != null && _revealSnapshot != null)
                     Positioned.fill(
                       child: AnswerRevealOverlay(
@@ -902,15 +948,21 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                         prevOddballScore: _revealSnapshot!.prevOddballScore,
                         newOddballScore: _revealSnapshot!.newOddballScore,
                         oddballBumpLabel: _revealSnapshot!.oddballBumpLabel,
-                        mascotAssetPath: FeedPandaChoice.forQuestion(
-                          questions.firstWhere(
-                            (q) => q.number == _revealQuestionNumber,
-                            orElse: () => questions[feedState.questionIndex
-                                .clamp(0, questions.length - 1)],
-                          ),
-                        ).assetPathForExpression(
-                          _revealSnapshot!.isMinority ? 'minority' : 'majority',
-                        ),
+                        mascotAssetPath:
+                            FeedPandaChoice.forQuestion(
+                              questions.firstWhere(
+                                (q) => q.number == _revealQuestionNumber,
+                                orElse: () =>
+                                    questions[feedState.questionIndex.clamp(
+                                      0,
+                                      questions.length - 1,
+                                    )],
+                              ),
+                            ).assetPathForExpression(
+                              _revealSnapshot!.isMinority
+                                  ? 'minority'
+                                  : 'majority',
+                            ),
                         onFinished: _onRevealFinished,
                       ),
                     ),
@@ -943,7 +995,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
           'または .env の PANDA_TALK_API_BASE_URL を '
           'deploy 済みの https://….workers.dev に変更してください。';
     }
-    if (text.contains('Connection refused') || text.contains('Failed host lookup')) {
+    if (text.contains('Connection refused') ||
+        text.contains('Failed host lookup')) {
       return 'API に接続できません。\n'
           '.env の PANDA_TALK_API_BASE_URL を確認してください。';
     }
@@ -1019,9 +1072,9 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('更新に失敗しました: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('更新に失敗しました: $e')));
     }
   }
 
@@ -1055,8 +1108,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     final feedState = ref.watch(questionFeedControllerProvider);
     final bootstrap = ref.watch(feedBootstrapProvider);
     final windowAsync = ref.watch(feedWindowControllerProvider);
-    final inDiagnosis16 = !(ref.watch(diagnosis16UnlockedProvider).valueOrNull ??
-        false);
+    final inDiagnosis16 =
+        !(ref.watch(diagnosis16UnlockedProvider).valueOrNull ?? false);
 
     if (kDebugMode) {
       final bootstrapState = bootstrap.isLoading
@@ -1145,8 +1198,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
           });
         }
 
-        final allAnswered = !inDiagnosis16 &&
-            _feedIsAllAnswered(ordered, feedState);
+        final allAnswered =
+            !inDiagnosis16 && _feedIsAllAnswered(ordered, feedState);
 
         if (ref.read(feedJumpToQuestionNumberProvider) != null) {
           _schedulePendingFeedJump(ordered);
@@ -1219,4 +1272,3 @@ class _AnswerRevealSnapshot {
     this.oddballBumpLabel,
   });
 }
-

@@ -78,6 +78,7 @@ class ApiMatchRepository implements MatchRepository {
         id: user['id'] as String,
         name: user['name'] as String? ?? '名無しさん',
         matchRate: matchRatePercent,
+        avatarUrl: user['avatarUrl'] as String?,
       );
     }).toList();
   }
