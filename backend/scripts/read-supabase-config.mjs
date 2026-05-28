@@ -33,6 +33,18 @@ export function loadSupabaseUrl() {
   return null
 }
 
+export function loadDevVars() {
+  const devVars = path.join(backendDir, '.dev.vars')
+  if (!fs.existsSync(devVars)) return {}
+  return parseEnv(fs.readFileSync(devVars, 'utf8'))
+}
+
+export function loadRootEnv() {
+  const envPath = path.join(root, '.env')
+  if (!fs.existsSync(envPath)) return {}
+  return parseEnv(fs.readFileSync(envPath, 'utf8'))
+}
+
 export function projectRefFromUrl(url) {
   const m = url?.match(/https:\/\/([^.]+)\.supabase\.co/)
   return m ? m[1] : null
