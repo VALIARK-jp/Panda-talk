@@ -369,10 +369,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
   }) {
     if (questions.isEmpty) return false;
     if (_isAnswerFlowLocked) return false;
-    if (!_userHasNavigated) return true;
-    final idx = ref.read(questionFeedControllerProvider).questionIndex;
-    if (idx >= questions.length) return true;
-    return false;
+    if (ref.read(feedJumpToQuestionNumberProvider) != null) return false;
+    return !_userHasNavigated;
   }
 
   Future<void> _presentDiagnosisResult(PandaTypeResult result) async {
@@ -1113,15 +1111,16 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
       Future.microtask(() async {
         await notifier.reconcileWithServer(questions);
         if (!mounted) return;
+        final latestQuestions = _orderForTab(_questionsForCurrentTab());
         final feedState = ref.read(questionFeedControllerProvider);
-        notifier.applyServerStats(questions);
+        notifier.applyServerStats(latestQuestions);
 
         final snap = _shouldSnapToFrontier(
-          questions,
-          structureKey: _feedStructureKey(questions),
+          latestQuestions,
+          structureKey: _feedStructureKey(latestQuestions),
         );
         if (snap && !_pendingAdvanceAfterAnswer && _pageController != null) {
-          final frontier = _unansweredFrontierIndex(questions, feedState);
+          final frontier = _unansweredFrontierIndex(latestQuestions, feedState);
           final current = _pageController!.hasClients
               ? (_pageController!.page?.round() ?? 0)
               : feedState.questionIndex;
