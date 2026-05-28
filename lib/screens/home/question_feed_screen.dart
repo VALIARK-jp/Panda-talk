@@ -17,6 +17,7 @@ import '../../core/share_utils.dart';
 import '../../infrastructure/diagnosis_16_completion.dart';
 import '../../infrastructure/diagnosis_16_store.dart';
 import '../../infrastructure/diagnosis_16_sync.dart';
+import '../../infrastructure/oddball_position_prompt_store.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/diagnosis_providers.dart';
 import '../../presentation/providers/profile_providers.dart';
@@ -33,7 +34,9 @@ import '../../widgets/username_label.dart';
 import '../../widgets/answer_ratio_bar.dart';
 import '../../widgets/answer_reveal_overlay.dart';
 import '../../widgets/comment_activity_hint.dart';
+import '../../widgets/oddball_score_position_modal.dart';
 import '../../widgets/question_poster_section.dart';
+import '../profile/oddball_score_position_screen.dart';
 import 'question_comments_screen.dart';
 import 'question_history_screen.dart';
 
@@ -83,6 +86,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
 
   /// 回答オーバーレイ終了後、比率演出の余韻を残してから次の問へ。
   static const _advanceAfterRevealDelay = Duration(milliseconds: 300);
+  static const _oddballMilestoneInterval = 10;
 
   @override
   void dispose() {
@@ -256,9 +260,58 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
         currentIndex,
       );
       _animateToQuestion(nextIndex);
+      final oddballScore = oddballScorePercent(
+        minorityAnswerCount: feedState.minorityCount,
+        totalAnswerCount: feedState.answeredCount,
+      );
       _pendingAdvanceAfterAnswer = false;
       _lastAnsweredQuestionNumber = null;
+      unawaited(
+        _maybeShowOddballPositionPrompt(
+          answeredCount: feedState.answeredCount,
+          oddballScore: oddballScore,
+        ),
+      );
     });
+  }
+
+  Future<void> _maybeShowOddballPositionPrompt({
+    required int answeredCount,
+    required int oddballScore,
+  }) async {
+    if (answeredCount <= 0 || answeredCount % _oddballMilestoneInterval != 0) {
+      return;
+    }
+
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final milestone = answeredCount ~/ _oddballMilestoneInterval;
+    final lastShown = await OddballPositionPromptStore.loadLastShownMilestone(
+      userId: currentUserId,
+    );
+    if (lastShown >= milestone) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 480));
+    if (!mounted) return;
+
+    final openDetails = await showOddballScorePositionModal(
+      context,
+      score: oddballScore,
+      answeredCount: answeredCount,
+    );
+    await OddballPositionPromptStore.saveLastShownMilestone(
+      milestone,
+      userId: currentUserId,
+    );
+    if (!mounted || !openDetails) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OddballScorePositionScreen(
+          score: oddballScore,
+          answeredCount: answeredCount,
+        ),
+      ),
+    );
   }
 
   void _clearReveal() {

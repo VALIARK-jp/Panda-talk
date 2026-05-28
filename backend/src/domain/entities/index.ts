@@ -23,6 +23,18 @@ export type User = {
   tags?: string[]
 }
 
+export type OddballDistributionBin = {
+  start: number
+  end: number
+  count: number
+}
+
+export type OddballScoreDistribution = {
+  totalUsers: number
+  percentile: number
+  bins: OddballDistributionBin[]
+}
+
 export type AnswerChoice = 'a' | 'b'
 
 export type Question = {

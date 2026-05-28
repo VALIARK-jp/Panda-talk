@@ -1,10 +1,11 @@
-import type { UUID, User } from '../entities/index'
+import type { OddballScoreDistribution, UUID, User } from '../entities/index'
 
 export interface IUserRepository {
   findById(id: UUID): Promise<User | null>
   findByIds(ids: UUID[]): Promise<User[]>
   findByUsername(username: string): Promise<User | null>
   searchByUsername(prefix: string, limit: number): Promise<User[]>
+  getOddballScoreDistribution(score: number): Promise<OddballScoreDistribution>
   isUsernameTaken(username: string): Promise<boolean>
   create(data: Omit<User, 'id' | 'createdAt'>): Promise<User>
   upsert(data: Omit<User, 'createdAt'>): Promise<User>

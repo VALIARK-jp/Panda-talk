@@ -1,8 +1,10 @@
 import '../core/dummy_data.dart';
+import '../core/oddball_distribution.dart';
 
 abstract class ProfileRepository {
   Future<DummyProfile> getProfile();
   Future<DummyProfile> getUserProfile(String userId);
+  Future<OddballScoreDistribution> getOddballDistribution({required int score});
   Future<void> updateProfile({
     required String name,
     required String bio,

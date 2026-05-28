@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
 import '../core/dummy_data.dart';
+import '../core/oddball_distribution.dart';
 import 'api/api_profile_repository.dart';
 import 'profile_repository.dart';
 import 'supabase/supabase_profile_repository.dart';
@@ -27,6 +28,15 @@ class ResilientProfileRepository implements ProfileRepository {
   Future<DummyProfile> getUserProfile(String userId) => _withFallback(
         () => _api.getUserProfile(userId),
         () => _supabase.getUserProfile(userId),
+      );
+
+  @override
+  Future<OddballScoreDistribution> getOddballDistribution({
+    required int score,
+  }) =>
+      _withFallback(
+        () => _api.getOddballDistribution(score: score),
+        () => _supabase.getOddballDistribution(score: score),
       );
 
   @override

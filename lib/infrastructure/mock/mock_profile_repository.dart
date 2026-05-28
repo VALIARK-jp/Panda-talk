@@ -1,4 +1,5 @@
 import '../../core/dummy_data.dart';
+import '../../core/oddball_distribution.dart';
 import '../profile_repository.dart';
 
 class MockProfileRepository implements ProfileRepository {
@@ -18,6 +19,29 @@ class MockProfileRepository implements ProfileRepository {
   Future<DummyProfile> getProfile() async {
     await Future.delayed(const Duration(milliseconds: 500));
     return _profile;
+  }
+
+  @override
+  Future<OddballScoreDistribution> getOddballDistribution({
+    required int score,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    const sampleCounts = [2, 4, 7, 10, 14, 11, 8, 6, 3, 1];
+    final bins = List.generate(sampleCounts.length, (index) {
+      final start = index * 10;
+      final end = index == sampleCounts.length - 1 ? 100 : start + 9;
+      return OddballDistributionBin(
+        start: start,
+        end: end,
+        count: sampleCounts[index],
+      );
+    });
+    return OddballScoreDistribution(
+      score: score.clamp(0, 100),
+      totalUsers: sampleCounts.fold(0, (sum, count) => sum + count),
+      percentile: 62,
+      bins: bins,
+    );
   }
 
   @override

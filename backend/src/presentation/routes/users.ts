@@ -52,6 +52,21 @@ app.get('/search', authMiddleware, async (c) => {
   }
 })
 
+// GET /users/oddball-distribution - 異端児スコア分布
+app.get('/oddball-distribution', async (c) => {
+  try {
+    const score = Number(c.req.query('score') ?? '0')
+    const { getOddballScoreDistributionUseCase } = createContainer(c.env)
+    const distribution = await getOddballScoreDistributionUseCase.execute(score)
+    return c.json({
+      score: Math.max(0, Math.min(100, Math.round(score))),
+      ...distribution,
+    })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
 // GET /users/:id - ユーザープロフィール（認証必要）
 app.get('/:id', authMiddleware, async (c) => {
   try {

@@ -1,4 +1,8 @@
-import type { UUID, User } from '../../domain/entities/index'
+import type {
+  OddballScoreDistribution,
+  UUID,
+  User,
+} from '../../domain/entities/index'
 import type { IUserRepository } from '../../domain/repositories/IUserRepository'
 
 const users: User[] = [
@@ -48,6 +52,32 @@ export class MockUserRepository implements IUserRepository {
     return users
       .filter((u) => u.username.startsWith(prefix))
       .slice(0, limit)
+  }
+
+  async getOddballScoreDistribution(score: number): Promise<OddballScoreDistribution> {
+    const sampleScores = [4, 8, 13, 17, 21, 28, 32, 37, 41, 46, 52, 58, 63, 69, 74, 82]
+    const counts = Array.from({ length: 10 }, () => 0)
+    let belowOrEqual = 0
+
+    for (const raw of sampleScores) {
+      const value = Math.max(0, Math.min(100, raw))
+      const index = value === 100 ? 9 : Math.floor(value / 10)
+      counts[index] += 1
+      if (value <= score) belowOrEqual += 1
+    }
+
+    return {
+      totalUsers: sampleScores.length,
+      percentile:
+        sampleScores.length === 0
+          ? 0
+          : Math.round((belowOrEqual / sampleScores.length) * 100),
+      bins: counts.map((count, index) => ({
+        start: index * 10,
+        end: index === 9 ? 100 : index * 10 + 9,
+        count,
+      })),
+    }
   }
 
   async isUsernameTaken(username: string): Promise<boolean> {

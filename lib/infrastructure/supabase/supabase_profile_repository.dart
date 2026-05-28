@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/dummy_data.dart';
+import '../../core/oddball_distribution.dart';
 import '../../core/username_rules.dart';
 import '../profile_repository.dart';
 import 'oddball_score_fetch.dart';
@@ -12,6 +13,22 @@ class SupabaseProfileRepository implements ProfileRepository {
     : _client = client ?? Supabase.instance.client;
 
   final SupabaseClient _client;
+
+  @override
+  Future<OddballScoreDistribution> getOddballDistribution({
+    required int score,
+  }) async {
+    final rows = await _client
+        .from('panda_user_oddball_scores')
+        .select('oddball_score');
+
+    final values = rows
+        .whereType<Map<String, dynamic>>()
+        .map((row) => (row['oddball_score'] as num?)?.round() ?? 0)
+        .toList();
+
+    return _buildDistribution(score: score, scores: values);
+  }
 
   @override
   Future<DummyProfile> getUserProfile(String userId) async {
@@ -233,5 +250,44 @@ class SupabaseProfileRepository implements ProfileRepository {
       throw StateError('ログインしていません');
     }
     return id;
+  }
+
+  OddballScoreDistribution _buildDistribution({
+    required int score,
+    required List<int> scores,
+  }) {
+    const binSize = 10;
+    final clampedScore = score.clamp(0, 100);
+    final counts = List<int>.filled(10, 0);
+    var belowOrEqual = 0;
+
+    for (final raw in scores) {
+      final value = raw.clamp(0, 100);
+      final index = value == 100 ? 9 : value ~/ binSize;
+      counts[index]++;
+      if (value <= clampedScore) belowOrEqual++;
+    }
+
+    final bins = List.generate(10, (index) {
+      final start = index * binSize;
+      final end = index == 9 ? 100 : start + binSize - 1;
+      return OddballDistributionBin(
+        start: start,
+        end: end,
+        count: counts[index],
+      );
+    });
+
+    final totalUsers = scores.length;
+    final percentile = totalUsers == 0
+        ? 0
+        : ((belowOrEqual / totalUsers) * 100).round().clamp(0, 100);
+
+    return OddballScoreDistribution(
+      score: clampedScore,
+      totalUsers: totalUsers,
+      percentile: percentile,
+      bins: bins,
+    );
   }
 }

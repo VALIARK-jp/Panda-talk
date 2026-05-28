@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
 import '../../core/dummy_data.dart';
+import '../../core/oddball_distribution.dart';
 import '../../core/username_rules.dart';
 import '../profile_repository.dart';
 
@@ -41,6 +42,30 @@ class ApiProfileRepository implements ProfileRepository {
       auth: true,
     );
     return _profileFromJson(data['user'] as Map<String, dynamic>);
+  }
+
+  @override
+  Future<OddballScoreDistribution> getOddballDistribution({
+    required int score,
+  }) async {
+    final data = await _getJson(
+      Uri.parse('$_apiBaseUrl/users/oddball-distribution?score=$score'),
+    );
+    final bins = (data['bins'] as List<dynamic>? ?? const [])
+        .map(
+          (raw) => OddballDistributionBin(
+            start: (raw['start'] as num?)?.toInt() ?? 0,
+            end: (raw['end'] as num?)?.toInt() ?? 0,
+            count: (raw['count'] as num?)?.toInt() ?? 0,
+          ),
+        )
+        .toList();
+    return OddballScoreDistribution(
+      score: (data['score'] as num?)?.toInt() ?? score,
+      totalUsers: (data['totalUsers'] as num?)?.toInt() ?? 0,
+      percentile: (data['percentile'] as num?)?.toInt() ?? 0,
+      bins: bins,
+    );
   }
 
   @override

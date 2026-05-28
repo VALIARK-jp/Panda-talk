@@ -1,4 +1,8 @@
-import type { User, UUID } from '../../../domain/entities/index'
+import type {
+  OddballScoreDistribution,
+  User,
+  UUID,
+} from '../../../domain/entities/index'
 import type { IUserRepository } from '../../../domain/repositories/IUserRepository'
 import { SupabaseRestClient } from '../SupabaseRestClient'
 
@@ -86,6 +90,38 @@ export class SupabaseUserRepository implements IUserRepository {
       limit,
     })
     return rows.map((row) => mapUser(row))
+  }
+
+  async getOddballScoreDistribution(score: number): Promise<OddballScoreDistribution> {
+    const rows = await this.client.get<Array<{ oddball_score: number | null }>>(
+      'panda_user_oddball_scores',
+      {
+        select: 'oddball_score',
+      }
+    )
+
+    const counts = Array.from({ length: 10 }, () => 0)
+    let belowOrEqual = 0
+    const clampedScore = Math.max(0, Math.min(100, Math.round(score)))
+
+    for (const row of rows) {
+      const value = Math.max(0, Math.min(100, Math.round(row.oddball_score ?? 0)))
+      const index = value === 100 ? 9 : Math.floor(value / 10)
+      counts[index] += 1
+      if (value <= clampedScore) belowOrEqual += 1
+    }
+
+    const totalUsers = rows.length
+    return {
+      totalUsers,
+      percentile:
+        totalUsers === 0 ? 0 : Math.max(0, Math.min(100, Math.round((belowOrEqual / totalUsers) * 100))),
+      bins: counts.map((count, index) => ({
+        start: index * 10,
+        end: index === 9 ? 100 : index * 10 + 9,
+        count,
+      })),
+    }
   }
 
   async isUsernameTaken(username: string): Promise<boolean> {

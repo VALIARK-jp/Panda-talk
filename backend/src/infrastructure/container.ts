@@ -44,6 +44,7 @@ import { UpdateProfileUseCase } from '../domain/usecases/users/UpdateProfileUseC
 import { SearchUsersUseCase } from '../domain/usecases/users/SearchUsersUseCase'
 import { EnsureUserProfileUseCase } from '../domain/usecases/users/EnsureUserProfileUseCase'
 import { DeleteUserUseCase } from '../domain/usecases/users/DeleteUserUseCase'
+import { GetOddballScoreDistributionUseCase } from '../domain/usecases/users/GetOddballScoreDistributionUseCase'
 import { GetCommentsUseCase } from '../domain/usecases/comments/GetCommentsUseCase'
 import { PostCommentUseCase } from '../domain/usecases/comments/PostCommentUseCase'
 import { DeleteCommentUseCase } from '../domain/usecases/comments/DeleteCommentUseCase'
@@ -145,6 +146,7 @@ export function createContainer(env?: Env) {
     getProfileUseCase: new GetProfileUseCase(userRepo),
     updateProfileUseCase: new UpdateProfileUseCase(userRepo),
     searchUsersUseCase: new SearchUsersUseCase(userRepo),
+    getOddballScoreDistributionUseCase: new GetOddballScoreDistributionUseCase(userRepo),
     deleteUserUseCase: new DeleteUserUseCase(userRepo, env),
     getCommentsUseCase: new GetCommentsUseCase(commentRepo),
     postCommentUseCase: new PostCommentUseCase(commentRepo),
