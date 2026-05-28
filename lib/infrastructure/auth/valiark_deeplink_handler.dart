@@ -1,4 +1,3 @@
-import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,8 +10,6 @@ import '../../config/app_config.dart';
 /// 「Code verifier could not be found in local storage」になる。
 class ValiarkDeeplinkHandler {
   ValiarkDeeplinkHandler._();
-
-  static bool _started = false;
 
   /// 同一 URI を二重に処理しない（initialLink と uriLinkStream の両方が届く端末対策）。
   static final Set<String> _sessionUrlHandled = {};
@@ -38,7 +35,7 @@ class ValiarkDeeplinkHandler {
     return uri.toString().contains('login-callback');
   }
 
-  static Future<void> _consumeAuthUri(Uri uri) async {
+  static Future<void> consumeAuthUri(Uri uri) async {
     if (!isAuthSessionUri(uri)) return;
 
     final key = uri.toString();
@@ -56,21 +53,8 @@ class ValiarkDeeplinkHandler {
     }
   }
 
-  /// Call once after first frame (e.g. from [AuthGate]).
+  /// @deprecated [ShareDeeplinkHandler.handleOnce] が AppLinks を一本化して呼ぶ。
   static void handleOnce() {
-    if (_started) return;
-    _started = true;
-
-    final appLinks = AppLinks();
-
-    appLinks.getInitialLink().then((Uri? uri) async {
-      if (!isAuthSessionUri(uri)) return;
-      await _consumeAuthUri(uri!);
-    });
-
-    appLinks.uriLinkStream.listen((Uri? uri) async {
-      if (!isAuthSessionUri(uri)) return;
-      await _consumeAuthUri(uri!);
-    });
+    // ShareDeeplinkHandler が認証 URI も処理する。
   }
 }

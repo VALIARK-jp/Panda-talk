@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/design_tokens.dart';
-import '../infrastructure/auth/valiark_deeplink_handler.dart';
+import '../infrastructure/share/share_deeplink_handler.dart';
 import '../infrastructure/post_auth_flow.dart';
 import '../features/auth/screens/auth/login_screen.dart';
 import '../features/auth/screens/auth/signup_screen.dart';
@@ -23,16 +23,18 @@ class AuthGate extends ConsumerStatefulWidget {
 }
 
 class _AuthGateState extends ConsumerState<AuthGate> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ValiarkDeeplinkHandler.handleOnce();
-    });
-  }
+  var _shareDeeplinkStarted = false;
 
   @override
   Widget build(BuildContext context) {
+    if (!_shareDeeplinkStarted) {
+      _shareDeeplinkStarted = true;
+      ShareDeeplinkHandler.bind(ref);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ShareDeeplinkHandler.handleOnce();
+      });
+    }
+
     final asyncUser = ref.watch(authUserProvider);
     final user = asyncUser.valueOrNull ?? Supabase.instance.client.auth.currentUser;
     final guest = ref.watch(guestModeProvider);

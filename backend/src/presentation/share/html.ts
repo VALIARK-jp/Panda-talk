@@ -2,21 +2,49 @@
  * SNS共有から踏まれた時に返す HTML（OGP メタ + 最小 LP）。
  *
  * - X / LINE のクローラは JS を実行しないので `<head>` に OGP を直書き
- * - 同じ HTML を人間も見るので、最小限の LP + App Store CTA も入れる
+ * - 同じ HTML を人間も見るので、最小限の LP + ストア CTA も入れる
  * - 実装の文体・URL設計は docs/18_share_growth_spec.md §3-4 と一致させる
  */
 
-/** App Store / Google Play / Web LP の差し向け先。 */
+import type { Env } from '../../infrastructure/env'
+
+/** 静的アセット（Vercel 上の Flutter Web ビルド）。 */
+export const STATIC_ASSET_BASE = 'https://valiark.jp/panda-talk'
+
+const DEFAULT_ANDROID_URL =
+  'https://play.google.com/store/apps/details?id=io.valiark.pandatalk'
+
+/** TestFlight / App Store URL 未設定時の iOS フォールバック（Web ではない）。 */
+const DEFAULT_IOS_SEARCH_URL =
+  'https://apps.apple.com/jp/search?term=%E3%83%91%E3%83%B3%E3%83%80%E3%83%88%E3%83%BC%E3%82%AF'
+
+/** App Store / TestFlight / Play / Web LP の差し向け先。 */
+export type SharePageLinks = {
+  iosAppUrl: string
+  androidAppUrl: string
+  webAppUrl: string
+  brandLogoUrl: string
+  defaultOgImage: string
+}
+
+/** Worker の env から LP 用リンクを解決。 */
+export function resolveSharePageLinks(env?: Env): SharePageLinks {
+  return {
+    iosAppUrl: env?.SHARE_IOS_APP_URL?.trim() ?? '',
+    androidAppUrl:
+      env?.SHARE_ANDROID_APP_URL?.trim() || DEFAULT_ANDROID_URL,
+    webAppUrl: STATIC_ASSET_BASE,
+    brandLogoUrl: `${STATIC_ASSET_BASE}/assets/assets/images/app_icon.png`,
+    defaultOgImage: `${STATIC_ASSET_BASE}/icons/Icon-512.png`,
+  }
+}
+
+/** @deprecated resolveSharePageLinks を使う */
 export const APP_LINKS = {
-  /** TestFlight 段階のため空。本配信後に `https://apps.apple.com/app/idXXXX` で差し替える。 */
   appStoreUrl: '',
-  /** Bundle ID 確定後に有効化。 */
-  playStoreUrl:
-    'https://play.google.com/store/apps/details?id=io.valiark.pandatalk',
-  /** 既存の Flutter Web 版。 */
-  webAppUrl: 'https://valiark.jp/panda-talk',
-  /** OGP用の汎用画像。後でロゴ等を `legal-site/og/share-default.png` 等に配置して差し替え。 */
-  defaultOgImage: 'https://valiark.jp/panda-talk/icons/Icon-512.png',
+  playStoreUrl: DEFAULT_ANDROID_URL,
+  webAppUrl: STATIC_ASSET_BASE,
+  defaultOgImage: `${STATIC_ASSET_BASE}/icons/Icon-512.png`,
 }
 
 function escapeHtml(input: string): string {
@@ -52,11 +80,16 @@ export type ShareHtmlInput = {
  * 重要: bodyHtml は呼び出し側が **必ず escapeHtml 済み** にすること。
  *  title / description / canonicalUrl / imageUrl は本関数内でエスケープ。
  */
-export function renderShareHtml(input: ShareHtmlInput): string {
+export function renderShareHtml(
+  input: ShareHtmlInput,
+  links: SharePageLinks
+): string {
   const title = escapeAttr(input.title)
   const description = escapeAttr(input.description)
   const canonicalUrl = escapeAttr(input.canonicalUrl)
   const imageUrl = escapeAttr(input.imageUrl)
+  const brandLogo = escapeAttr(links.brandLogoUrl)
+  const webAppUrl = escapeAttr(links.webAppUrl)
 
   return `<!doctype html>
 <html lang="ja">
@@ -66,6 +99,7 @@ export function renderShareHtml(input: ShareHtmlInput): string {
 <meta name="theme-color" content="#111111">
 <title>${title}</title>
 <meta name="description" content="${description}">
+<link rel="icon" href="${brandLogo}">
 <link rel="canonical" href="${canonicalUrl}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="パンダトーク">
@@ -94,14 +128,23 @@ export function renderShareHtml(input: ShareHtmlInput): string {
     margin: 0 auto;
     padding: 32px 20px 64px;
   }
-  .brand {
+  .brand { margin-bottom: 24px; }
+  .brand a {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #777777;
     font-size: 14px;
     font-weight: 800;
     letter-spacing: 0.04em;
-    color: #777777;
-    margin-bottom: 24px;
+    text-decoration: none;
   }
-  .brand a { color: inherit; text-decoration: none; }
+  .brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
   .card {
     border: 1px solid #e5e5e5;
     border-radius: 24px;
@@ -154,10 +197,10 @@ export function renderShareHtml(input: ShareHtmlInput): string {
     font-size: 15px;
     margin: 0 0 20px;
   }
+  .cta-group { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
   .cta {
     display: block;
     width: 100%;
-    margin-top: 20px;
     padding: 16px;
     background: #111;
     color: #fff;
@@ -171,7 +214,13 @@ export function renderShareHtml(input: ShareHtmlInput): string {
     background: #fff;
     color: #111;
     border: 1px solid #111;
-    margin-top: 8px;
+  }
+  .web-link {
+    display: block;
+    margin-top: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: #777;
   }
   .footer {
     margin-top: 32px;
@@ -184,39 +233,55 @@ export function renderShareHtml(input: ShareHtmlInput): string {
 </head>
 <body>
   <main class="container">
-    <div class="brand"><a href="${escapeAttr(APP_LINKS.webAppUrl)}">🐼 パンダトーク</a></div>
+    <div class="brand">
+      <a href="${webAppUrl}">
+        <img class="brand-logo" src="${brandLogo}" width="32" height="32" alt="">
+        パンダトーク
+      </a>
+    </div>
     ${input.bodyHtml}
     <p class="footer">
       白黒つけるほど、仲良くなるSNS<br>
-      <a href="${escapeAttr(APP_LINKS.webAppUrl)}">パンダトーク</a>
+      <a href="${webAppUrl}">パンダトーク</a>
     </p>
   </main>
 </body>
 </html>`
 }
 
-/**
- * CTA ボタン群を組み立てる。
- * App Store URL が未確定の今は Web LP を主導線にする。
- */
-export function renderCtaButtons(options?: { primaryLabel?: string }): string {
-  const primaryLabel = options?.primaryLabel ?? 'アプリで開く'
-  const buttons: string[] = []
+type CtaOptions = {
+  primaryLabel?: string
+  userAgent?: string
+}
 
-  if (APP_LINKS.appStoreUrl) {
-    buttons.push(
-      `<a class="cta" href="${escapeAttr(APP_LINKS.appStoreUrl)}">${escapeHtml(primaryLabel)}（iOS）</a>`
-    )
-  }
-  buttons.push(
-    `<a class="cta${APP_LINKS.appStoreUrl ? ' secondary' : ''}" href="${escapeAttr(APP_LINKS.playStoreUrl)}">${escapeHtml(primaryLabel)}（Android）</a>`
-  )
-  if (!APP_LINKS.appStoreUrl) {
-    buttons.push(
-      `<a class="cta secondary" href="${escapeAttr(APP_LINKS.webAppUrl)}">Webで体験する</a>`
-    )
-  }
-  return buttons.join('\n')
+/**
+ * iPhone / Android のストア導線を常に出す。
+ * TestFlight / App Store URL は deploy 時の SHARE_IOS_APP_URL で注入。
+ */
+export function renderCtaButtons(
+  links: SharePageLinks,
+  options?: CtaOptions
+): string {
+  const primaryLabel = options?.primaryLabel ?? 'アプリで開く'
+  const ua = options?.userAgent ?? ''
+  const isIos = /iPhone|iPad|iPod/i.test(ua)
+  const isAndroid = /Android/i.test(ua)
+
+  const iosHref = links.iosAppUrl || DEFAULT_IOS_SEARCH_URL
+  const iosPrimary = isIos || (!isIos && !isAndroid)
+  const androidPrimary = isAndroid && !isIos
+
+  const iosButton = `<a class="cta${iosPrimary ? '' : ' secondary'}" href="${escapeAttr(iosHref)}">${escapeHtml(primaryLabel)}（iPhone）</a>`
+  const androidButton = `<a class="cta${androidPrimary ? '' : ' secondary'}" href="${escapeAttr(links.androidAppUrl)}">${escapeHtml(primaryLabel)}（Android）</a>`
+
+  const ordered = isAndroid
+    ? `${androidButton}\n${iosButton}`
+    : `${iosButton}\n${androidButton}`
+
+  return `<div class="cta-group">
+${ordered}
+<a class="web-link" href="${escapeAttr(links.webAppUrl)}">Webで体験する</a>
+</div>`
 }
 
 /** Question 用の本文 HTML。 */
@@ -227,7 +292,11 @@ export type QuestionBodyInput = {
   percentA: number
 }
 
-export function renderQuestionBody(input: QuestionBodyInput): string {
+export function renderQuestionBody(
+  input: QuestionBodyInput,
+  links: SharePageLinks,
+  userAgent?: string
+): string {
   const percentA = clampPercent(input.percentA)
   const percentB = 100 - percentA
   const aMajority = percentA >= percentB
@@ -245,7 +314,7 @@ export function renderQuestionBody(input: QuestionBodyInput): string {
       </div>
     </div>
     <p class="lead">あなたはどっち？</p>
-    ${renderCtaButtons({ primaryLabel: 'アプリで答える' })}
+    ${renderCtaButtons(links, { primaryLabel: 'アプリで答える', userAgent })}
   </article>`
 }
 
@@ -256,14 +325,18 @@ export type PandaTypeBodyInput = {
   imageUrl: string
 }
 
-export function renderPandaTypeBody(input: PandaTypeBodyInput): string {
+export function renderPandaTypeBody(
+  input: PandaTypeBodyInput,
+  links: SharePageLinks,
+  userAgent?: string
+): string {
   return `
   <article class="card">
     <img class="panda-image" src="${escapeAttr(input.imageUrl)}" alt="${escapeAttr(input.displayName)}">
     <p class="panda-name">${escapeHtml(input.displayName)}</p>
     <p class="panda-tagline">${escapeHtml(input.tagline)}</p>
     <p class="lead">あなたはどのパンダ？16問でわかる価値観診断。</p>
-    ${renderCtaButtons({ primaryLabel: 'アプリで診断する' })}
+    ${renderCtaButtons(links, { primaryLabel: 'アプリで診断する', userAgent })}
   </article>`
 }
 
@@ -276,9 +349,13 @@ export type ProfileBodyInput = {
   oddballScore?: number | null
 }
 
-export function renderProfileBody(input: ProfileBodyInput): string {
+export function renderProfileBody(
+  input: ProfileBodyInput,
+  links: SharePageLinks,
+  userAgent?: string
+): string {
   const pandaLine = input.pandaTypeName
-    ? `<p class="panda-name">🐼 ${escapeHtml(input.pandaTypeName)}</p>${
+    ? `<p class="panda-name">${escapeHtml(input.pandaTypeName)}</p>${
         input.pandaTagline
           ? `<p class="panda-tagline">${escapeHtml(input.pandaTagline)}</p>`
           : ''
@@ -292,17 +369,21 @@ export function renderProfileBody(input: ProfileBodyInput): string {
     ${pandaLine}
     ${odd}
     <p class="lead">${escapeHtml(input.name)} さんのパンダトーク。</p>
-    ${renderCtaButtons({ primaryLabel: 'アプリで診断する' })}
+    ${renderCtaButtons(links, { primaryLabel: 'アプリで診断する', userAgent })}
   </article>`
 }
 
 /** 404 / 410 用のシンプルなページ。 */
-export function renderNotFoundBody(message: string): string {
+export function renderNotFoundBody(
+  message: string,
+  links: SharePageLinks,
+  userAgent?: string
+): string {
   return `
   <article class="card">
     <h1>見つかりませんでした</h1>
     <p class="lead">${escapeHtml(message)}</p>
-    ${renderCtaButtons({ primaryLabel: 'パンダトークを開く' })}
+    ${renderCtaButtons(links, { primaryLabel: 'パンダトークを開く', userAgent })}
   </article>`
 }
 

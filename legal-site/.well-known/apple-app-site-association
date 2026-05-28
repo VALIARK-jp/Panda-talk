@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "6KX9X2UAGT.com.valiark.pandaTalk",
+        "paths": [
+          "/panda-talk/q/*",
+          "/panda-talk/u/*",
+          "/panda-talk/type/*"
+        ]
+      }
+    ]
+  }
+}

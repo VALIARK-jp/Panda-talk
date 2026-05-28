@@ -49,6 +49,19 @@ class MockFriendRepository implements FriendRepository {
   }
 
   @override
+  Future<DummyUser?> findUserByUsername(String username) async {
+    final normalized = username.trim().replaceFirst('@', '').toLowerCase();
+    if (normalized.isEmpty) return null;
+    for (final user in _candidates) {
+      if (user.id.toLowerCase() == normalized ||
+          user.name.toLowerCase() == normalized) {
+        return user;
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<void> sendFriendRequest(String userId) async {
     _requestedUserIds.add(userId);
   }

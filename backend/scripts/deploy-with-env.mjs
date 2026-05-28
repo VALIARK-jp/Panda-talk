@@ -47,6 +47,10 @@ const defaultShareBase = isProd
     : 'https://panda-talk-backend.valiark.workers.dev/share'
 const sharePublicBase =
   fileEnv.PANDA_TALK_SHARE_BASE_URL?.replace(/\/+$/, '') || defaultShareBase
+const shareIosAppUrl = fileEnv.PANDA_TALK_IOS_APP_URL?.trim() ?? ''
+const shareAndroidAppUrl =
+  fileEnv.PANDA_TALK_ANDROID_APP_URL?.trim() ??
+  'https://play.google.com/store/apps/details?id=io.valiark.pandatalk'
 
 if (!supabaseUrl || !supabaseAnon) {
   console.error(`${envFile} needs PANDA_TALK_SUPABASE_URL and PANDA_TALK_SUPABASE_ANON_KEY`)
@@ -69,6 +73,10 @@ const wranglerArgs = [
   `APP_ENV:${isProd ? 'production' : 'development'}`,
   '--var',
   `SHARE_PUBLIC_BASE_URL:${sharePublicBase}`,
+  '--var',
+  `SHARE_IOS_APP_URL:${shareIosAppUrl}`,
+  '--var',
+  `SHARE_ANDROID_APP_URL:${shareAndroidAppUrl}`,
 ]
 
 if (isProd) {

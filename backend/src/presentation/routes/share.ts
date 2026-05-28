@@ -1,14 +1,16 @@
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { createContainer } from '../../infrastructure/container'
 import type { Env } from '../../infrastructure/env'
 import { findPandaTypeBySlug } from '../share/pandaTypes'
 import {
-  APP_LINKS,
+  STATIC_ASSET_BASE,
   renderNotFoundBody,
   renderPandaTypeBody,
   renderProfileBody,
   renderQuestionBody,
   renderShareHtml,
+  resolveSharePageLinks,
 } from '../share/html'
 
 /**
@@ -31,6 +33,14 @@ function publicBase(env: Env): string {
   )
 }
 
+function shareContext(c: Context<{ Bindings: Env }>) {
+  return {
+    base: publicBase(c.env),
+    links: resolveSharePageLinks(c.env),
+    userAgent: c.req.header('user-agent') ?? '',
+  }
+}
+
 function htmlResponse(body: string, status = 200) {
   return new Response(body, {
     status,
@@ -49,8 +59,6 @@ function clamp01to100(n: number | undefined | null): number {
   return Math.round(n)
 }
 
-const STATIC_ASSET_BASE = 'https://valiark.jp/panda-talk'
-
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text
   return text.slice(0, max - 1) + '…'
@@ -58,18 +66,25 @@ function truncate(text: string, max: number): string {
 
 // GET /share/q/:number - 質問共有 LP
 app.get('/q/:number', async (c) => {
-  const base = publicBase(c.env)
+  const ctx = shareContext(c)
   const numberParam = c.req.param('number')
   const questionNumber = Number(numberParam)
   if (!Number.isInteger(questionNumber) || questionNumber <= 0) {
     return htmlResponse(
-      renderShareHtml({
-        title: 'パンダトーク',
-        description: '白黒つけるほど、仲良くなるSNS。',
-        canonicalUrl: `${base}/q/${encodeURIComponent(numberParam)}`,
-        imageUrl: APP_LINKS.defaultOgImage,
-        bodyHtml: renderNotFoundBody('質問IDが正しくありません。'),
-      }),
+      renderShareHtml(
+        {
+          title: 'パンダトーク',
+          description: '白黒つけるほど、仲良くなるSNS。',
+          canonicalUrl: `${ctx.base}/q/${encodeURIComponent(numberParam)}`,
+          imageUrl: ctx.links.defaultOgImage,
+          bodyHtml: renderNotFoundBody(
+            '質問IDが正しくありません。',
+            ctx.links,
+            ctx.userAgent
+          ),
+        },
+        ctx.links
+      ),
       404
     )
   }
@@ -80,13 +95,20 @@ app.get('/q/:number', async (c) => {
     const question = await getQuestionByNumberUseCase.execute(questionNumber)
     if (!question) {
       return htmlResponse(
-        renderShareHtml({
-          title: `Q.${questionNumber} | パンダトーク`,
-          description: 'この質問は見つかりませんでした。',
-          canonicalUrl: `${base}/q/${questionNumber}`,
-          imageUrl: APP_LINKS.defaultOgImage,
-          bodyHtml: renderNotFoundBody('指定の質問は見つかりませんでした。'),
-        }),
+        renderShareHtml(
+          {
+            title: `Q.${questionNumber} | パンダトーク`,
+            description: 'この質問は見つかりませんでした。',
+            canonicalUrl: `${ctx.base}/q/${questionNumber}`,
+            imageUrl: ctx.links.defaultOgImage,
+            bodyHtml: renderNotFoundBody(
+              '指定の質問は見つかりませんでした。',
+              ctx.links,
+              ctx.userAgent
+            ),
+          },
+          ctx.links
+        ),
         404
       )
     }
@@ -104,29 +126,43 @@ app.get('/q/:number', async (c) => {
     )
 
     return htmlResponse(
-      renderShareHtml({
-        title,
-        description,
-        canonicalUrl: `${base}/q/${question.questionNumber}`,
-        imageUrl: APP_LINKS.defaultOgImage,
-        bodyHtml: renderQuestionBody({
-          text: question.text,
-          optionA: question.optionA,
-          optionB: question.optionB,
-          percentA,
-        }),
-      })
+      renderShareHtml(
+        {
+          title,
+          description,
+          canonicalUrl: `${ctx.base}/q/${question.questionNumber}`,
+          imageUrl: ctx.links.defaultOgImage,
+          bodyHtml: renderQuestionBody(
+            {
+              text: question.text,
+              optionA: question.optionA,
+              optionB: question.optionB,
+              percentA,
+            },
+            ctx.links,
+            ctx.userAgent
+          ),
+        },
+        ctx.links
+      )
     )
   } catch (err) {
     console.error('share /q error:', err)
     return htmlResponse(
-      renderShareHtml({
-        title: 'パンダトーク',
-        description: '一時的にページを表示できませんでした。',
-        canonicalUrl: `${base}/q/${questionNumber}`,
-        imageUrl: APP_LINKS.defaultOgImage,
-        bodyHtml: renderNotFoundBody('一時的にページを表示できませんでした。'),
-      }),
+      renderShareHtml(
+        {
+          title: 'パンダトーク',
+          description: '一時的にページを表示できませんでした。',
+          canonicalUrl: `${ctx.base}/q/${questionNumber}`,
+          imageUrl: ctx.links.defaultOgImage,
+          bodyHtml: renderNotFoundBody(
+            '一時的にページを表示できませんでした。',
+            ctx.links,
+            ctx.userAgent
+          ),
+        },
+        ctx.links
+      ),
       500
     )
   }
@@ -134,7 +170,7 @@ app.get('/q/:number', async (c) => {
 
 // GET /share/u/:username - プロフィール共有 LP
 app.get('/u/:username', async (c) => {
-  const base = publicBase(c.env)
+  const ctx = shareContext(c)
   const username = c.req.param('username')
 
   try {
@@ -142,15 +178,20 @@ app.get('/u/:username', async (c) => {
     const user = await getUserByUsernameUseCase.execute(username)
     if (!user) {
       return htmlResponse(
-        renderShareHtml({
-          title: `@${username} | パンダトーク`,
-          description: 'プロフィールが見つかりませんでした。',
-          canonicalUrl: `${base}/u/${encodeURIComponent(username)}`,
-          imageUrl: APP_LINKS.defaultOgImage,
-          bodyHtml: renderNotFoundBody(
-            'このプロフィールは見つかりませんでした。'
-          ),
-        }),
+        renderShareHtml(
+          {
+            title: `@${username} | パンダトーク`,
+            description: 'プロフィールが見つかりませんでした。',
+            canonicalUrl: `${ctx.base}/u/${encodeURIComponent(username)}`,
+            imageUrl: ctx.links.defaultOgImage,
+            bodyHtml: renderNotFoundBody(
+              'このプロフィールは見つかりませんでした。',
+              ctx.links,
+              ctx.userAgent
+            ),
+          },
+          ctx.links
+        ),
         404
       )
     }
@@ -173,30 +214,44 @@ app.get('/u/:username', async (c) => {
     }
 
     return htmlResponse(
-      renderShareHtml({
-        title,
-        description: truncate(descriptionParts.join(' / '), 120),
-        canonicalUrl: `${base}/u/${encodeURIComponent(user.username)}`,
-        imageUrl: APP_LINKS.defaultOgImage,
-        bodyHtml: renderProfileBody({
-          name: user.name,
-          username: user.username,
-          pandaTypeName: pandaType?.displayName ?? null,
-          pandaTagline: pandaType?.tagline ?? null,
-          oddballScore,
-        }),
-      })
+      renderShareHtml(
+        {
+          title,
+          description: truncate(descriptionParts.join(' / '), 120),
+          canonicalUrl: `${ctx.base}/u/${encodeURIComponent(user.username)}`,
+          imageUrl: ctx.links.defaultOgImage,
+          bodyHtml: renderProfileBody(
+            {
+              name: user.name,
+              username: user.username,
+              pandaTypeName: pandaType?.displayName ?? null,
+              pandaTagline: pandaType?.tagline ?? null,
+              oddballScore,
+            },
+            ctx.links,
+            ctx.userAgent
+          ),
+        },
+        ctx.links
+      )
     )
   } catch (err) {
     console.error('share /u error:', err)
     return htmlResponse(
-      renderShareHtml({
-        title: 'パンダトーク',
-        description: '一時的にページを表示できませんでした。',
-        canonicalUrl: `${base}/u/${encodeURIComponent(username)}`,
-        imageUrl: APP_LINKS.defaultOgImage,
-        bodyHtml: renderNotFoundBody('一時的にページを表示できませんでした。'),
-      }),
+      renderShareHtml(
+        {
+          title: 'パンダトーク',
+          description: '一時的にページを表示できませんでした。',
+          canonicalUrl: `${ctx.base}/u/${encodeURIComponent(username)}`,
+          imageUrl: ctx.links.defaultOgImage,
+          bodyHtml: renderNotFoundBody(
+            '一時的にページを表示できませんでした。',
+            ctx.links,
+            ctx.userAgent
+          ),
+        },
+        ctx.links
+      ),
       500
     )
   }
@@ -204,40 +259,50 @@ app.get('/u/:username', async (c) => {
 
 // GET /share/type/:slug - 16type 診断結果の共有 LP（DB引かず静的）
 app.get('/type/:slug', (c) => {
-  const base = publicBase(c.env)
+  const ctx = shareContext(c)
   const slug = c.req.param('slug')
   const def = findPandaTypeBySlug(slug)
   if (!def) {
     return htmlResponse(
-      renderShareHtml({
-        title: 'パンダトーク 16type 診断',
-        description: 'この診断タイプは見つかりませんでした。',
-        canonicalUrl: `${base}/type/${encodeURIComponent(slug)}`,
-        imageUrl: APP_LINKS.defaultOgImage,
-        bodyHtml: renderNotFoundBody(
-          '指定の診断タイプは見つかりませんでした。'
-        ),
-      }),
+      renderShareHtml(
+        {
+          title: 'パンダトーク 16type 診断',
+          description: 'この診断タイプは見つかりませんでした。',
+          canonicalUrl: `${ctx.base}/type/${encodeURIComponent(slug)}`,
+          imageUrl: ctx.links.defaultOgImage,
+          bodyHtml: renderNotFoundBody(
+            '指定の診断タイプは見つかりませんでした。',
+            ctx.links,
+            ctx.userAgent
+          ),
+        },
+        ctx.links
+      ),
       404
     )
   }
 
-  // 公開済みのパンダ画像（Flutter Web の assets をそのまま使う）。
-  // 実体パスは legal-site/panda-talk/assets/assets/images/panda/{N}.PNG（ゼロパディング無し）。
   const imageUrl = `${STATIC_ASSET_BASE}/assets/assets/images/panda/${def.imageIndex}.PNG`
 
   return htmlResponse(
-    renderShareHtml({
-      title: `${def.displayName} | パンダトーク 16type 診断`,
-      description: truncate(def.tagline, 120),
-      canonicalUrl: `${base}/type/${def.slug}`,
-      imageUrl,
-      bodyHtml: renderPandaTypeBody({
-        displayName: def.displayName,
-        tagline: def.tagline,
+    renderShareHtml(
+      {
+        title: `${def.displayName} | パンダトーク 16type 診断`,
+        description: truncate(def.tagline, 120),
+        canonicalUrl: `${ctx.base}/type/${def.slug}`,
         imageUrl,
-      }),
-    })
+        bodyHtml: renderPandaTypeBody(
+          {
+            displayName: def.displayName,
+            tagline: def.tagline,
+            imageUrl,
+          },
+          ctx.links,
+          ctx.userAgent
+        ),
+      },
+      ctx.links
+    )
   )
 })
 

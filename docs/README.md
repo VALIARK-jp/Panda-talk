@@ -19,4 +19,4 @@
 | [13_auth_flow_spec.md](./13_auth_flow_spec.md) | **認証フロー設計仕様**（セッション成立経路・正本）。[Mermaid 図のブラウザ表示](./preview/13_auth_flow_spec_diagrams.html) |
 | [05_auth.md](./05_auth.md) | Supabase / Edge の構築・運用・トラブルシュート |
 | [14_development_api_and_devices.md](./14_development_api_and_devices.md) | **ローカル開発・実機・API 向き先**（localhost / deploy / ngrok・BFF 方針） |
-| [18_share_growth_spec.md](./18_share_growth_spec.md) | **SNS共有・ディープリンク試作仕様**（共有文刷新・URL設計・OGP・Universal Links） |
+| [18_share_growth_spec.md](./18_share_growth_spec.md) | **SNS共有・ディープリンク試作仕様**（Phase 1〜3 実装済み・§10 引き継ぎチェックリスト） |

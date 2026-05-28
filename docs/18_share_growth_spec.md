@@ -1,8 +1,9 @@
 # 18. SNS共有・ディープリンク試作仕様
 
 > ブランチ: `feature/share-deeplink-growth`
-> ステータス: **試作（議論ログ兼仕様ドラフト）**
+> ステータス: **Phase 1〜3 実装済み / デプロイ・実機 UL 検証は未完了**
 > 関連: `02_features.md` / `09_screens.md` / `17_marketing.md`
+> 最終更新: 2026-05-28（Phase 3 実装 + 引き継ぎメモ）
 
 ---
 
@@ -173,21 +174,17 @@ Worker: `SHARE_PUBLIC_BASE_URL`（`npm run deploy` / `deploy:prod` で注入）
 
 レベルを切って、段階的に出す。
 
-### Phase 1 — 共有文の刷新（最優先・低コスト）
+### Phase 1 — 共有文の刷新 ✅ 実装済み
 
-- `diagnosis_16_result_modal.dart` の共有テキストを §3-2 形式に
-- `question_feed_screen.dart` の共有テキストを §3-1 形式に
-- `profile_screen.dart` の共有テキストを §3-3 形式に
-- すべての共有文の末尾に `https://valiark.jp/panda-talk/...` を入れる
-- この段階ではアプリ内遷移は不要。**通常URLとして貼られればOK**
+- `lib/core/share_utils.dart` — `ShareUrls` / `ShareTexts` / `AppShare`
+- 共有文を §3 形式に刷新（診断 / 質問 / プロフィール / 回答結果 / ユーザ詳細）
+- URL ベースは [AppConfig.shareBaseUrl](../lib/config/app_config.dart)（dev/prod 分離）
 
-> ここが一番費用対効果が高い。すぐ着手。
-
-### Phase 1.5 — 主要SNSへの直行ボタン（BeReal 型導線）
+### Phase 1.5 — 主要SNSへの直行ボタン ✅ 実装済み
 
 BeReal の「Instagram / X に直接送る」UI を踏襲する。
 **現在の依存関係（`share_plus` / `url_launcher` / `flutter_line_sdk`）だけで実装可能**。
-追加ライブラリはゼロ。
+実装: `lib/widgets/share_action_sheet.dart` / `lib/core/share_utils.dart`（`ShareChannels`）
 
 #### 共有シートUIの想定
 
@@ -254,10 +251,9 @@ await launchUrl(lineUrl, mode: LaunchMode.externalApplication);
 
 #### 実装範囲のまとめ
 
-- **Phase 1.5 で出すもの**: X 直行ボタン / LINE 直行ボタン / ネイティブシート（既存）
 - **Phase 4 と一緒に出すもの**: Instagram Stories 直行（画像必須なので）
 
-### Phase 2 — Web 受け皿（valiark.jp/panda-talk）✅ 実装済み
+### Phase 2 — Web 受け皿（valiark.jp/panda-talk）✅ コード実装済み（本番反映は一部未）
 
 **配信スタック**:
 - ドメイン: `valiark.jp/panda-talk/...`（既存 Vercel）
@@ -274,18 +270,48 @@ await launchUrl(lineUrl, mode: LaunchMode.externalApplication);
 - `backend/src/domain/repositories/IQuestionRepository.ts` — `findByNumber` 追加
 - `legal-site/vercel.json` — `/panda-talk/q/:id` 等の rewrite を Worker に proxy
 
-**残課題（Phase 2 完了の前にやる）**:
-- [ ] **Worker のデプロイ**（`backend && npm run deploy`）— コードはマージしたが本番反映が必要
-- [ ] **Vercel デプロイ**（`legal-site/vercel.json` の更新を反映）
-- [ ] **OGP 画像の差し替え**（現状は `Icon-512.png` を流用。X の summary_large_image は 1200×630 推奨）
-- [ ] **App Store URL の差し込み**（`APP_LINKS.appStoreUrl` 空欄）— TestFlight 段階のため未確定
+**残課題（Phase 2 の本番運用）**:
+- [x] **dev Worker デプロイ** — `https://panda-talk-backend.valiark.workers.dev/share/q/:n` で OGP/LP 確認済み
+- [ ] **prod Worker デプロイ** — `npm run deploy:prod`（本番 DB 向け・ユーザー判断待ち）
+- [ ] **Vercel デプロイ** — `legal-site/` を main 反映（`valiark.jp/panda-talk/*` rewrite + `.well-known`）
+- [ ] **OGP 画像の差し替え**（現状は `Icon-512.png` を流用。1200×630 推奨）
+- [ ] **App Store / TestFlight URL** — Worker env `SHARE_IOS_APP_URL` / LP の iOS CTA
+- [ ] **LP 細部** — iOS ボタン常時表示・ブランドアイコン差し替え（`html.ts` 修正済み、dev 再デプロイ要確認）
 
-### Phase 3 — ディープリンク受信（アプリ側）
+### Phase 3 — ディープリンク受信（アプリ側）✅ コード実装済み（UL/App Links 検証は未）
 
-- Universal Links (iOS) / App Links (Android) の設定
-- `app_links` で `https://valiark.jp/panda-talk/q/:id` 等を受信
-- `GoRouter` で該当画面に直接遷移
-- データ未取得時のローディング・404 ハンドリングを定義
+**方針（GoRouter は未導入）**: 既存の `MaterialApp` + `Navigator` + Riverpod のまま、`app_links` で受信 → `pendingShareRouteProvider` → `MainApp` が画面遷移。
+
+| 受信 URL | アプリ内動作 | ログイン |
+|---|---|---|
+| `…/panda-talk/q/:number` または `…/share/q/:number` | ホームタブ → `openQuestionInFeed` | 不要（ゲスト可） |
+| `…/panda-talk/type/:slug` | `showDiagnosis16ResultModal`（タイプ紹介） | 不要 |
+| `…/panda-talk/u/:username` | `UserDetailScreen` を push | **必要** |
+
+**Flutter 実装ファイル**:
+- `lib/infrastructure/share/share_deeplink.dart` — URI 解析（prod / dev Worker 両対応）
+- `lib/infrastructure/share/share_deeplink_handler.dart` — `app_links` 受信（認証 PKCE と一本化）
+- `lib/presentation/providers/share_deeplink_providers.dart` — `pendingShareRouteProvider`
+- `lib/presentation/share/share_deeplink_navigation.dart` — 画面遷移実行
+- `lib/presentation/auth_gate.dart` — ハンドラ起動
+- `lib/screens/main_app.dart` — pending route の消費
+- `lib/infrastructure/auth/valiark_deeplink_handler.dart` — 認証 URI のみ処理（`ShareDeeplinkHandler` から委譲）
+- `lib/core/panda_type.dart` — `PandaTypeCatalog.previewResultForSlug`
+- `lib/infrastructure/friend_repository.dart` / `api_friend_repository.dart` — `findUserByUsername`
+
+**ネイティブ / Web 設定（コード追加済み・デプロイ/Portal 作業は未）**:
+- `ios/Runner/Runner.entitlements` — `applinks:valiark.jp`
+- `android/app/src/main/AndroidManifest.xml` — App Links intent-filter
+- `legal-site/.well-known/apple-app-site-association`
+- `legal-site/.well-known/assetlinks.json`（**SHA256 はプレースホルダ**）
+- `legal-site/vercel.json` — `.well-known` の Content-Type ヘッダー
+
+**残課題（Phase 3 の本番検証）** — 詳細は §10:
+- [ ] Vercel デプロイで AASA / assetlinks を公開
+- [ ] Apple Developer: App ID `com.valiark.pandaTalk` で Associated Domains 有効化 → 再プロビジョン → 再ビルド
+- [ ] Android: `assetlinks.json` に実署名 SHA256 を填入
+- [ ] iOS 実機で Universal Links E2E（Notes 等からタップ）
+- [ ] Android 実機で App Links E2E
 
 工数感（議論時の見立て）:
 
@@ -334,18 +360,137 @@ OGP は Web 側準備が必要なので、Phase 2 のWeb受け皿と同時に進
 
 ---
 
-## 8. 次の一手
+## 8. 次の一手（2026-05-28 時点）
 
-1. §3 のフォーマットで既存3つの共有文を書き換える（Phase 1）
-2. §4 の URL 設計を確定（チーム合意）
-3. X 直行 / LINE 直行ボタンを既存共有導線に追加（Phase 1.5・追加ライブラリ不要）
-4. `valiark.jp/panda-talk/q/:id` の最小 LP + OGP を用意（Phase 2）
-5. `app_links` の認証以外のパス受信を追加し、`GoRouter` に流す（Phase 3）
-6. 質問カード画像生成 → `share_plus` で画像付き共有 / Instagram Stories 直行（Phase 4）
+**完了**: Phase 1 / 1.5 / 2（コード）/ 3（コード）
+
+**次に人がやること（優先順）**:
+
+1. **Vercel デプロイ**（`legal-site/`）— rewrite + AASA + assetlinks を `valiark.jp` に載せる
+2. **Apple Developer** — Associated Domains ON → 実機/TestFlight 再ビルド
+3. **Android assetlinks** — 署名 SHA256 を填入
+4. **iOS 実機 UL 検証** — §10 手順（`flutter run` だけでは不可）
+5. **prod Worker デプロイ** — 本番テスター向け LP/OGP（判断が出たら）
+6. **Phase 4** — 画像カード + Instagram Stories
 
 ---
 
-## 9. 参考: BeReal の共有導線
+## 9. 実機テストの整理（特に iOS）
+
+### `flutter run` だけでは Universal Links は試せない
+
+| やりたいこと | `flutter run`（実機） | 追加で必要なもの |
+|---|---|---|
+| アプリ内の共有ボタン → 共有文に URL が入る | ✅ 可 | なし |
+| dev Worker URL をブラウザで開く → OGP/LP | ✅ 可（URL を直接開く） | dev Worker デプロイ済み |
+| **リンクをタップ → アプリが開く（UL）** | ❌ 不可 | AASA 公開 + Associated Domains + 再インストール |
+| **URL 受信後の画面遷移ロジック**（Phase 3） | △ 限定的 | 下記「遷移だけ試す方法」 |
+
+**理由（iOS）**:
+- Universal Links は **OS が `valiark.jp` の AASA を読み、別アプリ（Notes / X 等）からのタップ** で初めて発火する
+- `flutter run` はアプリを起動するだけで、**HTTPS URL を OS 経由で注入しない**
+- Safari のアドレスバー直打ちも Universal Link にならない（Apple 仕様）
+
+### 遷移ロジックだけ試す方法
+
+| 環境 | 方法 |
+|---|---|
+| **iOS Simulator** | アプリ起動後: `xcrun simctl openurl booted "https://valiark.jp/panda-talk/q/17"` |
+| **iOS 実機（UL なし）** | 実質むずかしい。**AASA デプロイ後に Notes からタップ** が現実的 |
+| **Android 実機** | `adb shell am start -a android.intent.action.VIEW -d "https://valiark.jp/panda-talk/q/17" com.pandatalk.panda_talk`（UL 検証前でも遷移確認しやすい） |
+
+### iOS 実機で Universal Links を通すチェックリスト
+
+1. [ ] `legal-site` を Vercel デプロイ
+2. [ ] `curl -I https://valiark.jp/.well-known/apple-app-site-association` が 200 + JSON
+3. [ ] Apple Developer → App ID `com.valiark.pandaTalk` → **Associated Domains** 有効
+4. [ ] Xcode で再ビルド（Team `6KX9X2UAGT`）→ 実機に**再インストール**
+5. [ ] Notes に `https://valiark.jp/panda-talk/q/17` を貼り**タップ**（Safari アドレスバーでは不可）
+6. [ ] アプリ起動 → ホームタブで Q17 付近へジャンプすること
+
+**bundle / team（固定値）**:
+- Bundle ID: `com.valiark.pandaTalk`
+- Team ID: `6KX9X2UAGT`
+- AASA `appID`: `6KX9X2UAGT.com.valiark.pandaTalk`
+
+---
+
+## 10. 引き継ぎチェックリスト（担当者向け）
+
+### いま repo に入っているもの
+
+| 領域 | 状態 |
+|---|---|
+| 共有文・X/LINE 直行 | ✅ マージ前ブランチ上で実装済み |
+| Worker `/share/*` + OGP HTML | ✅ 実装済み / dev デプロイ済み |
+| Flutter ディープリンク受信〜遷移 | ✅ 実装済み |
+| `legal-site/vercel.json` rewrite | ✅ コードあり / **Vercel 未反映の可能性** |
+| `.well-known`（AASA / assetlinks） | ✅ ファイルあり / **Vercel 未反映** |
+| iOS entitlements | ✅ コードあり / **Portal + 再ビルド要** |
+| Android App Links | ✅ Manifest あり / **assetlinks SHA256 要填入** |
+
+### 担当者が順にやること
+
+#### A. Web（Vercel + 任意 prod Worker）
+
+```bash
+# legal-site を valiark.jp に反映（main merge + Vercel auto deploy または手動）
+# 確認
+curl -sS https://valiark.jp/.well-known/apple-app-site-association | head
+curl -I https://valiark.jp/panda-talk/q/17
+```
+
+- [ ] `legal-site/vercel.json` が production に載っている
+- [ ] AASA / assetlinks が 404 ではない
+- [ ] （本番 LP 用）`backend && npm run deploy:prod` — **prod 判断後**
+
+#### B. iOS（Universal Links）
+
+- [ ] [Apple Developer](https://developer.apple.com) → Identifiers → `com.valiark.pandaTalk` → Associated Domains ✓
+- [ ] Xcode → Signing 再生成 → Archive / TestFlight または実機 Run
+- [ ] 実機に**新ビルドを再インストール**（AASA はインストール時に取得）
+- [ ] Notes から `https://valiark.jp/panda-talk/q/17` をタップして E2E
+
+#### C. Android（App Links）
+
+- [ ] 署名証明書の SHA256 を取得:
+  ```bash
+  keytool -list -v -keystore <keystore> -alias <alias>
+  ```
+- [ ] `legal-site/.well-known/assetlinks.json` の `REPLACE_WITH_RELEASE_OR_DEBUG_SHA256` を差し替え → Vercel 再デプロイ
+- [ ] 実機インストール後:
+  ```bash
+  adb shell pm get-app-links com.pandatalk.panda_talk
+  ```
+- [ ] `adb shell am start …` またはブラウザタップで E2E
+
+#### D. アプリ設定（テスター向け）
+
+| 用途 | `.env` / ビルド | 共有 URL |
+|---|---|---|
+| 日常 dev | `.env` | `https://panda-talk-backend….workers.dev/share/...` |
+| TestFlight / 本番テスター | `.env.prod` | `https://valiark.jp/panda-talk/...` |
+
+- [ ] TestFlight ビルドは `PANDA_TALK_SHARE_BASE_URL=https://valiark.jp/panda-talk` でビルド
+- [ ] UL 検証は **valiark.jp URL のみ**（workers.dev は AASA 対象外）
+
+#### E. 未着手（Phase 4 以降）
+
+- [ ] 質問 / 診断の画像カード生成 + `share_plus` ファイル共有
+- [ ] Instagram Stories 直行（`Info.plist` `LSApplicationQueriesSchemes`）
+- [ ] OGP 専用画像 1200×630
+- [ ] 流入計測 `?from=share` / analytics
+
+### 既知の制約・仕様
+
+- `/u/:username` 深リンクは **API が認証必須** → 未ログイン時は Snackbar「ログインが必要」
+- ナビは **GoRouter なし**（`MainApp` + `Navigator.push`）
+- 認証 PKCE と共有 URL は **同一 `AppLinks` リスナー**（二重 `getSessionFromUrl` 防止済み）
+- dev 共有 URL（workers.dev）はアプリ内解析はするが **Universal Links にはならない**
+
+---
+
+## 11. 参考: BeReal の共有導線
 
 - アプリ内に Instagram / X への共有導線がある
 - 押すとそのSNSの投稿画面に直行
