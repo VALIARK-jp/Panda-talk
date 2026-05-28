@@ -13,7 +13,6 @@ import '../../widgets/tag_chip.dart';
 import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/user_avatar.dart';
 import '../../widgets/username_label.dart';
-import '../talk/direct_chat_screen.dart';
 import 'answer_compare_screen.dart';
 
 class UserDetailScreen extends ConsumerStatefulWidget {
@@ -209,7 +208,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                   GestureDetector(
                     onTap: () => AppShare.text(
                       context,
-                      '${displayName}さんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
+                      '$displayNameさんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
                     ),
                     child: const Icon(Icons.ios_share, color: AppColors.black),
                   ),
@@ -219,7 +218,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
             const SizedBox(height: AppSpacing.md),
             profileAsync.when(
               loading: () => const UserAvatar(size: 80),
-              error: (_, __) => const UserAvatar(size: 80),
+              error: (_, _) => const UserAvatar(size: 80),
               data: (profile) => UserAvatar(
                 size: 80,
                 imageUrl: profile.avatarUrl,
@@ -276,7 +275,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                       loading: () => const Center(
                         child: CircularProgressIndicator(),
                       ),
-                      error: (_, __) => Center(
+                      error: (_, _) => Center(
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
                           child: Text(
@@ -304,16 +303,6 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                         ? '友達'
                         : (isRequested ? '申請済み' : '友達申請を送る'),
                     onTap: isFriend || isRequested ? null : _sendFriendRequest,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  PandaOutlinedButton(
-                    label: 'メッセージ',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DirectChatScreen(user: widget.user),
-                      ),
-                    ),
                   ),
                 ],
               ),
