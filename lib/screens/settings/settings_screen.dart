@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
-import '../../presentation/providers/settings_providers.dart';
 import '../../presentation/session_reset.dart';
 import '../../widgets/panda_button.dart';
 
@@ -10,8 +9,6 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsControllerProvider);
-    final controller = ref.read(settingsControllerProvider.notifier);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -34,44 +31,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const Text(
-              'プッシュ通知',
-              style: TextStyle(
-                fontSize: AppFontSize.md,
-                fontWeight: FontWeight.w700,
-                color: AppColors.black,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            settings.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('エラー: $e'),
-              data: (s) => Column(
-                children: [
-                  _SwitchRow(
-                    title: '友達申請',
-                    value: s.friendRequests,
-                    onChanged: controller.updateFriendRequests,
-                  ),
-                  _SwitchRow(
-                    title: '質問へのいいね',
-                    value: s.questionLikes,
-                    onChanged: controller.updateQuestionLikes,
-                  ),
-                  _SwitchRow(
-                    title: 'DM・グループチャット',
-                    value: s.messages,
-                    onChanged: controller.updateMessages,
-                  ),
-                  _SwitchRow(
-                    title: 'グループ再編成',
-                    value: s.groupUpdates,
-                    onChanged: controller.updateGroupUpdates,
-                  ),
-                ],
-              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             PandaOutlinedButton(
@@ -146,50 +105,5 @@ class SettingsScreen extends ConsumerWidget {
         SnackBar(content: Text('削除に失敗しました: $e')),
       );
     }
-  }
-}
-
-class _SwitchRow extends StatelessWidget {
-  final String title;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchRow({
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.softGray,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: AppFontSize.md,
-                color: AppColors.black,
-              ),
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.black,
-          ),
-        ],
-      ),
-    );
   }
 }
