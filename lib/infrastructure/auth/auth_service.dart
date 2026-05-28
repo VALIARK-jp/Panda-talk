@@ -179,7 +179,7 @@ class AuthService {
         }());
       }
 
-      if (flow == NativeAuthFlow.signup && nativeResponse.isNewUser) {
+      if (nativeResponse.isNewUser) {
         final userId = _supabase.auth.currentUser?.id;
         if (userId != null) {
           await ProfileOnboardingStore.requireSetup(userId);
@@ -261,7 +261,7 @@ class AuthService {
         }
       }
 
-      if (flow == NativeAuthFlow.signup && nativeResponse.isNewUser) {
+      if (nativeResponse.isNewUser) {
         final userId = _supabase.auth.currentUser?.id;
         if (userId != null) {
           await ProfileOnboardingStore.requireSetup(userId);

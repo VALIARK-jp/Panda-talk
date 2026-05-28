@@ -70,7 +70,7 @@ class ProfileOnboardingStore {
   static final _usernamePattern = RegExp(r'^[a-zA-Z0-9_]{3,30}$');
 
   /// 表示名・ユーザーコードが DB 上で埋まっているか（再ログイン時のスキップ用）。
-  /// 自動採番 username でも値があればスキップする。
+  /// 自動採番 username は未完了扱い。
   static bool hasRequiredFieldsFilled({
     required String username,
     required String name,

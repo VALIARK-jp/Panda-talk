@@ -38,20 +38,8 @@ export class EnsureUserProfileUseCase {
     if (existing?.username?.trim()) {
       return existing.username
     }
-    const requested = input.username ?? input.name ?? input.email ?? input.userId
-    const base = normalizeUsername(requested)
-    let candidate = base
-    let suffix = input.userId.replace(/-/g, '').slice(0, 6)
-    let i = 0
-
-    while (true) {
-      const found = await this.userRepo.findByUsername(candidate)
-      if (!found || found.id === input.userId) return candidate
-
-      const tail = i === 0 ? suffix : `${suffix}${i}`
-      candidate = `${base.slice(0, Math.max(3, 30 - tail.length - 1))}_${tail}`.slice(0, 30)
-      i += 1
-    }
+    // OAuth の displayName / email を username に流用しない（初回設定画面でユーザーが決める）。
+    return generatePlaceholderUsername(input.userId)
   }
 
   private resolveName(
@@ -64,15 +52,7 @@ export class EnsureUserProfileUseCase {
   }
 }
 
-function normalizeUsername(value: string): string {
-  const normalized = value
-    .toLowerCase()
-    .split('@')[0]
-    .replace(/[^a-z0-9_]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 30)
-
-  if (normalized.length >= 3) return normalized
-  return `panda_${normalized}`.slice(0, 30)
+function generatePlaceholderUsername(userId: string): string {
+  const suffix = userId.replace(/-/g, '').slice(0, 6)
+  return `panda_${suffix}`.slice(0, 30)
 }
