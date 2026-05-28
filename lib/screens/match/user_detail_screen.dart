@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/match_rate_utils.dart';
 import '../../core/share_utils.dart';
 import '../../presentation/providers/friend_providers.dart';
 import '../../presentation/providers/match_providers.dart';
@@ -11,6 +12,7 @@ import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/user_avatar.dart';
+import '../../widgets/username_label.dart';
 import '../talk/direct_chat_screen.dart';
 import 'answer_compare_screen.dart';
 
@@ -149,13 +151,22 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     final profileAsync = ref.watch(userProfileProvider(u.id));
     final compareAsync = ref.watch(compareAnswersProvider(u.id));
     final compareAnswers = compareAsync.valueOrNull ?? const [];
-    final commonAnswerCount = compareAnswers.length;
-    final sameAnswerCount = compareAnswers
+    final compareCommonAnswerCount = compareAnswers.length;
+    final compareSameAnswerCount = compareAnswers
         .where((answer) => answer['match'] == true)
         .length;
+    final commonAnswerCount = compareAsync.hasValue
+        ? compareCommonAnswerCount
+        : (u.commonAnswerCount ?? 0);
+    final sameAnswerCount = compareAsync.hasValue
+        ? compareSameAnswerCount
+        : (u.sameAnswerCount ?? 0);
     final displayedMatchRate = commonAnswerCount > 0
-        ? (sameAnswerCount / commonAnswerCount * 100).round()
-        : u.matchRate;
+        ? matchRatePercent(
+            sameAnswerCount: sameAnswerCount,
+            commonAnswerCount: commonAnswerCount,
+          )
+        : u.resolvedMatchRate;
     final friendState = ref.watch(friendControllerProvider).valueOrNull;
     final isFriend =
         friendState?.friends.any((friend) => friend.id == u.id) ?? false;
@@ -223,11 +234,11 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                 color: AppColors.black,
               ),
             ),
-            Text(
-              '@$displayUsername',
-              style: const TextStyle(
-                fontSize: AppFontSize.md,
-                color: AppColors.textGray,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: UsernameLabel(
+                username: displayUsername,
+                textAlign: TextAlign.center,
               ),
             ),
             if (widget.fromMatch) ...[

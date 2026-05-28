@@ -54,5 +54,5 @@ export class EnsureUserProfileUseCase {
 
 function generatePlaceholderUsername(userId: string): string {
   const suffix = userId.replace(/-/g, '').slice(0, 6)
-  return `panda_${suffix}`.slice(0, 30)
+  return `panda_${suffix}`.slice(0, 20)
 }

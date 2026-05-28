@@ -29,6 +29,7 @@ import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/user_avatar.dart';
+import '../../widgets/username_label.dart';
 import '../../widgets/answer_ratio_bar.dart';
 import '../../widgets/answer_reveal_overlay.dart';
 import '../../widgets/comment_activity_hint.dart';
@@ -480,37 +481,45 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    UserAvatar(
-                                      size: 28,
-                                      imageUrl: q.authorAvatarUrl,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          q.authorName,
-                                          style: const TextStyle(
-                                            fontSize: AppFontSize.sm,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.black,
-                                          ),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      UserAvatar(
+                                        size: 28,
+                                        imageUrl: q.authorAvatarUrl,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              q.authorName,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: AppFontSize.sm,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.black,
+                                              ),
+                                            ),
+                                            UsernameLabel(
+                                              username: q.authorUsername,
+                                              style: const TextStyle(
+                                                fontSize: AppFontSize.sm,
+                                                color: AppColors.textGray,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          '@${q.authorUsername}',
-                                          style: const TextStyle(
-                                            fontSize: AppFontSize.sm,
-                                            color: AppColors.textGray,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(width: 8),
                                 Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
                                       'Q.${q.number}',

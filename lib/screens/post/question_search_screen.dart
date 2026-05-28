@@ -8,6 +8,7 @@ import '../../core/design_tokens.dart';
 import '../../presentation/providers/question_providers.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/user_avatar.dart';
+import '../../widgets/username_label.dart';
 
 class QuestionSearchScreen extends ConsumerStatefulWidget {
   const QuestionSearchScreen({super.key});
@@ -196,13 +197,12 @@ class _QuestionSearchScreenState extends ConsumerState<QuestionSearchScreen> {
                                             ),
                                             const SizedBox(width: 6),
                                             Expanded(
-                                              child: Text(
-                                                '@${q.authorUsername}',
+                                              child: UsernameLabel(
+                                                username: q.authorUsername,
                                                 style: const TextStyle(
                                                   fontSize: AppFontSize.sm,
                                                   color: AppColors.textGray,
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],

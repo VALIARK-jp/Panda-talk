@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
 import '../../core/dummy_data.dart';
+import '../../core/username_rules.dart';
 import '../profile_repository.dart';
 
 class ApiProfileRepository implements ProfileRepository {
@@ -101,7 +102,7 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   bool _isValidUsername(String username) {
-    return RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(username);
+    return UsernameRules.isValid(username);
   }
 
   @override

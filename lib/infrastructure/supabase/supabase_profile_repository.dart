@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/dummy_data.dart';
+import '../../core/username_rules.dart';
 import '../profile_repository.dart';
 import 'oddball_score_fetch.dart';
 
@@ -137,7 +138,7 @@ class SupabaseProfileRepository implements ProfileRepository {
   @override
   Future<bool> isUsernameAvailable(String username) async {
     final normalized = username.trim().toLowerCase();
-    if (!RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(normalized)) {
+    if (!UsernameRules.isValid(normalized)) {
       return false;
     }
     final userId = _requireUserId();

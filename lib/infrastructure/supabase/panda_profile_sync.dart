@@ -50,5 +50,5 @@ String generatePlaceholderUsername(String userId) {
   final suffix = userId.replaceAll('-', '');
   final shortSuffix = suffix.length >= 6 ? suffix.substring(0, 6) : suffix;
   final value = 'panda_$shortSuffix';
-  return value.length > 30 ? value.substring(0, 30) : value;
+  return value.length > 20 ? value.substring(0, 20) : value;
 }

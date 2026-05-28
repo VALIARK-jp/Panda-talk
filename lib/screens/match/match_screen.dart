@@ -235,7 +235,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                                 return MatchUserTile(
                                   rank: i + 1,
                                   name: u.name,
-                                  matchRate: u.matchRate,
+                                  matchRate: u.resolvedMatchRate,
                                   avatarUrl: u.avatarUrl,
                                   onTap: () => Navigator.push(
                                     context,

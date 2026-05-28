@@ -1,5 +1,6 @@
 import type { IUserRepository } from '../../repositories/IUserRepository'
 import type { User } from '../../entities/index'
+import { isValidUsername } from '../../usernameRules'
 
 interface UpdateProfileInput {
   userId: string
@@ -22,6 +23,9 @@ export class UpdateProfileUseCase {
     const user = await this.userRepo.findById(input.userId)
     if (!user) {
       throw Object.assign(new Error('User not found'), { code: 'NOT_FOUND' })
+    }
+    if (input.username !== undefined && !isValidUsername(input.username)) {
+      throw Object.assign(new Error('Invalid username'), { code: 'VALIDATION' })
     }
     return this.userRepo.update(input.userId, {
       name: input.name,
