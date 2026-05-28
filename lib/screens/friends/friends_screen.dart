@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/friend_providers.dart';
-import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/user_avatar.dart';
 import '../match/user_detail_screen.dart';
 
 class FriendsScreen extends ConsumerStatefulWidget {
@@ -168,7 +168,10 @@ class _FriendTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          GestureDetector(onTap: onTap, child: PandaAvatar(size: 44)),
+          GestureDetector(
+            onTap: onTap,
+            child: UserAvatar(size: 44, imageUrl: user.avatarUrl),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: GestureDetector(
@@ -234,7 +237,7 @@ class _RequestCard extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             child: Row(
               children: [
-                PandaAvatar(size: 44),
+                UserAvatar(size: 44, imageUrl: request.user.avatarUrl),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

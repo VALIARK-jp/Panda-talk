@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
 import '../../core/dummy_data.dart';
+import '../../core/match_rate_utils.dart';
 import '../match_repository.dart';
 
 class ApiMatchRepository implements MatchRepository {
@@ -70,14 +71,26 @@ class ApiMatchRepository implements MatchRepository {
       final match = matchData as Map<String, dynamic>;
       final user = match['user'] as Map<String, dynamic>;
       final rawMatchRate = (match['matchRate'] as num? ?? 0).toDouble();
-      final matchRatePercent = rawMatchRate <= 1
-          ? (rawMatchRate * 100).round()
-          : rawMatchRate.round();
+      final commonAnswerCount = (match['commonAnswerCount'] as num?)?.toInt();
+      final sameAnswerCount = (match['sameAnswerCount'] as num?)?.toInt();
+      final percent = commonAnswerCount != null &&
+              sameAnswerCount != null &&
+              commonAnswerCount > 0
+          ? matchRatePercent(
+              sameAnswerCount: sameAnswerCount,
+              commonAnswerCount: commonAnswerCount,
+            )
+          : rawMatchRate <= 1
+              ? (rawMatchRate * 100).round()
+              : rawMatchRate.round();
 
       return DummyUser(
         id: user['id'] as String,
         name: user['name'] as String? ?? '名無しさん',
-        matchRate: matchRatePercent,
+        matchRate: percent,
+        commonAnswerCount: commonAnswerCount,
+        sameAnswerCount: sameAnswerCount,
+        avatarUrl: user['avatarUrl'] as String?,
       );
     }).toList();
   }

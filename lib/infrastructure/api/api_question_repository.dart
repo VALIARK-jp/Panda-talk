@@ -64,10 +64,7 @@ class ApiQuestionRepository implements QuestionRepository {
     String? questionId,
     int? currentQuestionNumber,
   }) async {
-    final params = <String, String>{
-      'before': '$before',
-      'after': '$after',
-    };
+    final params = <String, String>{'before': '$before', 'after': '$after'};
     if (questionNumber != null) {
       params['questionNumber'] = '$questionNumber';
     }
@@ -352,6 +349,7 @@ class ApiQuestionRepository implements QuestionRepository {
       category: json['category'] as String? ?? 'その他',
       authorName: _posterDisplayName(poster),
       authorUsername: poster?['username'] as String? ?? 'unknown',
+      authorAvatarUrl: poster?['avatarUrl'] as String?,
       text: json['text'] as String,
       optionA: json['optionA'] as String,
       optionB: json['optionB'] as String,
@@ -425,10 +423,7 @@ class ApiQuestionRepository implements QuestionRepository {
 
   Future<Map<String, dynamic>> _getJson(Uri uri, {bool auth = false}) async {
     final response = await _client
-        .get(
-          uri,
-          headers: await _headers(auth: auth),
-        )
+        .get(uri, headers: await _headers(auth: auth))
         .timeout(_requestTimeout);
     return _decode(response);
   }
@@ -465,10 +460,7 @@ class ApiQuestionRepository implements QuestionRepository {
 
   Future<void> _delete(Uri uri, {bool auth = false}) async {
     final response = await _client
-        .delete(
-          uri,
-          headers: await _headers(auth: auth),
-        )
+        .delete(uri, headers: await _headers(auth: auth))
         .timeout(_requestTimeout);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError(response.body);

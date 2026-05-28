@@ -1,6 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/username_rules.dart';
+
 const _kProfileSetupPrefix = 'panda_profile_setup_done_v1_';
 const _kPendingEmailSignup = 'panda_pending_profile_setup_email_v1';
 const _kAuthMetadataCompleteKey = 'profileSetupComplete';
@@ -67,16 +69,14 @@ class ProfileOnboardingStore {
     await requireSetup(userId);
   }
 
-  static final _usernamePattern = RegExp(r'^[a-zA-Z0-9_]{3,30}$');
-
   /// 表示名・ユーザーコードが DB 上で埋まっているか（再ログイン時のスキップ用）。
-  /// 自動採番 username でも値があればスキップする。
+  /// 自動採番 username は未完了扱い。
   static bool hasRequiredFieldsFilled({
     required String username,
     required String name,
   }) {
     final normalizedName = name.trim();
-    final normalizedUsername = username.trim().toLowerCase();
+    final normalizedUsername = UsernameRules.normalize(username);
     if (normalizedName.isEmpty ||
         normalizedName == '名無しさん' ||
         normalizedName == 'panda user') {
@@ -85,7 +85,7 @@ class ProfileOnboardingStore {
     if (normalizedUsername.isEmpty || normalizedUsername == 'unknown') {
       return false;
     }
-    return _usernamePattern.hasMatch(normalizedUsername);
+    return UsernameRules.isValid(normalizedUsername);
   }
 
   /// ユーザーが自分で決めた username か（厳しめ。同期用）。

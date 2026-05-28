@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../core/username_rules.dart';
 import '../../infrastructure/supabase/avatar_upload_service.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/app_text_field.dart';
@@ -30,8 +31,6 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   bool _saving = false;
   bool _fieldsInitialized = false;
   String? _errorMessage;
-
-  static final _usernamePattern = RegExp(r'^[a-zA-Z0-9_]{3,30}$');
 
   @override
   void dispose() {
@@ -68,9 +67,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       setState(() => _errorMessage = 'ユーザー名を入力してください');
       return;
     }
-    if (!_usernamePattern.hasMatch(username)) {
+    if (!UsernameRules.isValid(username)) {
       setState(
-        () => _errorMessage = 'ユーザーコードは英数字と_のみ、3〜30文字です',
+        () => _errorMessage = UsernameRules.validationMessage,
       );
       return;
     }
@@ -185,11 +184,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 AppTextField(
                   label: 'ユーザーコード',
                   controller: _usernameController,
+                  maxLength: UsernameRules.maxLength,
                 ),
                 const Padding(
                   padding: EdgeInsets.only(top: 6),
                   child: Text(
-                    '@ユーザーコード として表示されます（英数字と _ のみ）',
+                    '@ユーザーコード として表示されます（英数字と _ のみ、3〜20文字）',
                     style: TextStyle(
                       fontSize: AppFontSize.sm,
                       color: AppColors.textGray,

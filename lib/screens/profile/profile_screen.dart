@@ -11,6 +11,7 @@ import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/personality_tendency_chips.dart';
 import '../../widgets/speech_bubble.dart';
 import '../../widgets/tag_chip.dart';
+import '../../widgets/username_label.dart';
 import '../friends/friends_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../settings/settings_screen.dart';
@@ -142,11 +143,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '@${profile.username}',
-                    style: const TextStyle(
-                      fontSize: AppFontSize.md,
-                      color: AppColors.textGray,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    child: UsernameLabel(
+                      username: profile.username,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),

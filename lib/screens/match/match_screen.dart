@@ -12,6 +12,7 @@ import '../../widgets/login_required_gate.dart';
 import '../../widgets/match_user_tile.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/user_avatar.dart';
 import '../friends/friends_screen.dart';
 import 'user_detail_screen.dart';
 
@@ -33,6 +34,23 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
     if (_tabIndex == 0) return ref.watch(similarUsersProvider);
     if (_tabIndex == 1) return ref.watch(oppositeUsersProvider);
     return ref.watch(middleUsersProvider);
+  }
+
+  Future<void> _refreshMatchData() async {
+    try {
+      if (_searchQuery.trim().isNotEmpty) {
+        await ref
+            .read(friendControllerProvider.notifier)
+            .setSearchQuery(_searchQuery);
+        return;
+      }
+      await refreshMatchLists(ref, activeTabIndex: _tabIndex);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('更新に失敗しました: ${formatApiUserFacingError(e)}')),
+      );
+    }
   }
 
   @override
@@ -154,21 +172,22 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
               Expanded(
                 child: searching
                     ? friendStateAsync.when(
-                        data: (friendState) => _FriendSearchResults(
-                          users: friendState.searchResults,
-                          requestedUserIds: friendState.requestedUserIds,
-                          onOpenUser: (user) => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => UserDetailScreen(
-                                user: user,
-                                fromMatch: true,
+                        data: (friendState) => RefreshIndicator(
+                          onRefresh: _refreshMatchData,
+                          child: _FriendSearchResults(
+                            users: friendState.searchResults,
+                            requestedUserIds: friendState.requestedUserIds,
+                            onOpenUser: (user) => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    UserDetailScreen(user: user, fromMatch: true),
                               ),
                             ),
+                            onRequest: (user) => ref
+                                .read(friendControllerProvider.notifier)
+                                .sendFriendRequest(user.id),
                           ),
-                          onRequest: (user) => ref
-                              .read(friendControllerProvider.notifier)
-                              .sendFriendRequest(user.id),
                         ),
                         loading: () => const Center(
                           child: CircularProgressIndicator(
@@ -193,29 +212,43 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                         ),
                         data: (users) {
                           if (users.isEmpty) {
-                            return _MatchEmptyState(
-                              onOpenDiagnosis: widget.onOpenDiagnosis,
-                            );
-                          }
-                          return ListView.builder(
-                            itemCount: users.length,
-                            itemBuilder: (context, i) {
-                              final u = users[i];
-                              return MatchUserTile(
-                                rank: i + 1,
-                                name: u.name,
-                                matchRate: u.matchRate,
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => UserDetailScreen(
-                                      user: u,
-                                      fromMatch: true,
-                                    ),
+                            return RefreshIndicator(
+                              onRefresh: _refreshMatchData,
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: SizedBox(
+                                  height: MediaQuery.sizeOf(context).height * 0.55,
+                                  child: _MatchEmptyState(
+                                    onOpenDiagnosis: widget.onOpenDiagnosis,
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            );
+                          }
+                          return RefreshIndicator(
+                            onRefresh: _refreshMatchData,
+                            child: ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              itemCount: users.length,
+                              itemBuilder: (context, i) {
+                                final u = users[i];
+                                return MatchUserTile(
+                                  rank: i + 1,
+                                  name: u.name,
+                                  matchRate: u.resolvedMatchRate,
+                                  avatarUrl: u.avatarUrl,
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => UserDetailScreen(
+                                        user: u,
+                                        fromMatch: true,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           );
                         },
                       ),
@@ -261,35 +294,46 @@ class _FriendSearchResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (users.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PandaAvatar(size: 64),
-            SizedBox(height: AppSpacing.md),
-            Text(
-              '該当するユーザーがいません',
-              style: TextStyle(
-                fontSize: AppFontSize.md,
-                fontWeight: FontWeight.w800,
-                color: AppColors.black,
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PandaAvatar(size: 64),
+                    SizedBox(height: AppSpacing.md),
+                    Text(
+                      '該当するユーザーがいません',
+                      style: TextStyle(
+                        fontSize: AppFontSize.md,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.black,
+                      ),
+                    ),
+                    SizedBox(height: AppSpacing.sm),
+                    Text(
+                      '@usernameを変えて検索してみてください',
+                      style: TextStyle(
+                        fontSize: AppFontSize.sm,
+                        color: AppColors.textGray,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
-            SizedBox(height: AppSpacing.sm),
-            Text(
-              '@usernameを変えて検索してみてください',
-              style: TextStyle(
-                fontSize: AppFontSize.sm,
-                color: AppColors.textGray,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          );
+        },
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: users.length,
       itemBuilder: (context, i) {
         final user = users[i];
@@ -306,7 +350,7 @@ class _FriendSearchResults extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () => onOpenUser(user),
-                child: PandaAvatar(size: 44),
+                child: UserAvatar(size: 44, imageUrl: user.avatarUrl),
               ),
               const SizedBox(width: 12),
               Expanded(

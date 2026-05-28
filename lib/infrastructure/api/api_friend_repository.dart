@@ -113,6 +113,7 @@ class ApiFriendRepository implements FriendRepository {
           userMap['username'] as String? ??
           '名無しさん',
       matchRate: 0, // Not provided by this API
+      avatarUrl: userMap['avatarUrl'] as String?,
     );
   }
 

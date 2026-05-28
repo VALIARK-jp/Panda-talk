@@ -25,10 +25,6 @@ class PostAuthFlow {
     final userId = user?.id;
     if (userId == null || user == null) return false;
 
-    if (await ProfileOnboardingStore.isCompleted(userId)) {
-      return true;
-    }
-
     // Do not block route decision on backend profile sync.
     // Post-login sync in main.dart also calls ensureBackendProfile.
 
@@ -41,9 +37,7 @@ class PostAuthFlow {
         profile.username,
         userId,
       )) {
-        if (await ProfileOnboardingStore.isCompleted(userId)) {
-          await ProfileOnboardingStore.requireSetup(userId);
-        }
+        await ProfileOnboardingStore.requireSetup(userId);
         return false;
       }
       if (ProfileOnboardingStore.isProfileFieldsComplete(
@@ -54,6 +48,9 @@ class PostAuthFlow {
         await ProfileOnboardingStore.setCompleted(userId);
         return true;
       }
+      // レガシーアカウント: メタデータは完了でも username が不正な場合は再入力へ。
+      await ProfileOnboardingStore.requireSetup(userId);
+      return false;
     } catch (_) {}
 
     try {

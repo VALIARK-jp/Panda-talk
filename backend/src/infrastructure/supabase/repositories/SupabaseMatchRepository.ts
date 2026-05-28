@@ -1,4 +1,10 @@
-import type { CompareAnswer, UUID, MatchResult, MatchScore } from '../../../domain/entities/index'
+import {
+  computePairMatchScore,
+  toDisplayScore,
+  type AnswerChoice,
+  type AnswerMap,
+} from '../../../domain/matchScore'
+import type { CompareAnswer, MatchResult, MatchScore, UUID } from '../../../domain/entities/index'
 import type { IMatchRepository } from '../../../domain/repositories/IMatchRepository'
 import type { SupabaseRestClient } from '../SupabaseRestClient'
 import {
@@ -78,22 +84,14 @@ export class SupabaseMatchRepository implements IMatchRepository {
   }
 
   async getCompareAnswers(userAId: UUID, userBId: UUID): Promise<CompareAnswer[]> {
-    const [mine, theirs] = await Promise.all([
-      this.client.get<CompareAnswerRow[]>('panda_answers', {
-        select: 'question_id,choice',
-        user_id: `eq.${userAId}`,
-        limit: 1000,
-      }),
-      this.client.get<CompareAnswerRow[]>('panda_answers', {
-        select: 'question_id,choice',
-        user_id: `eq.${userBId}`,
-        limit: 1000,
-      }),
+    const [mineByQuestion, theirsByQuestion] = await Promise.all([
+      this.fetchAnswerMap(userAId),
+      this.fetchAnswerMap(userBId),
     ])
 
-    const mineByQuestion = new Map(mine.map((answer) => [answer.question_id, answer.choice]))
-    const theirsByQuestion = new Map(theirs.map((answer) => [answer.question_id, answer.choice]))
-    const questionIds = [...mineByQuestion.keys()].filter((id) => theirsByQuestion.has(id))
+    const questionIds = [...mineByQuestion.keys()].filter((id) =>
+      theirsByQuestion.has(id)
+    )
     if (questionIds.length === 0) return []
 
     const questions = await this.client.get<CompareQuestionRow[]>('panda_questions', {
@@ -101,8 +99,10 @@ export class SupabaseMatchRepository implements IMatchRepository {
       id: `in.(${questionIds.join(',')})`,
     })
     const questionById = new Map(questions.map((question) => [question.id, question]))
+    const validQuestionIds = new Set(questionById.keys())
 
     return questionIds
+      .filter((questionId) => validQuestionIds.has(questionId))
       .map((questionId) => {
         const question = questionById.get(questionId)
         const myChoice = mineByQuestion.get(questionId)
@@ -118,6 +118,25 @@ export class SupabaseMatchRepository implements IMatchRepository {
         }
       })
       .filter((answer): answer is CompareAnswer => answer !== null)
+  }
+
+  private async fetchAnswerMap(userId: UUID): Promise<AnswerMap> {
+    const rows = await this.client.get<CompareAnswerRow[]>('panda_answers', {
+      select: 'question_id,choice',
+      user_id: `eq.${userId}`,
+      order: 'question_id.asc',
+      limit: 10000,
+    })
+    return new Map(rows.map((answer) => [answer.question_id, answer.choice]))
+  }
+
+  private async fetchValidQuestionIds(questionIds: string[]): Promise<Set<string>> {
+    if (questionIds.length === 0) return new Set()
+    const questions = await this.client.get<Array<{ id: string }>>('panda_questions', {
+      select: 'id',
+      id: `in.(${questionIds.join(',')})`,
+    })
+    return new Set(questions.map((question) => question.id))
   }
 
   private async getMatches(
@@ -175,42 +194,40 @@ export class SupabaseMatchRepository implements IMatchRepository {
     cursor: UUID | undefined,
     kind: MatchKind
   ): Promise<MatchResult[]> {
-    const myAnswers = await this.client.get<CompareAnswerRow[]>('panda_answers', {
-      select: 'question_id,choice',
-      user_id: `eq.${userId}`,
-      limit: 1000,
-    })
-    if (myAnswers.length === 0) return []
+    const myChoiceByQuestion = await this.fetchAnswerMap(userId)
+    if (myChoiceByQuestion.size === 0) return []
 
-    const myChoiceByQuestion = new Map(
-      myAnswers.map((answer) => [answer.question_id, answer.choice])
-    )
+    const validQuestionIds = await this.fetchValidQuestionIds([
+      ...myChoiceByQuestion.keys(),
+    ])
+    if (validQuestionIds.size === 0) return []
+
     const otherAnswers = await this.client.get<Array<CompareAnswerRow & { user_id: string }>>(
       'panda_answers',
       {
         select: 'user_id,question_id,choice',
-        question_id: `in.(${[...myChoiceByQuestion.keys()].join(',')})`,
+        question_id: `in.(${[...validQuestionIds].join(',')})`,
         user_id: `neq.${userId}`,
+        order: 'user_id.asc,question_id.asc',
         limit: 10000,
       }
     )
 
-    const scores = new Map<string, { common: number; same: number }>()
+    const othersByUser = new Map<string, AnswerMap>()
     for (const answer of otherAnswers) {
-      const mine = myChoiceByQuestion.get(answer.question_id)
-      if (!mine) continue
-      const current = scores.get(answer.user_id) ?? { common: 0, same: 0 }
-      current.common += 1
-      if (mine === answer.choice) current.same += 1
-      scores.set(answer.user_id, current)
+      if (!validQuestionIds.has(answer.question_id)) continue
+      let theirMap = othersByUser.get(answer.user_id)
+      if (!theirMap) {
+        theirMap = new Map<string, AnswerChoice>()
+        othersByUser.set(answer.user_id, theirMap)
+      }
+      theirMap.set(answer.question_id, answer.choice)
     }
 
-    const filtered = [...scores.entries()]
-      .map(([partnerId, score]) => ({
+    const filtered = [...othersByUser.entries()]
+      .map(([partnerId, theirMap]) => ({
         partnerId,
-        commonAnswerCount: score.common,
-        sameAnswerCount: score.same,
-        matchRate: score.common === 0 ? 0 : score.same / score.common,
+        ...computePairMatchScore(myChoiceByQuestion, theirMap, validQuestionIds),
       }))
       .filter((score) => {
         if (kind === 'similar') return score.matchRate >= 0.7
@@ -219,8 +236,10 @@ export class SupabaseMatchRepository implements IMatchRepository {
       })
       .sort((a, b) =>
         kind === 'opposite'
-          ? a.matchRate - b.matchRate || b.commonAnswerCount - a.commonAnswerCount
-          : b.matchRate - a.matchRate || b.commonAnswerCount - a.commonAnswerCount
+          ? a.matchRate - b.matchRate ||
+            b.commonAnswerCount - a.commonAnswerCount
+          : b.matchRate - a.matchRate ||
+            b.commonAnswerCount - a.commonAnswerCount
       )
 
     let page = filtered
@@ -245,9 +264,11 @@ export class SupabaseMatchRepository implements IMatchRepository {
           user: toUser(user),
           matchRate: score.matchRate,
           commonAnswerCount: score.commonAnswerCount,
-          displayScore:
-            score.matchRate *
-            (score.commonAnswerCount / (score.commonAnswerCount + 50)),
+          sameAnswerCount: score.sameAnswerCount,
+          displayScore: toDisplayScore(
+            score.matchRate,
+            score.commonAnswerCount,
+          ),
         }
       })
       .filter((result): result is MatchResult => result !== null)

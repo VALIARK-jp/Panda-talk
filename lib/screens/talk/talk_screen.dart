@@ -10,6 +10,7 @@ import '../../widgets/group_card.dart';
 import '../../widgets/login_required_gate.dart';
 import '../../widgets/panda_avatar.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/user_avatar.dart';
 import 'direct_chat_screen.dart';
 import 'group_chat_screen.dart';
 
@@ -168,7 +169,7 @@ class _DmList extends StatelessWidget {
             ),
             child: Row(
               children: [
-                PandaAvatar(size: 44),
+                UserAvatar(size: 44, imageUrl: thread.user.avatarUrl),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

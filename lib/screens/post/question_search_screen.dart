@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/category_poster_copy.dart';
 import '../../core/design_tokens.dart';
 import '../../presentation/providers/question_providers.dart';
-import '../../widgets/panda_avatar.dart';
 import '../../widgets/tag_chip.dart';
+import '../../widgets/user_avatar.dart';
+import '../../widgets/username_label.dart';
 
 class QuestionSearchScreen extends ConsumerStatefulWidget {
   const QuestionSearchScreen({super.key});
@@ -162,6 +164,9 @@ class _QuestionSearchScreenState extends ConsumerState<QuestionSearchScreen> {
                           itemCount: results.length,
                           itemBuilder: (context, i) {
                             final q = results[i];
+                            final categoryColor = categoryAccentColor(
+                              q.category,
+                            );
                             return Container(
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.symmetric(
@@ -173,7 +178,9 @@ class _QuestionSearchScreenState extends ConsumerState<QuestionSearchScreen> {
                                 borderRadius: BorderRadius.circular(
                                   AppRadius.md,
                                 ),
-                                border: Border.all(color: AppColors.borderGray),
+                                border: Border.all(
+                                  color: categoryColor.withValues(alpha: 0.22),
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -184,16 +191,18 @@ class _QuestionSearchScreenState extends ConsumerState<QuestionSearchScreen> {
                                       children: [
                                         Row(
                                           children: [
-                                            const PandaAvatar(size: 20),
+                                            UserAvatar(
+                                              size: 20,
+                                              imageUrl: q.authorAvatarUrl,
+                                            ),
                                             const SizedBox(width: 6),
                                             Expanded(
-                                              child: Text(
-                                                '@${q.authorUsername}',
+                                              child: UsernameLabel(
+                                                username: q.authorUsername,
                                                 style: const TextStyle(
                                                   fontSize: AppFontSize.sm,
                                                   color: AppColors.textGray,
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
@@ -211,7 +220,10 @@ class _QuestionSearchScreenState extends ConsumerState<QuestionSearchScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  TagChip(label: q.category),
+                                  TagChip(
+                                    label: q.category,
+                                    color: categoryColor,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Q.${q.number}',

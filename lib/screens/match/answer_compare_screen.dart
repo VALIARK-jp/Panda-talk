@@ -5,6 +5,7 @@ import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../presentation/providers/match_providers.dart';
 import '../../widgets/panda_avatar.dart';
+import '../../widgets/user_avatar.dart';
 
 class AnswerCompareScreen extends ConsumerWidget {
   final DummyUser user;
@@ -50,7 +51,7 @@ class AnswerCompareScreen extends ConsumerWidget {
                 children: [
                   Column(
                     children: [
-                      PandaAvatar(size: 48),
+                      UserAvatar(size: 48, imageUrl: user.avatarUrl),
                       const SizedBox(height: 4),
                       const Text(
                         'あなた',

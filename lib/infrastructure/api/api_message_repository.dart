@@ -90,6 +90,7 @@ class ApiMessageRepository implements MessageRepository {
             'unknown',
         id: partner['id'] as String,
         matchRate: 0, // In a real app, this might come from another join
+        avatarUrl: partner['avatarUrl'] as String?,
       ),
       lastMessage: lastMessage['body'] as String,
       time: _formatTime(lastMessage['createdAt'] as String),
