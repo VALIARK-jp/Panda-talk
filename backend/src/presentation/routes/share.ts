@@ -282,7 +282,7 @@ app.get('/type/:slug', (c) => {
     )
   }
 
-  const imageUrl = `${STATIC_ASSET_BASE}/assets/assets/images/panda/${def.imageIndex}.PNG`
+  const imageUrl = `${STATIC_ASSET_BASE}/assets/assets/images/panda/${def.imageFileName}`
 
   return htmlResponse(
     renderShareHtml(

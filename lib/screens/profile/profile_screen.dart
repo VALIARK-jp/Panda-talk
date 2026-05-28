@@ -279,7 +279,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // 本人にしか意味のない回答数/投稿数/友達数は載せず、人格ヘッダで攻める。
     showShareActionSheet(
       context,
-      text: ShareTexts.profile(profile),
+      payload: SharePayload.text(ShareTexts.profile(profile)),
     );
   }
 }

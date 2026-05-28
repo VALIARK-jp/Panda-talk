@@ -199,10 +199,12 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                   GestureDetector(
                     onTap: () => showShareActionSheet(
                       context,
-                      text: ShareTexts.matchUser(
-                        displayName: displayName,
-                        matchRatePct: displayedMatchRate,
-                        usernameOrId: profileAsync.valueOrNull?.username,
+                      payload: SharePayload.text(
+                        ShareTexts.matchUser(
+                          displayName: displayName,
+                          matchRatePct: displayedMatchRate,
+                          usernameOrId: profileAsync.valueOrNull?.username,
+                        ),
                       ),
                     ),
                     child: const Icon(Icons.ios_share, color: AppColors.black),

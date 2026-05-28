@@ -138,7 +138,7 @@ class _Diagnosis16ResultSheet extends StatelessWidget {
     // 数値列ではなく「人格をネタ化」。詳細は [docs/18_share_growth_spec.md] §3-2。
     showShareActionSheet(
       context,
-      text: ShareTexts.diagnosis(result: result),
+      payload: SharePayload.diagnosis(result: result),
     );
   }
 }

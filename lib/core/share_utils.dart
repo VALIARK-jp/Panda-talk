@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'diagnosis_share_card_data.dart';
 import 'dummy_data.dart';
+import 'panda_character_assets.dart';
 import 'panda_type.dart';
 import '../config/app_config.dart';
+import '../infrastructure/share/diagnosis_share_card_renderer.dart';
 
 /// 共有URL組み立て（[docs/18_share_growth_spec.md] §4 URL設計）。
 ///
@@ -151,6 +154,44 @@ class ShareTexts {
   }
 }
 
+class SharePayload {
+  const SharePayload({
+    required this.text,
+    this.title,
+    this.diagnosisCard,
+  });
+
+  final String text;
+  final String? title;
+  final DiagnosisShareCardData? diagnosisCard;
+
+  factory SharePayload.text(String text, {String? title}) {
+    return SharePayload(text: text, title: title);
+  }
+
+  factory SharePayload.diagnosis({
+    required PandaTypeResult result,
+    int? oddballScore,
+  }) {
+    final shareUrl = ShareUrls.pandaType(result.slug);
+    final assetPath = PandaCharacterAssets.imagePathForSlug(result.slug);
+    return SharePayload(
+      title: '${result.displayName} を共有',
+      text: ShareTexts.diagnosis(result: result, oddballScore: oddballScore),
+      diagnosisCard: assetPath == null
+          ? null
+          : DiagnosisShareCardData(
+              slug: result.slug,
+              assetPath: assetPath,
+              displayName: result.displayName,
+              tagline: result.tagline,
+              shareUrl: shareUrl,
+              oddballScore: oddballScore,
+            ),
+    );
+  }
+}
+
 /// 主要SNSへの直行（[docs/18_share_growth_spec.md] §5 Phase 1.5）。
 ///
 /// 追加ライブラリ不要・Web Intent / URL Scheme を url_launcher で叩くだけ。
@@ -180,12 +221,32 @@ class ShareChannels {
 class AppShare {
   const AppShare._();
 
-  static void text(BuildContext context, String text) {
+  static Future<void> text(BuildContext context, String text) {
+    return content(context, SharePayload.text(text));
+  }
+
+  static Future<void> content(BuildContext context, SharePayload payload) async {
     final renderObject = context.findRenderObject();
     final origin = renderObject is RenderBox
         ? renderObject.localToGlobal(Offset.zero) & renderObject.size
         : null;
 
-    Share.share(text, sharePositionOrigin: origin);
+    final diagnosisCard = payload.diagnosisCard;
+    if (diagnosisCard != null) {
+      final imageFile = await DiagnosisShareCardRenderer.render(diagnosisCard);
+      await Share.shareXFiles(
+        [imageFile],
+        subject: payload.title ?? 'パンダトークをシェア',
+        text: payload.text,
+        sharePositionOrigin: origin,
+      );
+      return;
+    }
+
+    await Share.share(
+      payload.text,
+      subject: payload.title ?? 'パンダトークをシェア',
+      sharePositionOrigin: origin,
+    );
   }
 }

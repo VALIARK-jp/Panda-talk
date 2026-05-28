@@ -8,8 +8,8 @@ export type PandaTypeDefinition = {
   slug: string
   displayName: string
   tagline: string
-  /** assets/images/panda/{imageIndex}.PNG（1〜16） */
-  imageIndex: number
+  /** Flutter で実際に使っている assets/images/panda/*.PNG のファイル名 */
+  imageFileName: string
 }
 
 export const PANDA_TYPES: Readonly<PandaTypeDefinition[]> = [
@@ -17,97 +17,97 @@ export const PANDA_TYPES: Readonly<PandaTypeDefinition[]> = [
     slug: 'nikopan',
     displayName: 'にこぱん',
     tagline: '優しすぎて、自分を後回しにする共感型',
-    imageIndex: 1,
+    imageFileName: '1.PNG',
   },
   {
     slug: 'yurupan',
     displayName: 'ゆるぱん',
     tagline: '人生ノリでなんとかしてきた自由人',
-    imageIndex: 2,
+    imageFileName: '2.PNG',
   },
   {
     slug: 'satoripan',
     displayName: 'さとりぱん',
     tagline: '静かに見守る、現実的な観察者',
-    imageIndex: 3,
+    imageFileName: '3.PNG',
   },
   {
     slug: 'bosupan',
     displayName: 'ボスぱん',
     tagline: '結果を出す、論理派リーダー',
-    imageIndex: 4,
+    imageFileName: '4.PNG',
   },
   {
     slug: 'mamoripan',
     displayName: 'まもりぱん',
     tagline: '守りたい気持ちが強い、堅実派',
-    imageIndex: 5,
+    imageFileName: '5.PNG',
   },
   {
     slug: 'piepan',
     displayName: 'ぴえぱん',
     tagline: '感情豊かで、理想を追う繊細派',
-    imageIndex: 6,
+    imageFileName: '6.PNG',
   },
   {
     slug: 'tetsupan',
     displayName: 'てつぱん',
     tagline: '冷静に支える、理想主義の参謀',
-    imageIndex: 7,
+    imageFileName: '7.PNG',
   },
   {
     slug: 'hiramekipan',
     displayName: 'ひらめきぱん',
     tagline: 'ひらめきで動く、自由な発想家',
-    imageIndex: 8,
+    imageFileName: '8.PNG',
   },
   {
     slug: 'fuwapa',
     displayName: 'ふわぱん',
     tagline: 'ふわっと寄り添う、夢見る癒し系',
-    imageIndex: 9,
+    imageFileName: '9.PNG',
   },
   {
     slug: 'tsunpan',
     displayName: 'つんぱん',
     tagline: '素直になれない、論理派ツンデレ',
-    imageIndex: 10,
+    imageFileName: '10.PNG',
   },
   {
     slug: 'otapan',
     displayName: 'おたぱん',
     tagline: '好きを極める、慎重な理想主義',
-    imageIndex: 11,
+    imageFileName: '11.PNG',
   },
   {
     slug: 'kirapan',
     displayName: 'きらぱん',
     tagline: 'キラキラを追う、自由なムードメーカー',
-    imageIndex: 12,
+    imageFileName: '12.PNG',
   },
   {
     slug: 'shigodekipan',
     displayName: 'しごできぱん',
     tagline: '堅実に結果を出す、現実派の仕事人',
-    imageIndex: 13,
+    imageFileName: '13.PNG',
   },
   {
     slug: 'amapan',
     displayName: 'あまぱん',
     tagline: '甘え上手で、のんびり現実派',
-    imageIndex: 14,
+    imageFileName: '14.PNG',
   },
   {
     slug: 'fushigipan',
     displayName: 'ふしぎぱん',
     tagline: '謎めいた魅力の、感情派インテリア',
-    imageIndex: 15,
+    imageFileName: '15.PNG',
   },
   {
     slug: 'kakurepan',
     displayName: 'かくれぱん',
     tagline: '控えめだけど芯のある、理想派',
-    imageIndex: 16,
+    imageFileName: '16.PNG',
   },
 ]
 

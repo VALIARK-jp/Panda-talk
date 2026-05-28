@@ -306,10 +306,12 @@ class _AnswerResultScreenState extends State<AnswerResultScreen> {
                 onTap: () {
                   showShareActionSheet(
                     context,
-                    text: ShareTexts.answerResult(
-                      selected: widget.selected,
-                      selectedPercent: selectedPercent,
-                      isMinority: isMinority,
+                    payload: SharePayload.text(
+                      ShareTexts.answerResult(
+                        selected: widget.selected,
+                        selectedPercent: selectedPercent,
+                        isMinority: isMinority,
+                      ),
                     ),
                   );
                 },

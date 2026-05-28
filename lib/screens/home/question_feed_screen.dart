@@ -384,11 +384,13 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     // SNS向け共有文（[docs/18_share_growth_spec.md] §3-1）。
     showShareActionSheet(
       context,
-      text: ShareTexts.question(
-        q: question,
-        selected: selected,
-        percentA: percentA,
-        isMinority: isMinority,
+      payload: SharePayload.text(
+        ShareTexts.question(
+          q: question,
+          selected: selected,
+          percentA: percentA,
+          isMinority: isMinority,
+        ),
       ),
     );
   }

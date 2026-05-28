@@ -4,9 +4,13 @@ import 'panda_type.dart';
 class PandaCharacterAssets {
   const PandaCharacterAssets._();
 
-  static String imagePathForIndex(int imageIndex) {
+  static String imageFileNameForIndex(int imageIndex) {
     final n = imageIndex.clamp(1, 16);
-    return 'assets/images/panda/$n.PNG';
+    return '$n.PNG';
+  }
+
+  static String imagePathForIndex(int imageIndex) {
+    return 'assets/images/panda/${imageFileNameForIndex(imageIndex)}';
   }
 
   static String? imagePathForSlug(String? slug) {
@@ -14,5 +18,12 @@ class PandaCharacterAssets {
     final def = PandaTypeCatalog.bySlug(slug);
     if (def == null) return null;
     return imagePathForIndex(def.imageIndex);
+  }
+
+  static String? imageFileNameForSlug(String? slug) {
+    if (slug == null) return null;
+    final def = PandaTypeCatalog.bySlug(slug);
+    if (def == null) return null;
+    return imageFileNameForIndex(def.imageIndex);
   }
 }

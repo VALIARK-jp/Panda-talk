@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/diagnosis_share_card_data.dart';
 import '../core/design_tokens.dart';
 import '../core/share_utils.dart';
 
@@ -12,20 +13,20 @@ import '../core/share_utils.dart';
 ///   Mail, メッセージ, AirDrop 等を含む）
 Future<void> showShareActionSheet(
   BuildContext context, {
-  required String text,
+  required SharePayload payload,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
     isScrollControlled: false,
-    builder: (_) => _ShareActionSheet(text: text),
+    builder: (_) => _ShareActionSheet(payload: payload),
   );
 }
 
 class _ShareActionSheet extends StatelessWidget {
-  const _ShareActionSheet({required this.text});
+  const _ShareActionSheet({required this.payload});
 
-  final String text;
+  final SharePayload payload;
 
   static const _xBg = AppColors.black;
   static const _xFg = AppColors.white;
@@ -81,7 +82,7 @@ class _ShareActionSheet extends StatelessWidget {
                     foreground: _xFg,
                     onTap: () async {
                       Navigator.of(context).pop();
-                      await ShareChannels.openX(text);
+                      await ShareChannels.openX(payload.text);
                     },
                   ),
                 ),
@@ -95,7 +96,7 @@ class _ShareActionSheet extends StatelessWidget {
                     iconFontSize: 16,
                     onTap: () async {
                       Navigator.of(context).pop();
-                      await ShareChannels.openLine(text);
+                      await ShareChannels.openLine(payload.text);
                     },
                   ),
                 ),
@@ -106,15 +107,19 @@ class _ShareActionSheet extends StatelessWidget {
                     icon: Icons.ios_share,
                     background: AppColors.softGray,
                     foreground: AppColors.black,
-                    onTap: () {
+                    onTap: () async {
                       Navigator.of(context).pop();
-                      AppShare.text(context, text);
+                      await AppShare.content(context, payload);
                     },
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
+            if (payload.diagnosisCard != null) ...[
+              _DiagnosisPreview(card: payload.diagnosisCard!),
+              const SizedBox(height: AppSpacing.md),
+            ],
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.sm),
@@ -123,7 +128,7 @@ class _ShareActionSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Text(
-                text,
+                payload.text,
                 style: const TextStyle(
                   fontSize: AppFontSize.sm,
                   color: AppColors.textGray,
@@ -150,6 +155,82 @@ class _ShareActionSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DiagnosisPreview extends StatelessWidget {
+  const _DiagnosisPreview({required this.card});
+
+  final DiagnosisShareCardData card;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFFFF0E6),
+            Color(0xFFFFE2EE),
+            Color(0xFFE3F7FF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Container(
+              width: 72,
+              height: 72,
+              color: AppColors.white,
+              padding: const EdgeInsets.all(6),
+              child: Image.asset(card.assetPath, fit: BoxFit.contain),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  card.displayName,
+                  style: const TextStyle(
+                    fontSize: AppFontSize.lg,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.black,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  card.tagline,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: AppFontSize.sm,
+                    height: 1.4,
+                    color: AppColors.textGray,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'X / LINE はこのキャラ画像のリンクプレビュー、その他は画像カード付きで共有します。',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.black,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
