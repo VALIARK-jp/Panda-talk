@@ -121,6 +121,38 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     });
   }
 
+  Future<void> _showHotComingSoonModal() {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hot'),
+        content: const Text('現在開発中です'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _onFeedTabChanged(int index) async {
+    if (index == 1) {
+      await _showHotComingSoonModal();
+      return;
+    }
+
+    _nextQuestionTimer?.cancel();
+    setState(() {
+      _tabIndex = index;
+    });
+    ref.read(questionFeedControllerProvider.notifier).resetForTab();
+    if (_pageController?.hasClients == true) {
+      _pageController!.jumpToPage(0);
+    }
+  }
+
   Future<void> _onAnswer(
     DummyQuestion q,
     String selected,
@@ -907,18 +939,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                     child: SegmentedTabs(
                       tabs: const ['診断', 'Hot'],
                       selectedIndex: _tabIndex,
-                      onChanged: (i) {
-                        _nextQuestionTimer?.cancel();
-                        setState(() {
-                          _tabIndex = i;
-                        });
-                        ref
-                            .read(questionFeedControllerProvider.notifier)
-                            .resetForTab();
-                        if (_pageController?.hasClients == true) {
-                          _pageController!.jumpToPage(0);
-                        }
-                      },
+                      onChanged: _onFeedTabChanged,
                     ),
                   ),
                   const SizedBox(width: 8),
