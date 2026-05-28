@@ -60,16 +60,6 @@ class SettingsScreen extends ConsumerWidget {
                     value: s.questionLikes,
                     onChanged: controller.updateQuestionLikes,
                   ),
-                  _SwitchRow(
-                    title: 'DM・グループチャット',
-                    value: s.messages,
-                    onChanged: controller.updateMessages,
-                  ),
-                  _SwitchRow(
-                    title: 'グループ再編成',
-                    value: s.groupUpdates,
-                    onChanged: controller.updateGroupUpdates,
-                  ),
                 ],
               ),
             ),
