@@ -282,6 +282,8 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     if (answeredCount <= 0 || answeredCount % _oddballMilestoneInterval != 0) {
       return;
     }
+    final unlocked = await ref.read(diagnosis16UnlockedProvider.future);
+    if (!unlocked) return;
 
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final milestone = answeredCount ~/ _oddballMilestoneInterval;
