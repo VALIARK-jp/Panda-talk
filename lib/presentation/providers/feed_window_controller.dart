@@ -55,10 +55,13 @@ class FeedWindowState {
 }
 
 /// 表示: 回答済み + 未回答1問（取得済みデータのうちフロンティアより先は出さない）。
+///
+/// [includeThroughQuestionNumber] … 履歴ジャンプ時、その問まで表示に含める。
 List<DummyQuestion> clipFeedProgressView(
   List<DummyQuestion> sortedByNumber,
-  bool Function(DummyQuestion q) isAnswered,
-) {
+  bool Function(DummyQuestion q) isAnswered, {
+  int? includeThroughQuestionNumber,
+}) {
   if (sortedByNumber.isEmpty) return sortedByNumber;
 
   int? frontier;
@@ -69,12 +72,18 @@ List<DummyQuestion> clipFeedProgressView(
     }
   }
   if (frontier == null) return sortedByNumber;
-  final maxVisible = frontier;
+
+  final maxVisible = includeThroughQuestionNumber == null
+      ? frontier
+      : (includeThroughQuestionNumber > frontier
+          ? includeThroughQuestionNumber
+          : frontier);
   return sortedByNumber.where((q) => q.number <= maxVisible).toList();
 }
 
 class FeedWindowController extends AsyncNotifier<FeedWindowState> {
   bool _prefetchInFlight = false;
+  bool _jumpInFlight = false;
   List<DummyQuestion> _cache = const [];
   int? _newerPrefetchFromLoadedMax;
   int? _olderPrefetchFromLoadedMin;
@@ -246,7 +255,13 @@ class FeedWindowController extends AsyncNotifier<FeedWindowState> {
   }
 
   List<DummyQuestion> displayForDiagnosisTab() {
-    return clipFeedProgressView(_sortedLoaded(), _isAnswered);
+    final jumpTarget = ref.read(feedJumpToQuestionNumberProvider) ??
+        state.valueOrNull?.jumpToQuestionNumber;
+    return clipFeedProgressView(
+      _sortedLoaded(),
+      _isAnswered,
+      includeThroughQuestionNumber: jumpTarget,
+    );
   }
 
   List<DummyQuestion> displayForHotTab() => _sortedLoaded();
@@ -372,6 +387,8 @@ class FeedWindowController extends AsyncNotifier<FeedWindowState> {
     required int questionNumber,
     String? questionId,
   }) async {
+    if (_jumpInFlight) return;
+    _jumpInFlight = true;
     ref.read(feedJumpToQuestionNumberProvider.notifier).state = questionNumber;
     _resetPrefetchGuards();
     state = const AsyncLoading<FeedWindowState>();
@@ -390,7 +407,10 @@ class FeedWindowController extends AsyncNotifier<FeedWindowState> {
         ),
       );
     } catch (e, st) {
+      ref.read(feedJumpToQuestionNumberProvider.notifier).state = null;
       state = AsyncError(e, st);
+    } finally {
+      _jumpInFlight = false;
     }
   }
 

@@ -16,6 +16,8 @@ class QuestionHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
+  bool _jumpInFlight = false;
+
   @override
   void initState() {
     super.initState();
@@ -104,13 +106,19 @@ class _QuestionHistoryScreenState extends ConsumerState<QuestionHistoryScreen> {
 
                       return GestureDetector(
                         onTap: () async {
-                          await openQuestionInFeed(
-                            ref,
-                            questionNumber: q.number,
-                            questionId: q.apiId,
-                          );
-                          if (!context.mounted) return;
-                          Navigator.pop(context);
+                          if (_jumpInFlight) return;
+                          _jumpInFlight = true;
+                          try {
+                            await openQuestionInFeed(
+                              ref,
+                              questionNumber: q.number,
+                              questionId: q.apiId,
+                            );
+                            if (!context.mounted) return;
+                            Navigator.pop(context);
+                          } finally {
+                            _jumpInFlight = false;
+                          }
                         },
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),

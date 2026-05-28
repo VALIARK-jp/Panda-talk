@@ -27,12 +27,12 @@ class QuestionPosterSection extends StatelessWidget {
       builder: (context, constraints) {
         final tagline = categoryPosterTagline(question.category);
         final watermark = categoryWatermarkLabel(question.category);
-        final isCompactHeight = constraints.maxHeight < 260;
-        final mascotSize = isCompactHeight ? 56.0 : 72.0;
+        final isCompactHeight = constraints.maxHeight < 200;
+        final mascotSize = isCompactHeight ? 60.0 : 72.0;
         final questionFontSize = isCompactHeight
-            ? AppFontSize.xl
+            ? AppFontSize.lg
             : AppFontSize.xxl;
-        final watermarkFontSize = isCompactHeight ? 44.0 : 56.0;
+        final watermarkFontSize = isCompactHeight ? 36.0 : 56.0;
 
         return ClipRect(
           child: SingleChildScrollView(

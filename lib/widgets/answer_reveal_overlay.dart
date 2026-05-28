@@ -120,7 +120,7 @@ class _AnswerRevealOverlayState extends State<AnswerRevealOverlay>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        return IgnorePointer(
+        return AbsorbPointer(
           child: Container(
             color: AppColors.white.withValues(
               alpha: _backdropOpacity.value.clamp(0.0, 1.0),

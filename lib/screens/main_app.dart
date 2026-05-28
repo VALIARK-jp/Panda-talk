@@ -71,6 +71,7 @@ class _MainAppState extends ConsumerState<MainApp> {
       screenIndex == _profileIndex;
 
   void _openDiagnosisTab() {
+    if (_currentNavIndex == 0) return;
     ref.invalidate(feedWindowControllerProvider);
     setState(() {
       _currentNavIndex = 0;
