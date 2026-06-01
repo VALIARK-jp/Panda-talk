@@ -6,6 +6,7 @@ import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
 import '../../widgets/terms_consent_footer.dart';
+import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_auth_screen.dart';
 import 'signup_screen.dart';
@@ -22,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _authInFlight = false;
   String? _authInFlightProvider;
+  bool _termsAccepted = false;
 
   Future<void> _finishNativeAuth() async {
     if (!mounted) return;
@@ -60,6 +62,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           SizedBox(height: loginTopInset),
                           _buildHeroHeader(),
                           const SizedBox(height: AppSpacing.lg),
+                          TermsConsentCheckbox(
+                            value: _termsAccepted,
+                            onChanged: (value) {
+                              setState(() => _termsAccepted = value ?? false);
+                            },
+                            onLightBackground: true,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.lg,
@@ -157,6 +167,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildLoginButtons(BuildContext context) {
+    final canProceed = _termsAccepted;
     return Column(
       children: [
         _buildAuthButton(
@@ -166,6 +177,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textColor: AppColors.black,
           borderSide: const BorderSide(color: AppColors.borderGray, width: 1),
           providerKey: 'email',
+          enabled: canProceed,
           onPressed: () {
             Navigator.push<void>(
               context,
@@ -183,6 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textColor: Colors.white,
           borderSide: null,
           providerKey: 'line',
+          enabled: canProceed,
           onPressed: () => _signInWithLine(context),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -194,18 +207,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             textColor: Colors.white,
             borderSide: null,
             providerKey: 'apple',
+            enabled: canProceed,
             onPressed: () => _signInWithApple(context),
           ),
           const SizedBox(height: AppSpacing.sm + 2),
         ],
         const SizedBox(height: AppSpacing.sm),
         TextButton(
-          onPressed: () {
-            Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(builder: (_) => const SignupScreen()),
-            );
-          },
+          onPressed: canProceed
+              ? () {
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SignupScreen(),
+                    ),
+                  );
+                }
+              : null,
           child: Text(
             '新規登録はこちら',
             style: TextStyle(
@@ -243,16 +261,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     BorderSide? borderSide,
     required String providerKey,
     required VoidCallback onPressed,
+    bool enabled = true,
   }) {
     final isPressed = _authInFlight && _authInFlightProvider == providerKey;
     return SizedBox(
       width: double.infinity,
       height: 44,
       child: Opacity(
-        opacity: isPressed ? 0.55 : 1,
+        opacity: isPressed || !enabled ? 0.55 : 1,
         child: ElevatedButton(
           onPressed: () {
-            if (_authInFlight) return;
+            if (_authInFlight || !enabled) return;
             onPressed();
           },
           style: ElevatedButton.styleFrom(

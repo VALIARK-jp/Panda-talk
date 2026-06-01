@@ -10,6 +10,7 @@ import likesRouter from './presentation/routes/likes'
 import notificationsRouter from './presentation/routes/notifications'
 import groupsRouter from './presentation/routes/groups'
 import directMessagesRouter from './presentation/routes/direct_messages'
+import moderationRouter from './presentation/routes/moderation'
 
 const app = new Hono()
 
@@ -33,6 +34,7 @@ app.route('/', likesRouter)
 app.route('/notifications', notificationsRouter)
 app.route('/groups', groupsRouter)
 app.route('/direct_messages', directMessagesRouter)
+app.route('/moderation', moderationRouter)
 
 // Health check
 app.get('/', (c) => c.json({ status: 'ok', service: 'panda-talk-backend' }))

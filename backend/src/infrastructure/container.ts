@@ -10,6 +10,7 @@ import { MockNotificationRepository } from './mock/MockNotificationRepository'
 import { MockGroupRepository } from './mock/MockGroupRepository'
 import { MockMessageRepository } from './mock/MockMessageRepository'
 import { MockDirectMessageRepository } from './mock/MockDirectMessageRepository'
+import { MockModerationRepository } from './mock/MockModerationRepository'
 
 import { SupabaseRestClient } from './supabase/SupabaseRestClient'
 import { SupabaseUserRepository } from './supabase/repositories/SupabaseUserRepository'
@@ -24,6 +25,7 @@ import { SupabaseNotificationRepository } from './supabase/repositories/Supabase
 import { SupabaseGroupRepository } from './supabase/repositories/SupabaseGroupRepository'
 import { SupabaseMessageRepository } from './supabase/repositories/SupabaseMessageRepository'
 import { SupabaseDirectMessageRepository } from './supabase/repositories/SupabaseDirectMessageRepository'
+import { SupabaseModerationRepository } from './supabase/repositories/SupabaseModerationRepository'
 
 import { GetDiagnosis16QuestionsUseCase } from '../domain/usecases/questions/GetDiagnosis16QuestionsUseCase'
 import { GetFeedUseCase } from '../domain/usecases/questions/GetFeedUseCase'
@@ -60,6 +62,10 @@ import { GetGroupMessagesUseCase } from '../domain/usecases/messages/GetGroupMes
 import { SendGroupMessageUseCase } from '../domain/usecases/messages/SendGroupMessageUseCase'
 import { GetDirectMessagesUseCase } from '../domain/usecases/directMessages/GetDirectMessagesUseCase'
 import { SendDirectMessageUseCase } from '../domain/usecases/directMessages/SendDirectMessageUseCase'
+import { ReportContentUseCase } from '../domain/usecases/moderation/ReportContentUseCase'
+import { BlockUserUseCase } from '../domain/usecases/moderation/BlockUserUseCase'
+import { UnblockUserUseCase } from '../domain/usecases/moderation/UnblockUserUseCase'
+import { GetBlockedUserIdsUseCase } from '../domain/usecases/moderation/GetBlockedUserIdsUseCase'
 import type { Env } from './env'
 
 function shouldUseSupabase(env?: Env): env is Env & {
@@ -126,6 +132,10 @@ export function createContainer(env?: Env) {
     ? new SupabaseMatchRepository(supabaseClient)
     : new MockMatchRepository()
 
+  const moderationRepo = supabaseClient
+    ? new SupabaseModerationRepository(supabaseClient)
+    : new MockModerationRepository()
+
   return {
     getDiagnosis16QuestionsUseCase: new GetDiagnosis16QuestionsUseCase(questionRepo),
     getFeedUseCase: new GetFeedUseCase(questionRepo),
@@ -162,5 +172,9 @@ export function createContainer(env?: Env) {
     sendGroupMessageUseCase: new SendGroupMessageUseCase(messageRepo, groupRepo),
     getDirectMessagesUseCase: new GetDirectMessagesUseCase(dmRepo),
     sendDirectMessageUseCase: new SendDirectMessageUseCase(dmRepo),
+    reportContentUseCase: new ReportContentUseCase(moderationRepo),
+    blockUserUseCase: new BlockUserUseCase(moderationRepo),
+    unblockUserUseCase: new UnblockUserUseCase(moderationRepo),
+    getBlockedUserIdsUseCase: new GetBlockedUserIdsUseCase(moderationRepo),
   }
 }

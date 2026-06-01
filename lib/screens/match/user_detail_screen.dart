@@ -6,9 +6,12 @@ import '../../core/match_rate_utils.dart';
 import '../../core/share_utils.dart';
 import '../../presentation/providers/friend_providers.dart';
 import '../../presentation/providers/match_providers.dart';
+import '../../presentation/providers/moderation_providers.dart';
 import '../../presentation/providers/user_profile_providers.dart';
+import '../../infrastructure/moderation_repository.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/report_content_sheet.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/user_avatar.dart';
@@ -53,6 +56,67 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('友達申請を承諾しました')));
+  }
+
+  Future<void> _confirmBlockUser() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.white,
+        title: const Text(
+          'このユーザーをブロック',
+          style: TextStyle(
+            fontSize: AppFontSize.lg,
+            fontWeight: FontWeight.w800,
+            color: AppColors.black,
+          ),
+        ),
+        content: const Text(
+          'ブロックすると、このユーザーの投稿やプロフィールが表示されなくなります。',
+          style: TextStyle(
+            fontSize: AppFontSize.md,
+            color: AppColors.black,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: AppColors.textGray),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'ブロックする',
+              style: TextStyle(
+                color: AppColors.black,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ref
+          .read(moderationControllerProvider.notifier)
+          .blockUser(widget.user.id);
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ユーザーをブロックしました')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ブロックに失敗しました: $e')),
+      );
+    }
   }
 
   void _openAnswerCompare() {
@@ -212,6 +276,35 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                       '${displayName}さんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
                     ),
                     child: const Icon(Icons.ios_share, color: AppColors.black),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: AppColors.black),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'report':
+                          showReportContentSheet(
+                            context,
+                            ref: ref,
+                            targetType: ReportTargetType.user,
+                            targetId: u.id,
+                            subjectLabel: displayName,
+                          );
+                          break;
+                        case 'block':
+                          _confirmBlockUser();
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'report',
+                        child: Text('通報する'),
+                      ),
+                      PopupMenuItem(
+                        value: 'block',
+                        child: Text('ブロックする'),
+                      ),
+                    ],
                   ),
                 ],
               ),

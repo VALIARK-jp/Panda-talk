@@ -48,11 +48,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         body: Center(child: Text('エラーが発生しました: $error')),
       ),
       data: (profile) {
-        return Scaffold(
-          backgroundColor: AppColors.white,
-          body: SafeArea(
+        final bottomInset = MediaQuery.paddingOf(context).bottom;
+        return ColoredBox(
+          color: AppColors.white,
+          child: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.lg + bottomInset,
+              ),
               child: Column(
                 children: [
                   Row(
@@ -136,6 +142,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     profile.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: AppFontSize.xl,
                       fontWeight: FontWeight.w900,
@@ -151,8 +160,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _ProfileActionButton(
                         icon: Icons.edit_outlined,
@@ -164,7 +175,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       _ProfileActionButton(
                         icon: Icons.people_outline,
                         label: '友達',
@@ -175,7 +185,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       _ProfileActionButton(
                         icon: Icons.ios_share,
                         label: '共有',
@@ -185,8 +194,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   // 統計
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 0,
+                    runSpacing: 8,
                     children: [
                       _StatItem(label: '回答数', value: '${profile.answerCount}'),
                       _Divider(),
@@ -352,8 +364,8 @@ class _ProfileActionButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.black,
           side: const BorderSide(color: AppColors.borderGray),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          minimumSize: const Size(86, 36),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: const Size(72, 36),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
           textStyle: const TextStyle(

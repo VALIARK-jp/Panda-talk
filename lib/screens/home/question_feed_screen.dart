@@ -17,6 +17,7 @@ import '../../core/share_utils.dart';
 import '../../infrastructure/diagnosis_16_completion.dart';
 import '../../infrastructure/diagnosis_16_store.dart';
 import '../../infrastructure/diagnosis_16_sync.dart';
+import '../../infrastructure/moderation_repository.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/diagnosis_providers.dart';
 import '../../presentation/providers/profile_providers.dart';
@@ -27,6 +28,7 @@ import '../../widgets/panda_avatar.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/report_content_sheet.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/user_avatar.dart';
 import '../../widgets/username_label.dart';
@@ -541,6 +543,21 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
+                                if (q.apiId != null)
+                                  IconButton(
+                                    tooltip: '通報',
+                                    onPressed: () => showReportContentSheet(
+                                      context,
+                                      ref: ref,
+                                      targetType: ReportTargetType.question,
+                                      targetId: q.apiId!,
+                                      subjectLabel: q.text,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.flag_outlined,
+                                      color: AppColors.textGray,
+                                    ),
+                                  ),
                                 IconButton(
                                   tooltip: '共有',
                                   onPressed: () => _shareQuestion(

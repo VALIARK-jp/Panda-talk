@@ -11,6 +11,7 @@ import '../../../../infrastructure/profile_onboarding_store.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
 import '../../widgets/terms_consent_footer.dart';
+import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_sent_screen.dart';
 
@@ -50,6 +51,7 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
   bool _showSignupPassword = false;
   bool _showConfirmPassword = false;
   String? _signupError;
+  bool _termsAccepted = false;
 
   @override
   void initState() {
@@ -196,11 +198,19 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
                 return null;
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            TermsConsentCheckbox(
+              value: _termsAccepted,
+              onChanged: (value) {
+                setState(() => _termsAccepted = value ?? false);
+              },
+              onLightBackground: true,
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _signIn,
+                onPressed: _isLoading || !_termsAccepted ? null : _signIn,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AuthColors.chrome,
                   foregroundColor: AppColors.white,
@@ -351,11 +361,19 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
                 return null;
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            TermsConsentCheckbox(
+              value: _termsAccepted,
+              onChanged: (value) {
+                setState(() => _termsAccepted = value ?? false);
+              },
+              onLightBackground: true,
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               height: 56,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : _signUp,
+                onPressed: _isLoading || !_termsAccepted ? null : _signUp,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AuthColors.chrome,
                   foregroundColor: AppColors.white,

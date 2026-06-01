@@ -28,6 +28,9 @@ import '../api/api_match_repository.dart';
 import '../question_repository.dart';
 import '../comment_repository.dart';
 import '../api/api_comment_repository.dart';
+import '../api/api_moderation_repository.dart';
+import '../mock/mock_moderation_repository.dart';
+import '../moderation_repository.dart';
 
 const _useApiRepositories = bool.fromEnvironment(
   'PANDA_TALK_USE_API',
@@ -79,4 +82,9 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   // ローカル開発は読み書きとも Supabase 直（保存と表示の取り違え防止）
   if (AppConfig.usesLocalApiHost) return SupabaseProfileRepository();
   return ResilientProfileRepository();
+});
+
+final moderationRepositoryProvider = Provider<ModerationRepository>((ref) {
+  if (_useApiRepositories) return ApiModerationRepository();
+  return MockModerationRepository();
 });
