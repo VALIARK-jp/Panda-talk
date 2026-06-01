@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -175,16 +176,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           },
         ),
-        const SizedBox(height: AppSpacing.sm + 2),
-        _buildAuthButton(
-          icon: Icons.chat,
-          label: 'LINEでログイン',
-          color: const Color(0xFF00C300),
-          textColor: Colors.white,
-          borderSide: null,
-          providerKey: 'line',
-          onPressed: () => _signInWithLine(context),
-        ),
+        if (!kIsWeb) ...[
+          const SizedBox(height: AppSpacing.sm + 2),
+          _buildAuthButton(
+            icon: Icons.chat,
+            label: 'LINEでログイン',
+            color: const Color(0xFF00C300),
+            textColor: Colors.white,
+            borderSide: null,
+            providerKey: 'line',
+            onPressed: () => _signInWithLine(context),
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         if (Theme.of(context).platform == TargetPlatform.iOS) ...[
           _buildAuthButton(
