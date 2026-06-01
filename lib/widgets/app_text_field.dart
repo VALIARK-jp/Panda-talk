@@ -6,6 +6,7 @@ class AppTextField extends StatelessWidget {
   final String? initialValue;
   final String? hintText;
   final int maxLines;
+  final int? maxLength;
   final TextEditingController? controller;
 
   const AppTextField({
@@ -14,6 +15,7 @@ class AppTextField extends StatelessWidget {
     this.initialValue,
     this.hintText,
     this.maxLines = 1,
+    this.maxLength,
     this.controller,
   });
 
@@ -35,6 +37,7 @@ class AppTextField extends StatelessWidget {
           controller: controller,
           initialValue: controller == null ? initialValue : null,
           maxLines: maxLines,
+          maxLength: maxLength,
           style: const TextStyle(
             fontSize: AppFontSize.lg,
             color: AppColors.black,

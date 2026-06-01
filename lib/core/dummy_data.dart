@@ -1,16 +1,34 @@
 // クラス定義のみ。データはMockRepositoryに移動。
 
+import 'match_rate_utils.dart';
+
 class DummyUser {
   final String name;
   final String id;
   final int matchRate;
+  final int? commonAnswerCount;
+  final int? sameAnswerCount;
   final String? avatarUrl;
   const DummyUser({
     required this.name,
     required this.id,
     required this.matchRate,
+    this.commonAnswerCount,
+    this.sameAnswerCount,
     this.avatarUrl,
   });
+
+  int get resolvedMatchRate {
+    if (commonAnswerCount != null &&
+        sameAnswerCount != null &&
+        commonAnswerCount! > 0) {
+      return matchRatePercent(
+        sameAnswerCount: sameAnswerCount!,
+        commonAnswerCount: commonAnswerCount!,
+      );
+    }
+    return matchRate;
+  }
 }
 
 class DummyQuestion {

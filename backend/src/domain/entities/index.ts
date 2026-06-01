@@ -108,6 +108,7 @@ export type MatchResult = {
   user: User
   matchRate: number
   commonAnswerCount: number
+  sameAnswerCount: number
   displayScore: number
 }
 

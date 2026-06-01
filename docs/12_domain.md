@@ -120,6 +120,7 @@ type MatchResult = {
   user: User
   matchRate: number
   commonAnswerCount: number
+  sameAnswerCount: number
   displayScore: number        // matchRate * (common / (common + 50))
 }
 ```

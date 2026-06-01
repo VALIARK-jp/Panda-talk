@@ -60,6 +60,7 @@ function toMatchResult(score: MatchScore, userId: UUID): MatchResult | null {
     user,
     matchRate: score.matchRate,
     commonAnswerCount: score.commonAnswerCount,
+    sameAnswerCount: score.sameAnswerCount,
     displayScore: Math.round(score.matchRate),
   }
 }

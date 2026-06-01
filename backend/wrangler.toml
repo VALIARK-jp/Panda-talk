@@ -4,7 +4,7 @@ compatibility_date = "2024-01-01"
 
 # Non-secret vars: local → backend/.dev.vars (wrangler dev)
 # Deploy dev  → npm run deploy (reads ../.env)
-# Deploy prod → npm run deploy:prod (reads ../.env.prod)
+# Deploy prod → scripts/deploy_backend_prod.sh (reads ../.env.prod)
 # service_role → wrangler secret put SUPABASE_SERVICE_ROLE_KEY [--env production]
 
 # Local: backend/.dev.vars

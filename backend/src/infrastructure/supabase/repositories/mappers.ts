@@ -8,6 +8,7 @@ import type {
   QuestionWithUser,
   User,
 } from "../../../domain/entities/index";
+import { toDisplayScore } from "../../../domain/matchScore";
 
 export type UserRow = {
   id: string;
@@ -140,8 +141,10 @@ export function toMatchResult(
     user: toUser(user),
     matchRate: score.match_rate,
     commonAnswerCount: score.common_answer_count,
-    displayScore:
-      score.match_rate *
-      (score.common_answer_count / (score.common_answer_count + 50)),
-  };
+    sameAnswerCount: score.same_answer_count,
+    displayScore: toDisplayScore(
+      score.match_rate,
+      score.common_answer_count,
+    ),
+  }
 }

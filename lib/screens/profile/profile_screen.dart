@@ -12,8 +12,8 @@ import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/personality_tendency_chips.dart';
 import '../../widgets/speech_bubble.dart';
 import '../../widgets/tag_chip.dart';
+import '../../widgets/username_label.dart';
 import '../friends/friends_screen.dart';
-import '../notifications/notifications_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../presentation/providers/notification_providers.dart';
 import 'profile_edit_screen.dart';
@@ -32,6 +32,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(profileControllerProvider);
     });
+  }
+
+  Future<void> _showNotificationsComingSoonModal() {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('お知らせ'),
+        content: const Text('現在開発中です'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -59,12 +75,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NotificationsScreen(),
-                          ),
-                        ),
+                        onTap: _showNotificationsComingSoonModal,
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -143,11 +154,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '@${profile.username}',
-                    style: const TextStyle(
-                      fontSize: AppFontSize.md,
-                      color: AppColors.textGray,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    child: UsernameLabel(
+                      username: profile.username,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
