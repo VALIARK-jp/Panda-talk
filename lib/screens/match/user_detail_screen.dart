@@ -58,9 +58,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
   void _openAnswerCompare() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AnswerCompareScreen(user: widget.user),
-      ),
+      MaterialPageRoute(builder: (_) => AnswerCompareScreen(user: widget.user)),
     );
   }
 
@@ -171,14 +169,12 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     final isFriend =
         friendState?.friends.any((friend) => friend.id == u.id) ?? false;
     final isRequested = friendState?.requestedUserIds.contains(u.id) ?? false;
-    final hasIncomingRequest = friendState?.requests.any(
-          (request) => request.user.id == u.id,
-        ) ??
+    final hasIncomingRequest =
+        friendState?.requests.any((request) => request.user.id == u.id) ??
         false;
 
     final displayName = profileAsync.valueOrNull?.name ?? u.name;
-    final displayUsername =
-        profileAsync.valueOrNull?.username ?? u.id;
+    final displayUsername = profileAsync.valueOrNull?.username ?? u.id;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -216,7 +212,6 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                           usernameOrId: profileAsync.valueOrNull?.username,
                         ),
                       ),
-                      '$displayNameさんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
                     ),
                     child: const Icon(Icons.ios_share, color: AppColors.black),
                   ),
@@ -227,10 +222,8 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
             profileAsync.when(
               loading: () => const UserAvatar(size: 80),
               error: (_, _) => const UserAvatar(size: 80),
-              data: (profile) => UserAvatar(
-                size: 80,
-                imageUrl: profile.avatarUrl,
-              ),
+              data: (profile) =>
+                  UserAvatar(size: 80, imageUrl: profile.avatarUrl),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
@@ -280,9 +273,8 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
             Expanded(
               child: _tabIndex == 0
                   ? profileAsync.when(
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
                       error: (_, _) => Center(
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
@@ -307,9 +299,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
               child: Column(
                 children: [
                   PandaButton(
-                    label: isFriend
-                        ? '友達'
-                        : (isRequested ? '申請済み' : '友達申請を送る'),
+                    label: isFriend ? '友達' : (isRequested ? '申請済み' : '友達申請を送る'),
                     onTap: isFriend || isRequested ? null : _sendFriendRequest,
                   ),
                 ],
