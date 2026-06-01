@@ -5,6 +5,7 @@ import '../../core/design_tokens.dart';
 import '../../core/share_utils.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../widgets/guest_login_button.dart';
+import '../../widgets/share_action_sheet.dart';
 import '../../widgets/user_avatar.dart';
 import '../../core/personality_axis.dart';
 import '../../widgets/panda_type_profile_section.dart';
@@ -285,21 +286,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _shareProfile(BuildContext context, DummyProfile profile) {
-    final tags = profile.tags.isEmpty
-        ? ''
-        : '\nタグ: ${profile.tags.join(' / ')}';
-    final bio = profile.bio.trim().isEmpty
-        ? ''
-        : '\n自己紹介: ${profile.bio.trim()}';
-
-    AppShare.text(
+    // SNS向け共有文（[docs/18_share_growth_spec.md] §3-3）。
+    // 本人にしか意味のない回答数/投稿数/友達数は載せず、人格ヘッダで攻める。
+    showShareActionSheet(
       context,
-      '${profile.name}（@${profile.username}）のパンダトークプロフィール\n'
-      '回答数: ${profile.answerCount} / 投稿数: ${profile.postCount} / 友達数: ${profile.friendCount}\n'
-      '異端児スコア: ${profile.oddballScore}%\n'
-      '$tags'
-      '$bio\n'
-      '#パンダトーク',
+      payload: SharePayload.text(ShareTexts.profile(profile)),
     );
   }
 }

@@ -84,6 +84,28 @@ class ApiFriendRepository implements FriendRepository {
   }
 
   @override
+  Future<DummyUser?> findUserByUsername(String username) async {
+    final normalized = username.trim().replaceFirst('@', '').toLowerCase();
+    if (normalized.isEmpty) return null;
+
+    final data = await _getJson(
+      Uri.parse(
+        '$_apiBaseUrl/users/search?q=${Uri.encodeQueryComponent(normalized)}&limit=20',
+      ),
+      auth: true,
+    );
+    final usersData = data['users'] as List<dynamic>? ?? [];
+    for (final raw in usersData) {
+      final map = raw as Map<String, dynamic>;
+      final found = (map['username'] as String?)?.toLowerCase();
+      if (found == normalized) {
+        return _parseUser(map);
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<void> sendFriendRequest(String userId) async {
     await _postJson(
       Uri.parse('$_apiBaseUrl/friendships/$userId'),

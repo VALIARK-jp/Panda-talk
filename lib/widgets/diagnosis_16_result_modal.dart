@@ -7,6 +7,7 @@ import '../core/personality_axis.dart';
 import '../core/share_utils.dart';
 import 'panda_button.dart';
 import 'personality_axis_bars.dart';
+import 'share_action_sheet.dart';
 
 /// 16問完了後に「君のキャラはこれ！」を表示するモーダル。
 Future<void> showDiagnosis16ResultModal(
@@ -134,12 +135,10 @@ class _Diagnosis16ResultSheet extends StatelessWidget {
   }
 
   void _share(BuildContext context) {
-    final s = result.scores;
-    AppShare.text(
+    // 数値列ではなく「人格をネタ化」。詳細は [docs/18_share_growth_spec.md] §3-2。
+    showShareActionSheet(
       context,
-      'パンダトーク16type診断の結果は「${result.displayName}」でした！\n'
-      '愛情 ${s.affection}% 思考 ${s.thinking}% 行動 ${s.action}% 人生 ${s.life}%\n'
-      '#パンダトーク #16type',
+      payload: SharePayload.diagnosis(result: result),
     );
   }
 }

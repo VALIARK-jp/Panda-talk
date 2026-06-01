@@ -73,11 +73,14 @@ In **Supabase Dashboard → Authentication → URL Configuration**, do the follo
 
    ```text
    io.valiark.pandatalk://callback
+   https://valiark.jp/panda-talk/auth/callback
    ```
 
    （他 Valiark アプリは別スキームを追加。例: `io.valiark.whoeats://callback`）
 
    If you override the build with `--dart-define=PANDA_TALK_AUTH_REDIRECT_URL=...`, add **that URL** here as well.
+   Web 版をローカルで検証する場合は、使うポートに合わせて
+   `http://localhost:<port>/auth/callback` も追加する。
 
 2. **Site URL**  
    If this is left as `http://localhost:3000` (common for local Next.js), then **when `redirect_to` is rejected or missing**, the confirmation flow falls back to Site URL. On a **physical phone**, `localhost` is the device itself, so the browser shows “cannot reach this site”.  
@@ -89,7 +92,7 @@ In **Supabase Dashboard → Authentication → URL Configuration**, do the follo
 
 - **Cause:** Supabase did not accept the app’s `redirect_to` (not in Redirect URLs), so the user is sent to **Site URL** (often `http://localhost:3000`).  
 - **Fix:** Add `io.valiark.pandatalk://callback` to **Redirect URLs**, fix **Site URL** as above, resend the email.  
-- **Verify:** In debug builds, check the console for `[AuthService] … authRedirectUrl=…` and confirm it matches a Dashboard entry.
+- **Verify:** In debug builds, check the console for `[AuthService] … authRedirectUrl=…` and confirm it matches a Dashboard entry. Web では `PANDA_TALK_WEB_AUTH_REDIRECT_URL`、ネイティブでは `PANDA_TALK_AUTH_REDIRECT_URL` が使われる。
 
 ### Troubleshooting: `Code verifier could not be found in local storage`
 
@@ -97,7 +100,7 @@ In **Supabase Dashboard → Authentication → URL Configuration**, do the follo
 - **Cause (別端末):** メールのリンクを **別の端末のメールアプリ** から開くと、その端末に verifier が無い。
 - **Fix:** 同じ iPhone でサインアップ→同じ端末でメールのリンクを開く。必要なら `supabase db push` 後にアプリを再ビルドして再試行。
 
-Each Valiark app uses its **own** redirect URL (`PANDA_TALK_AUTH_REDIRECT_URL` for Panda Talk). Register the **same** scheme in that app’s Android intent filter and iOS URL types (see `ios/Runner/Info.plist`, `android/app/src/main/AndroidManifest.xml`).
+Each Valiark app uses its **own** redirect URL. Panda Talk native uses `PANDA_TALK_AUTH_REDIRECT_URL` (`io.valiark.pandatalk://callback`), and Flutter Web uses `PANDA_TALK_WEB_AUTH_REDIRECT_URL` (`https://valiark.jp/panda-talk/auth/callback` by default). Register the native scheme in Android intent filters and iOS URL types (see `ios/Runner/Info.plist`, `android/app/src/main/AndroidManifest.xml`).
 
 ### Client behaviour (deeplinks and auth)
 
@@ -113,6 +116,7 @@ Each Valiark app uses its **own** redirect URL (`PANDA_TALK_AUTH_REDIRECT_URL` f
 `lib/main.dart` で `flutter_dotenv` がルートの **`.env`** を読みます（`pubspec.yaml` の `assets` に含める）。**優先順位:** `--dart-define` → `.env` の該当キー →（API / redirect だけ）コード上のフォールバック。
 
 - **初回:** `cp .env.example .env` でテンプレを作り、`PANDA_TALK_SUPABASE_URL` / `PANDA_TALK_SUPABASE_ANON_KEY` を必ず設定する（未設定だと起動時にエラー）。
+- **Web callback:** `PANDA_TALK_WEB_AUTH_REDIRECT_URL` は本番既定が `https://valiark.jp/panda-talk/auth/callback`。ローカル Flutter Web では `--dart-define=PANDA_TALK_WEB_AUTH_REDIRECT_URL=http://localhost:<port>/auth/callback` を明示する。
 - **CI / 本番:** 空の `.env` を置き、秘密は `--dart-define` のみ渡す運用でもよい。
 
 ### LINE（実装パターンは pedal_share 同型・チャンネルは valiark-dev 共通）

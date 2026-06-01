@@ -332,6 +332,15 @@ export class SupabaseQuestionRepository implements IQuestionRepository {
     return rows[0] ? toQuestionWithUser(rows[0]) : null
   }
 
+  async findByNumber(questionNumber: number): Promise<QuestionWithUser | null> {
+    const rows = await this.client.get<QuestionWithUserRow[]>('panda_questions', {
+      select: QUESTION_SELECT,
+      question_number: `eq.${questionNumber}`,
+      limit: 1,
+    })
+    return rows[0] ? toQuestionWithUser(rows[0]) : null
+  }
+
   async getStats(questionId: UUID): Promise<QuestionStats> {
     const rows = await this.client.get<QuestionStatsRow[]>('panda_question_stats', {
       select: 'question_id,count_a,count_b',

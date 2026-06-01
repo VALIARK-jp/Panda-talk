@@ -285,6 +285,24 @@ class PandaTypeCatalog {
     return null;
   }
 
+  /// 共有リンク `/type/:slug` 用。診断未実施でもタイプ紹介モーダルを出せる。
+  static PandaTypeResult? previewResultForSlug(String slug) {
+    final def = bySlug(slug);
+    if (def == null) return null;
+    final scores = PandaTypeScores(
+      affection: def.affectionFirst ? 75 : 25,
+      thinking: def.thinkingFirst ? 75 : 25,
+      action: def.actionFirst ? 75 : 25,
+      life: def.lifeFirst ? 75 : 25,
+    );
+    return PandaTypeResult(
+      slug: def.slug,
+      displayName: def.displayName,
+      tagline: def.tagline,
+      scores: scores,
+    );
+  }
+
   static PandaTypeDefinition resolve(PandaTypeScores scores) {
     final affectionFirst = scores.affection >= 50;
     final thinkingFirst = scores.thinking >= 50;

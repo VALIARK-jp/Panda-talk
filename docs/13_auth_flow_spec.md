@@ -20,7 +20,7 @@
 |------|------|
 | **単一の身元ストア** | エンドユーザーのアカウントの正は **Supabase Auth（`auth.users`）** — **UID・メール（または擬似メール）・セッション** のみ。Dashboard の Providers がすべて `Email` でもよい（Edge + `verifyOTP` のため）。 |
 | **アプリ固有プロファイル** | **表示名・ユーザーコード・アイコン・一言** などは **`panda_profiles` 等のアプリ別テーブル**が正本。Dashboard の Display name / Provider type は統一・運用の対象にしない。 |
-| **Valiark 横断** | 同一 Supabase プロジェクトを複数アプリで共有。**Redirect URL はアプリごと**（Panda Talk: `io.valiark.pandatalk://callback` / `PANDA_TALK_AUTH_REDIRECT_URL`）。Dashboard には利用する URI をすべて登録。 |
+| **Valiark 横断** | 同一 Supabase プロジェクトを複数アプリで共有。**Redirect URL はアプリごと・プラットフォームごと**（Panda Talk native: `io.valiark.pandatalk://callback` / `PANDA_TALK_AUTH_REDIRECT_URL`、Web: `https://valiark.jp/panda-talk/auth/callback` / `PANDA_TALK_WEB_AUTH_REDIRECT_URL`）。Dashboard には利用する URI をすべて登録。 |
 | **二種類のセッション確立** | (A) **ブラウザ／メール経由の PKCE** と (B) **ネイティブ IdP → Edge → `verifyOTP(token_hash)`** を明示的に分けて扱う。 |
 
 ---
@@ -54,7 +54,7 @@ flowchart LR
 | コンポーネント | 役割 |
 |----------------|------|
 | **AuthGate** | 未ログイン時はオンボーディング／ログイン・新規登録へ遷移。ログイン済みまたはゲストなら `MainApp`。起動直後にdeeplinkハンドラを1回だけ起動。 |
-| **ValiarkDeeplinkHandler** | [AppConfig.authRedirectUrl] のスキーム（既定 `io.valiark.pandatalk`）の **PKCE `code` 付き** URI だけ `getSessionFromUrl`。**二重処理禁止**（initialLink と stream の両方対策）。 |
+| **ValiarkDeeplinkHandler** | ネイティブの app scheme と Web の HTTPS callback の **PKCE `code` 付き** URI だけ `getSessionFromUrl`。**二重処理禁止**（initialLink / stream / `Uri.base` の重複対策）。 |
 | **AuthService** | 各プロバイダ呼び出し・`verifyOTP`・サインアウト・パスワードリセット・プロファイル同期トリガの前提となる API。 |
 | **line-auth-native / apple-auth-native** | IdP トークンを検証し、`auth.users` 上のユーザー解決・`app_metadata` 更新・**マジックリンク用 `hashed_token`** を返す。 |
 
@@ -64,7 +64,7 @@ flowchart LR
 
 | 方式 | 画面からの入会 | Supabase クライアント API | セッション確立の仕組み | Deeplink |
 |------|----------------|---------------------------|------------------------|----------|
-| **メール＋パスワード** | ログイン／新規 | `signInWithPassword` / `signUp` | サインインは即セッション。新規は確認メール → メール内リンク（PKCE） | 要（確認・リセット） |
+| **メール＋パスワード** | ログイン／新規 | `signInWithPassword` / `signUp` | サインインは即セッション。新規は確認メール → メール内リンク（PKCE） | 要（確認・リセット。Web は HTTPS callback） |
 | **Google** | ログイン・新規で同一 | `signInWithOAuth(google)` | ブラウザ OAuth → `redirectTo` でアプリに戻り **PKCE** | 要 |
 | **LINE** | `flow` で挙動切替 | Edge `line-auth-native` → `verifyOTP` | **サーバー発行の `hashed_token` + `type: magiclink`** | 不要（アプリ内完結） |
 | **Apple** | 同上 | Edge `apple-auth-native` → `verifyOTP` | 同上 | 不要 |
@@ -99,7 +99,7 @@ flowchart LR
 
 ### 5.1 メール（サインアップ確認・パスワードリセット・Google OAuth）
 
-共通して **`AuthFlowType.pkce`**、`emailRedirectTo` / OAuth の `redirectTo` は **`AppConfig.authRedirectUrl`**（既定 `io.valiark.pandatalk://callback`）。
+共通して **`AuthFlowType.pkce`**、`emailRedirectTo` / OAuth の `redirectTo` は **プラットフォーム別の redirect URL** を使う。ネイティブは `AppConfig.authRedirectUrl`（既定 `io.valiark.pandatalk://callback`）、Web は `AppConfig.webAuthRedirectUrl`（既定 `https://valiark.jp/panda-talk/auth/callback`）。
 
 ```mermaid
 sequenceDiagram
@@ -114,6 +114,8 @@ sequenceDiagram
   App->>GT: ValiarkDeeplinkHandler getSessionFromUrl
   GT->>App: session 確立
 ```
+
+Web では `https://valiark.jp/panda-talk/auth/callback?code=...` で Flutter Web が起動し、`Uri.base` を通して同じ処理を行う。セッション確立後は URL を `/panda-talk` に正規化する。
 
 **重要制約:** `Supabase.initialize` は **`detectSessionInUri: false`**。PKCE の処理は **ValiarkDeeplinkHandler に一本化**（二重 `getSessionFromUrl` で verifier 消失が起きうる）。詳細は [05_auth.md](./05_auth.md)。
 
@@ -182,7 +184,8 @@ Edge が返す `otp_type` は **`magiclink`** に揃え、アプリは **`OtpTyp
 | キー / 項目 | 用途 |
 |-------------|------|
 | `PANDA_TALK_SUPABASE_URL` / `PANDA_TALK_SUPABASE_ANON_KEY` | Supabase 接続（必須） |
-| `PANDA_TALK_AUTH_REDIRECT_URL` | PKCE / OAuth / メールのリダイレクト先（Dashboard **Redirect URLs** と完全一致） |
+| `PANDA_TALK_AUTH_REDIRECT_URL` | ネイティブの PKCE / OAuth / メールのリダイレクト先（Dashboard **Redirect URLs** と完全一致） |
+| `PANDA_TALK_WEB_AUTH_REDIRECT_URL` | Web の PKCE / メールのリダイレクト先（既定 `https://valiark.jp/panda-talk/auth/callback`） |
 | `valiarkLineChannelId`（`2010102462`） | LINE SDK 既定（valiark-dev 共通） |
 | Edge secrets | `SUPABASE_SERVICE_ROLE_KEY`, `LINE_CHANNEL_ID`（`2010102462` と同値） |
 | DB | `get_user_by_email` の **case-insensitive** 版 + **service_role への GRANT EXECUTE** |

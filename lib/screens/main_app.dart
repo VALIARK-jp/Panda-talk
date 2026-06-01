@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/feature_flags.dart';
 import '../core/design_tokens.dart';
+import '../infrastructure/share/share_deeplink.dart';
 import '../presentation/providers/auth_providers.dart';
 import '../presentation/providers/profile_providers.dart';
 import '../presentation/providers/feed_window_controller.dart';
 import '../presentation/providers/question_providers.dart';
+import '../presentation/providers/share_deeplink_providers.dart';
+import '../presentation/share/share_deeplink_navigation.dart';
 import '../presentation/session_reset.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/login_required_gate.dart';
@@ -27,6 +32,7 @@ class MainApp extends ConsumerStatefulWidget {
 class _MainAppState extends ConsumerState<MainApp> {
   int _currentNavIndex = 0;
   int _homeOpenSerial = 0;
+  var _consumedInitialShareRoute = false;
 
   static const _matchIndex = 1;
   static const _postIndex = 2;
@@ -109,8 +115,37 @@ class _MainAppState extends ConsumerState<MainApp> {
     }
   }
 
+  Future<void> _handlePendingShareRoute(ShareRoute route) async {
+    ref.read(pendingShareRouteProvider.notifier).state = null;
+    await navigateShareRoute(
+      context,
+      ref,
+      route: route,
+      openDiagnosisTab: _openDiagnosisTab,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<ShareRoute?>(pendingShareRouteProvider, (previous, next) {
+      if (next == null) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(_handlePendingShareRoute(next));
+      });
+    });
+
+    if (!_consumedInitialShareRoute) {
+      _consumedInitialShareRoute = true;
+      final pending = ref.read(pendingShareRouteProvider);
+      if (pending != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          unawaited(_handlePendingShareRoute(pending));
+        });
+      }
+    }
+
     // 起動直後に診断フィードを先読み（タブ復帰時の古い一覧＋ページずれを防ぐ）
     ref.watch(feedBootstrapProvider);
 

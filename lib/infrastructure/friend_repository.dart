@@ -5,6 +5,7 @@ abstract class FriendRepository {
   Future<List<DummyFriendRequest>> getRequests();
   Future<Set<String>> getRequestedUserIds();
   Future<List<DummyUser>> searchUsers(String keyword);
+  Future<DummyUser?> findUserByUsername(String username);
   Future<void> sendFriendRequest(String userId);
   Future<void> acceptRequest(String userId);
   Future<void> rejectRequest(String userId);

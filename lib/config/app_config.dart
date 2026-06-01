@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../features/auth/valiark_auth_config.dart';
@@ -22,8 +23,8 @@ class AppConfig {
     var value = raw.trim();
     if (value.isEmpty) return 'http://localhost:8787';
     if (!value.contains('://')) {
-      final isLocal = value.startsWith('localhost') ||
-          value.startsWith('127.0.0.1');
+      final isLocal =
+          value.startsWith('localhost') || value.startsWith('127.0.0.1');
       value = '${isLocal ? 'http' : 'https'}://$value';
     }
     return value.replaceAll(RegExp(r'/+$'), '');
@@ -65,6 +66,23 @@ class AppConfig {
     return pandaTalkAuthRedirectUrl;
   }
 
+  /// Dashboard → Authentication → Redirect URLs must include this exact URI.
+  static String get webAuthRedirectUrl {
+    const fromDefine = String.fromEnvironment(
+      pandaTalkWebAuthRedirectEnvKey,
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    final fromFile = dotenv.env[pandaTalkWebAuthRedirectEnvKey]?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    return pandaTalkWebAuthRedirectUrl;
+  }
+
+  /// Redirect URL selected for the current platform.
+  static String get effectiveAuthRedirectUrl {
+    return kIsWeb ? webAuthRedirectUrl : authRedirectUrl;
+  }
+
   /// LINE SDK 用（公開 ID）。未設定時は [valiarkLineChannelId]（valiark-dev 共通）。
   static String get lineChannelId {
     const fromDefine = String.fromEnvironment(
@@ -99,5 +117,29 @@ class AppConfig {
     );
     if (fromDefine.isNotEmpty) return fromDefine;
     return dotenv.env['PANDA_TALK_PRIVACY_URL']?.trim() ?? '';
+  }
+
+  /// SNS共有URLのベース。
+  ///
+  /// - dev (`.env`): Worker 直 `https://…-backend….workers.dev/share`
+  /// - prod (`.env.prod` / TestFlight): `https://valiark.jp/panda-talk`
+  ///
+  /// 未設定時は [apiBaseUrl]/share にフォールバック（dev と同じ Worker を指す）。
+  static String get shareBaseUrl {
+    const fromDefine = String.fromEnvironment(
+      'PANDA_TALK_SHARE_BASE_URL',
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) {
+      return fromDefine.replaceAll(RegExp(r'/+$'), '');
+    }
+    final fromFile = dotenv.env['PANDA_TALK_SHARE_BASE_URL']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) {
+      return fromFile.replaceAll(RegExp(r'/+$'), '');
+    }
+    if (usesLocalApiHost) {
+      return '$apiBaseUrl/share';
+    }
+    return '$apiBaseUrl/share';
   }
 }

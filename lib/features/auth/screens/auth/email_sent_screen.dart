@@ -140,7 +140,7 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'に確認メールを送りました。\nメール内のリンクをタップすると、このアプリに戻ってすぐご利用できます。',
+                'に確認メールを送りました。\nメール内のリンクを開くと、パンダトークに戻ってそのまま続けられます。',
                 style: TextStyle(
                   fontSize: AppFontSize.md,
                   height: 1.5,

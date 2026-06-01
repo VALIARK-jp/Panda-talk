@@ -9,6 +9,7 @@ import '../../presentation/providers/match_providers.dart';
 import '../../presentation/providers/user_profile_providers.dart';
 import '../../widgets/panda_button.dart';
 import '../../widgets/segmented_tabs.dart';
+import '../../widgets/share_action_sheet.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/panda_type_profile_section.dart';
 import '../../widgets/user_avatar.dart';
@@ -206,8 +207,15 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => AppShare.text(
+                    onTap: () => showShareActionSheet(
                       context,
+                      payload: SharePayload.text(
+                        ShareTexts.matchUser(
+                          displayName: displayName,
+                          matchRatePct: displayedMatchRate,
+                          usernameOrId: profileAsync.valueOrNull?.username,
+                        ),
+                      ),
                       '$displayNameさんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
                     ),
                     child: const Icon(Icons.ios_share, color: AppColors.black),

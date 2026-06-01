@@ -36,10 +36,12 @@ import { EditQuestionUseCase } from '../domain/usecases/questions/EditQuestionUs
 import { DeleteQuestionUseCase } from '../domain/usecases/questions/DeleteQuestionUseCase'
 import { SearchQuestionsUseCase } from '../domain/usecases/questions/SearchQuestionsUseCase'
 import { GetQuestionStatsUseCase } from '../domain/usecases/questions/GetQuestionStatsUseCase'
+import { GetQuestionByNumberUseCase } from '../domain/usecases/questions/GetQuestionByNumberUseCase'
 import { AnswerQuestionUseCase } from '../domain/usecases/answers/AnswerQuestionUseCase'
 import { GetMatchesUseCase } from '../domain/usecases/matches/GetMatchesUseCase'
 import { GetCompareAnswersUseCase } from '../domain/usecases/matches/GetCompareAnswersUseCase'
 import { GetProfileUseCase } from '../domain/usecases/users/GetProfileUseCase'
+import { GetUserByUsernameUseCase } from '../domain/usecases/users/GetUserByUsernameUseCase'
 import { UpdateProfileUseCase } from '../domain/usecases/users/UpdateProfileUseCase'
 import { SearchUsersUseCase } from '../domain/usecases/users/SearchUsersUseCase'
 import { EnsureUserProfileUseCase } from '../domain/usecases/users/EnsureUserProfileUseCase'
@@ -138,11 +140,13 @@ export function createContainer(env?: Env) {
     deleteQuestionUseCase: new DeleteQuestionUseCase(questionRepo),
     searchQuestionsUseCase: new SearchQuestionsUseCase(questionRepo),
     getQuestionStatsUseCase: new GetQuestionStatsUseCase(questionRepo),
+    getQuestionByNumberUseCase: new GetQuestionByNumberUseCase(questionRepo),
     answerQuestionUseCase: new AnswerQuestionUseCase(answerRepo, matchRepo, questionRepo),
     getMatchesUseCase: new GetMatchesUseCase(matchRepo),
     getCompareAnswersUseCase: new GetCompareAnswersUseCase(matchRepo),
     ensureUserProfileUseCase: new EnsureUserProfileUseCase(userRepo),
     getProfileUseCase: new GetProfileUseCase(userRepo),
+    getUserByUsernameUseCase: new GetUserByUsernameUseCase(userRepo),
     updateProfileUseCase: new UpdateProfileUseCase(userRepo),
     searchUsersUseCase: new SearchUsersUseCase(userRepo),
     deleteUserUseCase: new DeleteUserUseCase(userRepo, env),

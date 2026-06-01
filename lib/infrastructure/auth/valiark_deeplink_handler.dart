@@ -1,8 +1,8 @@
-import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/app_config.dart';
+import 'web_auth_url_cleanup.dart';
 
 /// Cold-start + foreground links for Supabase email confirmation / password-reset (PKCE).
 ///
@@ -11,8 +11,6 @@ import '../../config/app_config.dart';
 /// 「Code verifier could not be found in local storage」になる。
 class ValiarkDeeplinkHandler {
   ValiarkDeeplinkHandler._();
-
-  static bool _started = false;
 
   /// 同一 URI を二重に処理しない（initialLink と uriLinkStream の両方が届く端末対策）。
   static final Set<String> _sessionUrlHandled = {};
@@ -29,16 +27,29 @@ class ValiarkDeeplinkHandler {
   }
 
   static bool _isOurAuthHost(Uri uri) {
-    final configured = Uri.tryParse(AppConfig.authRedirectUrl);
-    if (configured != null &&
-        uri.scheme == configured.scheme &&
-        (configured.host.isEmpty || uri.host == configured.host)) {
-      return true;
+    final configuredUris = [
+      Uri.tryParse(AppConfig.authRedirectUrl),
+      Uri.tryParse(AppConfig.webAuthRedirectUrl),
+    ];
+    for (final configured in configuredUris) {
+      if (configured == null) continue;
+      if (_matchesConfiguredRedirect(uri, configured)) return true;
     }
     return uri.toString().contains('login-callback');
   }
 
-  static Future<void> _consumeAuthUri(Uri uri) async {
+  static bool _matchesConfiguredRedirect(Uri uri, Uri configured) {
+    if (uri.scheme != configured.scheme) return false;
+    if (configured.host.isNotEmpty && uri.host != configured.host) return false;
+
+    final configuredPath = configured.path.replaceAll(RegExp(r'/+$'), '');
+    final uriPath = uri.path.replaceAll(RegExp(r'/+$'), '');
+
+    if (configuredPath.isNotEmpty && configuredPath != uriPath) return false;
+    return true;
+  }
+
+  static Future<void> consumeAuthUri(Uri uri) async {
     if (!isAuthSessionUri(uri)) return;
 
     final key = uri.toString();
@@ -49,6 +60,9 @@ class ValiarkDeeplinkHandler {
 
     try {
       await Supabase.instance.client.auth.getSessionFromUrl(uri);
+      if (kIsWeb) {
+        normalizeWebAuthCallbackUrl();
+      }
       debugPrint('[ValiarkDeeplink] getSessionFromUrl ok');
     } catch (e, st) {
       _sessionUrlHandled.remove(key);
@@ -56,21 +70,8 @@ class ValiarkDeeplinkHandler {
     }
   }
 
-  /// Call once after first frame (e.g. from [AuthGate]).
+  /// @deprecated [ShareDeeplinkHandler.handleOnce] が AppLinks を一本化して呼ぶ。
   static void handleOnce() {
-    if (_started) return;
-    _started = true;
-
-    final appLinks = AppLinks();
-
-    appLinks.getInitialLink().then((Uri? uri) async {
-      if (!isAuthSessionUri(uri)) return;
-      await _consumeAuthUri(uri!);
-    });
-
-    appLinks.uriLinkStream.listen((Uri? uri) async {
-      if (!isAuthSessionUri(uri)) return;
-      await _consumeAuthUri(uri!);
-    });
+    // ShareDeeplinkHandler が認証 URI も処理する。
   }
 }
