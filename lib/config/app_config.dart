@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../features/auth/valiark_auth_config.dart';
@@ -22,8 +23,8 @@ class AppConfig {
     var value = raw.trim();
     if (value.isEmpty) return 'http://localhost:8787';
     if (!value.contains('://')) {
-      final isLocal = value.startsWith('localhost') ||
-          value.startsWith('127.0.0.1');
+      final isLocal =
+          value.startsWith('localhost') || value.startsWith('127.0.0.1');
       value = '${isLocal ? 'http' : 'https'}://$value';
     }
     return value.replaceAll(RegExp(r'/+$'), '');
@@ -63,6 +64,23 @@ class AppConfig {
     final fromFile = dotenv.env[pandaTalkAuthRedirectEnvKey]?.trim();
     if (fromFile != null && fromFile.isNotEmpty) return fromFile;
     return pandaTalkAuthRedirectUrl;
+  }
+
+  /// Dashboard → Authentication → Redirect URLs must include this exact URI.
+  static String get webAuthRedirectUrl {
+    const fromDefine = String.fromEnvironment(
+      pandaTalkWebAuthRedirectEnvKey,
+      defaultValue: '',
+    );
+    if (fromDefine.isNotEmpty) return fromDefine;
+    final fromFile = dotenv.env[pandaTalkWebAuthRedirectEnvKey]?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    return pandaTalkWebAuthRedirectUrl;
+  }
+
+  /// Redirect URL selected for the current platform.
+  static String get effectiveAuthRedirectUrl {
+    return kIsWeb ? webAuthRedirectUrl : authRedirectUrl;
   }
 
   /// LINE SDK 用（公開 ID）。未設定時は [valiarkLineChannelId]（valiark-dev 共通）。
@@ -120,8 +138,8 @@ class AppConfig {
       return fromFile.replaceAll(RegExp(r'/+$'), '');
     }
     if (usesLocalApiHost) {
-      return '${apiBaseUrl}/share';
+      return '$apiBaseUrl/share';
     }
-    return '${apiBaseUrl}/share';
+    return '$apiBaseUrl/share';
   }
 }

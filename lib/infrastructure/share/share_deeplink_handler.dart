@@ -25,6 +25,10 @@ class ShareDeeplinkHandler {
     if (_started) return;
     _started = true;
 
+    if (kIsWeb) {
+      _dispatch(Uri.base);
+    }
+
     final appLinks = AppLinks();
 
     appLinks.getInitialLink().then((Uri? uri) async {

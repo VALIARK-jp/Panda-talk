@@ -15,6 +15,7 @@ import '../supabase/panda_profile_sync.dart';
 enum NativeAuthFlow {
   /// ログイン画面: 既存のみ。未登録ならエラー。
   login,
+
   /// 新規登録画面: 未登録ならユーザー作成。
   signup,
 }
@@ -31,7 +32,10 @@ class EmailAlreadyRegisteredException implements Exception {
 }
 
 class NativeAuthResponse {
-  const NativeAuthResponse({required this.authResponse, required this.isNewUser});
+  const NativeAuthResponse({
+    required this.authResponse,
+    required this.isNewUser,
+  });
 
   final AuthResponse authResponse;
   final bool isNewUser;
@@ -53,7 +57,9 @@ class AuthService {
 
   void _debugLogAuthRedirect(String label) {
     if (kDebugMode) {
-      debugPrint('[AuthService] $label → authRedirectUrl=${AppConfig.authRedirectUrl}');
+      debugPrint(
+        '[AuthService] $label → authRedirectUrl=${AppConfig.effectiveAuthRedirectUrl}',
+      );
     }
   }
 
@@ -79,9 +85,7 @@ class AuthService {
         final treatAsEmail = provider == 'email' || provider == null;
         if (treatAsEmail && user.emailConfirmedAt == null) {
           await signOut();
-          throw Exception(
-            'メールアドレスが確認されていません。受信トレイを確認してください。',
-          );
+          throw Exception('メールアドレスが確認されていません。受信トレイを確認してください。');
         }
         // panda_profiles sync runs from PandaTalkApp ref.listen (avoid awaiting
         // localhost Worker here — real devices hang).
@@ -89,9 +93,7 @@ class AuthService {
       return response;
     } on http.ClientException catch (e) {
       debugPrint('signInWithEmail network: $e');
-      throw Exception(
-        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
-      );
+      throw Exception('ネットワーク接続に問題があります。インターネット接続を確認してください。');
     } on AuthException catch (error) {
       throw Exception(_authMessage(error));
     }
@@ -107,11 +109,8 @@ class AuthService {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'displayName': displayName,
-          'name': displayName,
-        },
-        emailRedirectTo: AppConfig.authRedirectUrl,
+        data: {'displayName': displayName, 'name': displayName},
+        emailRedirectTo: AppConfig.effectiveAuthRedirectUrl,
       );
       final userId = response.user?.id;
       if (userId != null) {
@@ -122,9 +121,7 @@ class AuthService {
       return response;
     } on http.ClientException catch (e) {
       debugPrint('signUpWithEmail network: $e');
-      throw Exception(
-        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
-      );
+      throw Exception('ネットワーク接続に問題があります。インターネット接続を確認してください。');
     } on AuthException catch (error) {
       if (_emailAlreadyRegistered(error)) {
         throw const EmailAlreadyRegisteredException();
@@ -151,10 +148,7 @@ class AuthService {
       final response = await _client.post(
         Uri.parse('${AppConfig.supabaseFunctionsUrl}/line-auth-native'),
         headers: _edgeFunctionHeaders,
-        body: jsonEncode({
-          'accessToken': accessToken,
-          'flow': flowParam,
-        }),
+        body: jsonEncode({'accessToken': accessToken, 'flow': flowParam}),
       );
       final nativeResponse = await _verifyNativeOtp(response);
 
@@ -253,9 +247,7 @@ class AuthService {
           );
         } catch (e, st) {
           assert(() {
-            debugPrint(
-              '[AuthService] Apple metadata update skipped: $e\n$st',
-            );
+            debugPrint('[AuthService] Apple metadata update skipped: $e\n$st');
             return true;
           }());
         }
@@ -298,22 +290,18 @@ class AuthService {
       _debugLogAuthRedirect('signInWithGoogle');
       final launched = await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: AppConfig.authRedirectUrl,
+        redirectTo: AppConfig.effectiveAuthRedirectUrl,
       );
       if (!launched) {
         throw Exception('Google認証画面を開けませんでした');
       }
     } on http.ClientException catch (e) {
       debugPrint('signInWithGoogle network: $e');
-      throw Exception(
-        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
-      );
+      throw Exception('ネットワーク接続に問題があります。インターネット接続を確認してください。');
     } on AuthException catch (error) {
       throw Exception(_authMessage(error));
     } on PlatformException catch (error) {
-      throw Exception(
-        'Google認証を開始できませんでした: ${error.message ?? error.code}',
-      );
+      throw Exception('Google認証を開始できませんでした: ${error.message ?? error.code}');
     }
   }
 
@@ -342,19 +330,17 @@ class AuthService {
   /// Alias for [requestPasswordReset].
   Future<void> resetPassword(String email) => requestPasswordReset(email);
 
-  /// Opens in-app password update flow via [AppConfig.authRedirectUrl].
+  /// Opens password update flow via the platform-specific auth redirect URL.
   Future<void> requestPasswordReset(String email) async {
     try {
       _debugLogAuthRedirect('requestPasswordReset');
       await _supabase.auth.resetPasswordForEmail(
         email.trim(),
-        redirectTo: AppConfig.authRedirectUrl,
+        redirectTo: AppConfig.effectiveAuthRedirectUrl,
       );
     } on http.ClientException catch (e) {
       debugPrint('requestPasswordReset network: $e');
-      throw Exception(
-        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
-      );
+      throw Exception('ネットワーク接続に問題があります。インターネット接続を確認してください。');
     } on AuthException catch (error) {
       throw Exception(_authMessage(error));
     }
@@ -369,13 +355,11 @@ class AuthService {
       await _supabase.auth.resend(
         type: OtpType.signup,
         email: user!.email!,
-        emailRedirectTo: AppConfig.authRedirectUrl,
+        emailRedirectTo: AppConfig.effectiveAuthRedirectUrl,
       );
     } on http.ClientException catch (e) {
       debugPrint('resendEmailVerification network: $e');
-      throw Exception(
-        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
-      );
+      throw Exception('ネットワーク接続に問題があります。インターネット接続を確認してください。');
     } on AuthException catch (error) {
       throw Exception(_authMessage(error));
     }
@@ -388,13 +372,11 @@ class AuthService {
       await _supabase.auth.resend(
         type: OtpType.signup,
         email: email.trim(),
-        emailRedirectTo: AppConfig.authRedirectUrl,
+        emailRedirectTo: AppConfig.effectiveAuthRedirectUrl,
       );
     } on http.ClientException catch (e) {
       debugPrint('resendSignupEmail network: $e');
-      throw Exception(
-        'ネットワーク接続に問題があります。インターネット接続を確認してください。',
-      );
+      throw Exception('ネットワーク接続に問題があります。インターネット接続を確認してください。');
     } on AuthException catch (error) {
       throw Exception(_authMessage(error));
     }
@@ -410,14 +392,14 @@ class AuthService {
     if (session == null || user == null) return;
 
     final metadata = user.userMetadata ?? const <String, dynamic>{};
-    final name = displayName ??
+    final name =
+        displayName ??
         metadata['displayName'] as String? ??
         metadata['name'] as String? ??
         user.email?.split('@').first ??
         'panda user';
 
-    final initialAvatar =
-        avatarUrl ?? metadata['photoURL'] as String?;
+    final initialAvatar = avatarUrl ?? metadata['photoURL'] as String?;
 
     if (AppConfig.usesLocalApiHost) {
       await ensurePandaProfileRow(
@@ -591,5 +573,4 @@ class AuthService {
     }
     return credential.familyName ?? credential.givenName;
   }
-
 }

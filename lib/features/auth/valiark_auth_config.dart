@@ -10,5 +10,15 @@ const valiarkLineChannelId = '2010102462';
 /// Supabase Dashboard → Redirect URLs の3か所で同じ値に揃える。
 const pandaTalkAuthRedirectUrl = 'io.valiark.pandatalk://callback';
 
+/// Panda Talk Web 専用メール確認 / PKCE リダイレクト。
+///
+/// 本番は `valiark.jp/panda-talk/auth/callback` に戻す。ローカル Web 検証では
+/// `--dart-define` / `.env` で `http://localhost:<port>/auth/callback` を上書きする。
+const pandaTalkWebAuthRedirectUrl =
+    'https://valiark.jp/panda-talk/auth/callback';
+
 /// [dotenv] / `--dart-define` 用キー名。
 const pandaTalkAuthRedirectEnvKey = 'PANDA_TALK_AUTH_REDIRECT_URL';
+
+/// [dotenv] / `--dart-define` 用キー名（Web 専用）。
+const pandaTalkWebAuthRedirectEnvKey = 'PANDA_TALK_WEB_AUTH_REDIRECT_URL';

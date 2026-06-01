@@ -5,6 +5,10 @@
       "destination": "/panda-talk/index.html"
     },
     {
+      "source": "/panda-talk/auth/callback",
+      "destination": "/panda-talk/index.html"
+    },
+    {
       "source": "/panda-talk/privacy_policy",
       "destination": "/panda-talk/privacy_policy/index.html"
     },
