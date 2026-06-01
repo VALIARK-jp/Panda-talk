@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -108,14 +109,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      _buildAuthButton(
-                        icon: Icons.chat,
-                        label: 'LINEで新規登録',
-                        color: const Color(0xFF00C300),
-                        textColor: Colors.white,
-                        onPressed: () => _signUpWithLine(context),
-                      ),
+                      if (!kIsWeb) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        _buildAuthButton(
+                          icon: Icons.chat,
+                          label: 'LINEで新規登録',
+                          color: const Color(0xFF00C300),
+                          textColor: Colors.white,
+                          onPressed: () => _signUpWithLine(context),
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.md),
                       if (Theme.of(context).platform == TargetPlatform.iOS) ...[
                         _buildAuthButton(
