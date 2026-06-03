@@ -9,7 +9,7 @@ import '../../../../infrastructure/auth/auth_service.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
-import '../../widgets/terms_consent_footer.dart';
+import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_auth_screen.dart';
 
@@ -22,6 +22,7 @@ class SignupScreen extends ConsumerStatefulWidget {
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _authCompletionInFlight = false;
+  bool _termsAccepted = false;
 
   /// メール確認は [EmailAuthScreen] 側。LINE / Apple のみここで完了する。
   Future<void> _finishNativeAuth() async {
@@ -94,11 +95,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl + AppSpacing.md),
+                      TermsConsentCheckbox(
+                        value: _termsAccepted,
+                        onChanged: (value) {
+                          setState(() => _termsAccepted = value ?? false);
+                        },
+                        onLightBackground: false,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
                       _buildAuthButton(
                         icon: Icons.email,
                         label: 'メールアドレスで新規登録',
                         color: AuthColors.emailButtonBg,
                         textColor: AuthColors.emailButtonFg,
+                        enabled: _termsAccepted,
                         onPressed: () {
                           Navigator.push<void>(
                             context,
@@ -116,6 +126,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           label: 'LINEで新規登録',
                           color: const Color(0xFF00C300),
                           textColor: Colors.white,
+                          enabled: _termsAccepted,
                           onPressed: () => _signUpWithLine(context),
                         ),
                       ],
@@ -126,6 +137,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           label: 'Appleで新規登録',
                           color: Colors.black,
                           textColor: Colors.white,
+                          enabled: _termsAccepted,
                           onPressed: () => _signUpWithApple(context),
                         ),
                         const SizedBox(height: AppSpacing.md),
@@ -133,10 +145,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       const SizedBox(height: AppSpacing.xl),
                       const ValiarkAuthNoticeBlock(
                         onLightBackground: false,
-                        showCreatedByHeader: true,
+                        compact: true,
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      const TermsConsentFooter(onLightBackground: false),
                       SizedBox(height: MediaQuery.paddingOf(context).bottom),
                     ],
                   ),
@@ -155,12 +165,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     required Color color,
     required Color textColor,
     required VoidCallback onPressed,
+    bool enabled = true,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 44,
-      child: ElevatedButton(
-        onPressed: onPressed,
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: ElevatedButton(
+          onPressed: enabled ? onPressed : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: textColor,
@@ -185,6 +198,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

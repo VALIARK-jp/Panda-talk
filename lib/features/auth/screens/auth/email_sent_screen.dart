@@ -8,6 +8,7 @@ import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/auth/auth_service.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../widgets/auth_app_bar.dart';
+import '../../widgets/valiark_auth_notice_block.dart';
 
 /// サインアップ確認メール送付後。メール内リンク（PKCE）でセッションが付いたらルートまで戻す。
 class EmailSentScreen extends ConsumerStatefulWidget {
@@ -220,6 +221,11 @@ class _EmailSentScreenState extends ConsumerState<EmailSentScreen>
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              const ValiarkAuthNoticeBlock(
+                onLightBackground: true,
+                compact: true,
               ),
               const Spacer(),
               TextButton(

@@ -18,6 +18,7 @@ import '../../infrastructure/diagnosis_16_completion.dart';
 import '../../infrastructure/diagnosis_16_store.dart';
 import '../../infrastructure/diagnosis_16_sync.dart';
 import '../../presentation/providers/auth_providers.dart';
+import '../../presentation/providers/moderation_providers.dart';
 import '../../presentation/providers/diagnosis_providers.dart';
 import '../../presentation/providers/profile_providers.dart';
 import '../../presentation/providers/question_providers.dart';
@@ -28,6 +29,7 @@ import '../../widgets/panda_button.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/segmented_tabs.dart';
 import '../../widgets/share_action_sheet.dart';
+import '../../widgets/poster_action_sheet.dart';
 import '../../widgets/tag_chip.dart';
 import '../../widgets/user_avatar.dart';
 import '../../widgets/username_label.dart';
@@ -509,9 +511,16 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
                                 Expanded(
                                   child: Row(
                                     children: [
-                                      UserAvatar(
-                                        size: 28,
-                                        imageUrl: q.authorAvatarUrl,
+                                      GestureDetector(
+                                        onTap: () => showPosterActionSheet(
+                                          context,
+                                          ref: ref,
+                                          question: q,
+                                        ),
+                                        child: UserAvatar(
+                                          size: 28,
+                                          imageUrl: q.authorAvatarUrl,
+                                        ),
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
@@ -1181,6 +1190,19 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
     return ordered;
   }
 
+  List<DummyQuestion> _filterBlockedAuthors(List<DummyQuestion> questions) {
+    final blocked =
+        ref.watch(moderationControllerProvider).valueOrNull?.blockedUserIds ??
+        const {};
+    if (blocked.isEmpty) return questions;
+    return questions
+        .where(
+          (q) =>
+              q.authorUserId == null || !blocked.contains(q.authorUserId),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<AsyncValue<User?>>(authUserProvider, (previous, next) {
@@ -1251,7 +1273,7 @@ class _QuestionFeedScreenState extends ConsumerState<QuestionFeedScreen> {
           return _buildNoQuestionsEmpty();
         }
 
-        final ordered = _orderForTab(feedQuestions);
+        final ordered = _filterBlockedAuthors(_orderForTab(feedQuestions));
         final feedKey = _questionsSyncKey(ordered);
         final structureKey = _feedStructureKey(ordered);
         if (feedKey != _lastBuildFeedKey) {

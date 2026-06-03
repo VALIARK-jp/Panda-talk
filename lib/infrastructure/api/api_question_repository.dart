@@ -349,6 +349,7 @@ class ApiQuestionRepository implements QuestionRepository {
       category: json['category'] as String? ?? 'その他',
       authorName: _posterDisplayName(poster),
       authorUsername: poster?['username'] as String? ?? 'unknown',
+      authorUserId: poster?['id'] as String?,
       authorAvatarUrl: poster?['avatarUrl'] as String?,
       text: json['text'] as String,
       optionA: json['optionA'] as String,

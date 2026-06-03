@@ -8,6 +8,7 @@ import '../config/feature_flags.dart';
 import '../core/design_tokens.dart';
 import '../infrastructure/share/share_deeplink.dart';
 import '../presentation/providers/auth_providers.dart';
+import '../presentation/providers/moderation_providers.dart';
 import '../presentation/providers/profile_providers.dart';
 import '../presentation/providers/feed_window_controller.dart';
 import '../presentation/providers/question_providers.dart';
@@ -148,6 +149,9 @@ class _MainAppState extends ConsumerState<MainApp> {
 
     // 起動直後に診断フィードを先読み（タブ復帰時の古い一覧＋ページずれを防ぐ）
     ref.watch(feedBootstrapProvider);
+    if (_isLoggedIn) {
+      ref.watch(moderationControllerProvider);
+    }
 
     final screenIndex = _screenIndexForNav(_currentNavIndex);
     final body = !_isLoggedIn && _requiresLoginScreen(screenIndex)

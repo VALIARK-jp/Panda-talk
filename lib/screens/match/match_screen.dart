@@ -7,6 +7,7 @@ import '../../core/dummy_data.dart';
 import '../../presentation/providers/auth_providers.dart';
 import '../../presentation/providers/friend_providers.dart';
 import '../../presentation/providers/match_providers.dart';
+import '../../presentation/providers/moderation_providers.dart';
 import '../../widgets/guest_login_button.dart';
 import '../../widgets/login_required_gate.dart';
 import '../../widgets/match_user_tile.dart';
@@ -70,6 +71,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
 
     final searching = _searchQuery.trim().isNotEmpty;
     final friendStateAsync = ref.watch(friendControllerProvider);
+    final blockedUserIds =
+        ref.watch(moderationControllerProvider).valueOrNull?.blockedUserIds ??
+        const {};
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -175,7 +179,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                         data: (friendState) => RefreshIndicator(
                           onRefresh: _refreshMatchData,
                           child: _FriendSearchResults(
-                            users: friendState.searchResults,
+                            users: friendState.searchResults
+                                .where((user) => !blockedUserIds.contains(user.id))
+                                .toList(),
                             requestedUserIds: friendState.requestedUserIds,
                             onOpenUser: (user) => Navigator.push(
                               context,
@@ -211,7 +217,10 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                           ),
                         ),
                         data: (users) {
-                          if (users.isEmpty) {
+                          final visibleUsers = users
+                              .where((user) => !blockedUserIds.contains(user.id))
+                              .toList();
+                          if (visibleUsers.isEmpty) {
                             return RefreshIndicator(
                               onRefresh: _refreshMatchData,
                               child: SingleChildScrollView(
@@ -229,9 +238,9 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                             onRefresh: _refreshMatchData,
                             child: ListView.builder(
                               physics: const AlwaysScrollableScrollPhysics(),
-                              itemCount: users.length,
+                              itemCount: visibleUsers.length,
                               itemBuilder: (context, i) {
-                                final u = users[i];
+                                final u = visibleUsers[i];
                                 return MatchUserTile(
                                   rank: i + 1,
                                   name: u.name,

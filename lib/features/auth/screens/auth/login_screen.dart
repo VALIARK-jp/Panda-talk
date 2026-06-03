@@ -6,7 +6,7 @@ import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
-import '../../widgets/terms_consent_footer.dart';
+import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_auth_screen.dart';
 import 'signup_screen.dart';
@@ -23,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _authInFlight = false;
   String? _authInFlightProvider;
+  bool _termsAccepted = false;
 
   Future<void> _finishNativeAuth() async {
     if (!mounted) return;
@@ -53,6 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Align(
                             alignment: Alignment.topLeft,
@@ -61,6 +63,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           SizedBox(height: loginTopInset),
                           _buildHeroHeader(),
                           const SizedBox(height: AppSpacing.lg),
+                          TermsConsentCheckbox(
+                            value: _termsAccepted,
+                            onChanged: (value) {
+                              setState(() => _termsAccepted = value ?? false);
+                            },
+                            onLightBackground: true,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.lg,
@@ -69,12 +79,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: AppSpacing.xl,
-                          bottom: 4,
+                      const Padding(
+                        padding: EdgeInsets.only(top: AppSpacing.xl, bottom: 4),
+                        child: ValiarkAuthNoticeBlock(
+                          onLightBackground: true,
+                          compact: true,
                         ),
-                        child: _buildFooterSection(),
                       ),
                     ],
                   ),
@@ -89,7 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   double _calculateLoginContentTopInset({required double viewportHeight}) {
     const outerVerticalPadding = 40.0;
-    const headerBlockHeightEstimate = 200.0;
+    const headerBlockHeightEstimate = 110.0;
     const headerToButtonsGap = 20.0;
     const buttonHeight = 44.0;
     const buttonGap = 12.0;
@@ -114,50 +124,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildHeroHeader() {
-    return Column(
-      children: [
-        Image.asset(
-          _logoAssetPath,
-          width: 160,
-          height: 160,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const SizedBox(
-              width: 160,
-              height: 160,
-              child: Center(
-                child: Icon(Icons.pets, size: 72, color: AppColors.black),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'パンダトーク',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: AppFontSize.xxl,
-            fontWeight: FontWeight.w900,
-            color: AppColors.black,
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '質問に答えて、タイプや相性を友だちと楽しもう',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: AppFontSize.lg,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textGray,
-            height: 1.45,
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Image.asset(
+        _logoAssetPath,
+        width: 280,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const SizedBox(
+            height: 120,
+            child: Center(
+              child: Icon(Icons.pets, size: 72, color: AppColors.black),
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildLoginButtons(BuildContext context) {
+    final canProceed = _termsAccepted;
     return Column(
       children: [
         _buildAuthButton(
@@ -167,6 +153,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textColor: AppColors.black,
           borderSide: const BorderSide(color: AppColors.borderGray, width: 1),
           providerKey: 'email',
+          enabled: canProceed,
           onPressed: () {
             Navigator.push<void>(
               context,
@@ -185,6 +172,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             textColor: Colors.white,
             borderSide: null,
             providerKey: 'line',
+            enabled: canProceed,
             onPressed: () => _signInWithLine(context),
           ),
         ],
@@ -197,18 +185,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             textColor: Colors.white,
             borderSide: null,
             providerKey: 'apple',
+            enabled: canProceed,
             onPressed: () => _signInWithApple(context),
           ),
           const SizedBox(height: AppSpacing.sm + 2),
         ],
         const SizedBox(height: AppSpacing.sm),
         TextButton(
-          onPressed: () {
-            Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(builder: (_) => const SignupScreen()),
-            );
-          },
+          onPressed: canProceed
+              ? () {
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SignupScreen(),
+                    ),
+                  );
+                }
+              : null,
           child: Text(
             '新規登録はこちら',
             style: TextStyle(
@@ -224,20 +217,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildFooterSection() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const ValiarkAuthNoticeBlock(
-          onLightBackground: true,
-          showCreatedByHeader: true,
-        ),
-        const SizedBox(height: 16),
-        const TermsConsentFooter(onLightBackground: true),
-      ],
-    );
-  }
-
   Widget _buildAuthButton({
     required IconData icon,
     required String label,
@@ -246,16 +225,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     BorderSide? borderSide,
     required String providerKey,
     required VoidCallback onPressed,
+    bool enabled = true,
   }) {
     final isPressed = _authInFlight && _authInFlightProvider == providerKey;
     return SizedBox(
       width: double.infinity,
       height: 44,
       child: Opacity(
-        opacity: isPressed ? 0.55 : 1,
+        opacity: isPressed || !enabled ? 0.55 : 1,
         child: ElevatedButton(
           onPressed: () {
-            if (_authInFlight) return;
+            if (_authInFlight || !enabled) return;
             onPressed();
           },
           style: ElevatedButton.styleFrom(

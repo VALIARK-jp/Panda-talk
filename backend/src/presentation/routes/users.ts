@@ -52,30 +52,6 @@ app.get('/search', authMiddleware, async (c) => {
   }
 })
 
-// GET /users/:id - ユーザープロフィール（認証必要）
-app.get('/:id', authMiddleware, async (c) => {
-  try {
-    const id = c.req.param('id')
-    const { getProfileUseCase } = createContainer(c.env)
-    const user = await getProfileUseCase.execute(id)
-    return c.json({ user })
-  } catch (err) {
-    return handleError(err, c)
-  }
-})
-
-// DELETE /users/me - アカウント削除（認証必要）
-app.delete('/me', authMiddleware, async (c) => {
-  try {
-    const userId = c.get('userId')
-    const { deleteUserUseCase } = createContainer(c.env)
-    await deleteUserUseCase.execute(userId)
-    return c.body(null, 204)
-  } catch (err) {
-    return handleError(err, c)
-  }
-})
-
 // PATCH /users/me - プロフィール更新（認証必要）
 app.patch('/me', authMiddleware, async (c) => {
   try {
@@ -138,6 +114,68 @@ app.patch('/me/settings', authMiddleware, async (c) => {
     const body = await c.req.json<{ settings: any }>()
     mockSettings[userId] = body.settings
     return c.json({ success: true, settings: mockSettings[userId] })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// GET /users/me/blocks - ブロック中ユーザー一覧（認証必要）
+app.get('/me/blocks', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const { getBlockedUserIdsUseCase } = createContainer(c.env)
+    const result = await getBlockedUserIdsUseCase.execute(userId)
+    return c.json(result)
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// POST /users/:id/block - ユーザーをブロック（認証必要）
+app.post('/:id/block', authMiddleware, async (c) => {
+  try {
+    const blockerId = c.get('userId')
+    const blockedId = c.req.param('id')
+    const { blockUserUseCase } = createContainer(c.env)
+    const result = await blockUserUseCase.execute(blockerId, blockedId)
+    return c.json(result, 201)
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// DELETE /users/:id/block - ブロック解除（認証必要）
+app.delete('/:id/block', authMiddleware, async (c) => {
+  try {
+    const blockerId = c.get('userId')
+    const blockedId = c.req.param('id')
+    const { unblockUserUseCase } = createContainer(c.env)
+    const result = await unblockUserUseCase.execute(blockerId, blockedId)
+    return c.json(result)
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// GET /users/:id - ユーザープロフィール（認証必要）
+app.get('/:id', authMiddleware, async (c) => {
+  try {
+    const id = c.req.param('id')
+    const { getProfileUseCase } = createContainer(c.env)
+    const user = await getProfileUseCase.execute(id)
+    return c.json({ user })
+  } catch (err) {
+    return handleError(err, c)
+  }
+})
+
+// DELETE /users/me - アカウント削除（認証必要）
+app.delete('/me', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    const { deleteUserUseCase } = createContainer(c.env)
+    await deleteUserUseCase.execute(userId)
+    return c.body(null, 204)
   } catch (err) {
     return handleError(err, c)
   }

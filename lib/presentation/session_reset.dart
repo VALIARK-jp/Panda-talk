@@ -10,6 +10,7 @@ import 'providers/comment_providers.dart';
 import 'providers/diagnosis_providers.dart';
 import 'providers/friend_providers.dart';
 import 'providers/match_providers.dart';
+import 'providers/moderation_providers.dart';
 import 'providers/notification_providers.dart';
 import 'providers/post_providers.dart';
 import 'providers/profile_providers.dart';
@@ -58,6 +59,7 @@ void resetSessionScopedState(
   ref.invalidate(questionPostControllerProvider);
   ref.invalidate(commentControllerProvider);
   ref.invalidate(userProfileProvider);
+  ref.invalidate(moderationControllerProvider);
 
   ref.read(appSessionEpochProvider.notifier).update((n) => n + 1);
 
