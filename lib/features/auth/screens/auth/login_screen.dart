@@ -5,7 +5,6 @@ import '../../../../core/design_tokens.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
-import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_auth_screen.dart';
@@ -54,6 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Align(
                             alignment: Alignment.topLeft,
@@ -78,12 +78,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ],
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: AppSpacing.xl,
-                          bottom: 4,
+                      const Padding(
+                        padding: EdgeInsets.only(top: AppSpacing.xl, bottom: 4),
+                        child: ValiarkAuthNoticeBlock(
+                          onLightBackground: true,
+                          compact: true,
                         ),
-                        child: _buildFooterSection(),
                       ),
                     ],
                   ),
@@ -98,7 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   double _calculateLoginContentTopInset({required double viewportHeight}) {
     const outerVerticalPadding = 40.0;
-    const headerBlockHeightEstimate = 200.0;
+    const headerBlockHeightEstimate = 110.0;
     const headerToButtonsGap = 20.0;
     const buttonHeight = 44.0;
     const buttonGap = 12.0;
@@ -123,46 +123,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildHeroHeader() {
-    return Column(
-      children: [
-        Image.asset(
-          _logoAssetPath,
-          width: 160,
-          height: 160,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const SizedBox(
-              width: 160,
-              height: 160,
-              child: Center(
-                child: Icon(Icons.pets, size: 72, color: AppColors.black),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'パンダトーク',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: AppFontSize.xxl,
-            fontWeight: FontWeight.w900,
-            color: AppColors.black,
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '質問に答えて、タイプや相性を友だちと楽しもう',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: AppFontSize.lg,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textGray,
-            height: 1.45,
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Image.asset(
+        _logoAssetPath,
+        width: 280,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return const SizedBox(
+            height: 120,
+            child: Center(
+              child: Icon(Icons.pets, size: 72, color: AppColors.black),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -235,20 +210,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildFooterSection() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const ValiarkAuthNoticeBlock(
-          onLightBackground: true,
-          showCreatedByHeader: true,
-        ),
-        const SizedBox(height: 16),
-        const TermsConsentFooter(onLightBackground: true),
       ],
     );
   }

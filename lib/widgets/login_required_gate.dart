@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/design_tokens.dart';
 import '../features/auth/screens/auth/login_screen.dart';
 import '../features/auth/screens/auth/signup_screen.dart';
+import '../features/auth/widgets/valiark_auth_notice_block.dart';
 import 'panda_avatar.dart';
 import 'panda_button.dart';
 
@@ -82,6 +83,11 @@ class LoginRequiredGate extends StatelessWidget {
                     PandaOutlinedButton(
                       label: '新規登録',
                       onTap: () => _openSignup(context),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const ValiarkAuthNoticeBlock(
+                      onLightBackground: true,
+                      compact: true,
                     ),
                   ],
                 ),

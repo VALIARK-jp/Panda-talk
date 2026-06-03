@@ -37,6 +37,7 @@ class DummyQuestion {
   final String category;
   final String authorName;
   final String authorUsername;
+  final String? authorUserId;
   final String? authorAvatarUrl;
   final String text;
   final String optionA;
@@ -53,6 +54,7 @@ class DummyQuestion {
     required this.category,
     this.authorName = 'ぱんだ好き',
     this.authorUsername = 'panda_love',
+    this.authorUserId,
     this.authorAvatarUrl,
     required this.text,
     required this.optionA,
@@ -83,6 +85,7 @@ class DummyQuestion {
       category: category ?? this.category,
       authorName: authorName,
       authorUsername: authorUsername,
+      authorUserId: authorUserId,
       authorAvatarUrl: authorAvatarUrl,
       text: text ?? this.text,
       optionA: optionA ?? this.optionA,

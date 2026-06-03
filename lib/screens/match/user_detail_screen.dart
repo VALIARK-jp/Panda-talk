@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
 import '../../core/match_rate_utils.dart';
@@ -243,6 +244,8 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     final displayName = profileAsync.valueOrNull?.name ?? u.name;
     final displayUsername =
         profileAsync.valueOrNull?.username ?? u.id;
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isSelf = currentUserId != null && currentUserId == u.id;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -270,42 +273,44 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => AppShare.text(
-                      context,
-                      '${displayName}さんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
+                  if (!isSelf) ...[
+                    GestureDetector(
+                      onTap: () => AppShare.text(
+                        context,
+                        '${displayName}さんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
+                      ),
+                      child: const Icon(Icons.ios_share, color: AppColors.black),
                     ),
-                    child: const Icon(Icons.ios_share, color: AppColors.black),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: AppColors.black),
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'report':
-                          showReportContentSheet(
-                            context,
-                            ref: ref,
-                            targetType: ReportTargetType.user,
-                            targetId: u.id,
-                            subjectLabel: displayName,
-                          );
-                          break;
-                        case 'block':
-                          _confirmBlockUser();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
-                        value: 'report',
-                        child: Text('通報する'),
-                      ),
-                      PopupMenuItem(
-                        value: 'block',
-                        child: Text('ブロックする'),
-                      ),
-                    ],
-                  ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: AppColors.black),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'report':
+                            showReportContentSheet(
+                              context,
+                              ref: ref,
+                              targetType: ReportTargetType.user,
+                              targetId: u.id,
+                              subjectLabel: displayName,
+                            );
+                            break;
+                          case 'block':
+                            _confirmBlockUser();
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: 'report',
+                          child: Text('通報する'),
+                        ),
+                        PopupMenuItem(
+                          value: 'block',
+                          child: Text('ブロックする'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

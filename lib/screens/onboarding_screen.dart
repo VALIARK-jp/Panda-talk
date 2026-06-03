@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
 import '../core/design_tokens.dart';
+import '../features/auth/widgets/valiark_auth_notice_block.dart';
 import '../widgets/panda_avatar.dart';
 import '../widgets/panda_button.dart';
 
@@ -87,6 +88,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ..._buildActions(),
             const SizedBox(height: AppSpacing.lg),
             _buildLegalLinks(),
+            const SizedBox(height: AppSpacing.lg),
+            const ValiarkAuthNoticeBlock(
+              onLightBackground: true,
+              compact: true,
+            ),
             const SizedBox(height: AppSpacing.md),
           ],
         ),

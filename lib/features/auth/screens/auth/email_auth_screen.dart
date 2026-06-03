@@ -10,7 +10,6 @@ import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../infrastructure/profile_onboarding_store.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
-import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_sent_screen.dart';
@@ -254,11 +253,9 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
               ),
             ),
             const SizedBox(height: 24),
-            const TermsConsentFooter(onLightBackground: true),
-            const SizedBox(height: 16),
             const ValiarkAuthNoticeBlock(
               onLightBackground: true,
-              showCreatedByHeader: false,
+              compact: true,
             ),
           ],
         ),
@@ -405,11 +402,9 @@ class _EmailAuthScreenState extends ConsumerState<EmailAuthScreen>
                 ),
               ),
             const SizedBox(height: 24),
-            const TermsConsentFooter(onLightBackground: true),
-            const SizedBox(height: 16),
             const ValiarkAuthNoticeBlock(
               onLightBackground: true,
-              showCreatedByHeader: false,
+              compact: true,
             ),
           ],
         ),

@@ -11,6 +11,7 @@ class ValiarkAuthNoticeBlock extends StatelessWidget {
     super.key,
     required this.onLightBackground,
     this.showCreatedByHeader = true,
+    this.compact = false,
   });
 
   /// ログイン画面・メールフォームなど白 / 薄灰背景なら `true`。
@@ -18,6 +19,9 @@ class ValiarkAuthNoticeBlock extends StatelessWidget {
 
   /// `false` にすると「Created by」行だけ省略（メール画面など省スペース用）。
   final bool showCreatedByHeader;
+
+  /// `true` のときは Created by と VALIARK ロゴのみ（共通アカウント説明・姉妹アプリリンクは非表示）。
+  final bool compact;
 
   Color get _muted =>
       onLightBackground ? AppColors.textGray : AppColors.white.withValues(alpha: 0.78);
@@ -33,7 +37,7 @@ class ValiarkAuthNoticeBlock extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (showCreatedByHeader) ...[
+        if (showCreatedByHeader || compact) ...[
           Row(
             children: [
               Expanded(child: Container(height: 1, color: _divider)),
@@ -62,68 +66,70 @@ class ValiarkAuthNoticeBlock extends StatelessWidget {
             fit: BoxFit.contain,
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          valiarkUnifiedAccountLeadJa.trim(),
-          textAlign: TextAlign.start,
-          style: TextStyle(
-            fontSize: AppFontSize.sm,
-            height: 1.5,
-            color: onLightBackground ? AppColors.black : AppColors.white,
-            fontWeight: FontWeight.w700,
+        if (!compact) ...[
+          const SizedBox(height: 12),
+          Text(
+            valiarkUnifiedAccountLeadJa.trim(),
+            textAlign: TextAlign.start,
+            style: TextStyle(
+              fontSize: AppFontSize.sm,
+              height: 1.5,
+              color: onLightBackground ? AppColors.black : AppColors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          valiarkAuthSupplementJa.trim(),
-          textAlign: TextAlign.start,
-          style: TextStyle(
-            fontSize: AppFontSize.sm,
-            height: 1.45,
-            color: _muted,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 8),
+          Text(
+            valiarkAuthSupplementJa.trim(),
+            textAlign: TextAlign.start,
+            style: TextStyle(
+              fontSize: AppFontSize.sm,
+              height: 1.45,
+              color: _muted,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-        if (valiarkSisterAppLinks.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 4,
-            runSpacing: 0,
-            children: [
-              Text(
-                'その他のアプリ：',
-                style: TextStyle(
-                  fontSize: AppFontSize.sm,
-                  color: _muted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              for (var i = 0; i < valiarkSisterAppLinks.length; i++) ...[
-                if (i > 0)
-                  Text('・', style: TextStyle(fontSize: AppFontSize.sm, color: _muted)),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    foregroundColor: _linkColor,
+          if (valiarkSisterAppLinks.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              runSpacing: 0,
+              children: [
+                Text(
+                  'その他のアプリ：',
+                  style: TextStyle(
+                    fontSize: AppFontSize.sm,
+                    color: _muted,
+                    fontWeight: FontWeight.w600,
                   ),
-                  onPressed: () => _openLink(context, valiarkSisterAppLinks[i].uri),
-                  child: Text(
-                    valiarkSisterAppLinks[i].title,
-                    style: TextStyle(
-                      fontSize: AppFontSize.sm,
-                      fontWeight: FontWeight.w700,
-                      decoration: TextDecoration.underline,
-                      decorationColor: _linkColor.withValues(alpha: 0.4),
+                ),
+                for (var i = 0; i < valiarkSisterAppLinks.length; i++) ...[
+                  if (i > 0)
+                    Text('・', style: TextStyle(fontSize: AppFontSize.sm, color: _muted)),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: _linkColor,
+                    ),
+                    onPressed: () => _openLink(context, valiarkSisterAppLinks[i].uri),
+                    child: Text(
+                      valiarkSisterAppLinks[i].title,
+                      style: TextStyle(
+                        fontSize: AppFontSize.sm,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                        decorationColor: _linkColor.withValues(alpha: 0.4),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
+            ),
+          ],
         ],
       ],
     );

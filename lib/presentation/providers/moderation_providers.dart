@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../infrastructure/moderation_repository.dart';
-import 'repositories.dart';
+import '../../infrastructure/providers/repositories.dart';
 
 class ModerationState {
   const ModerationState({this.blockedUserIds = const {}});

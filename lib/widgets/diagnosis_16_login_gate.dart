@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/design_tokens.dart';
 import '../features/auth/screens/auth/login_screen.dart';
 import '../features/auth/screens/auth/signup_screen.dart';
+import '../features/auth/widgets/valiark_auth_notice_block.dart';
 import 'panda_avatar.dart';
 import 'panda_button.dart';
 
@@ -79,6 +80,11 @@ class Diagnosis16LoginGateScreen extends ConsumerWidget {
                       color: AppColors.black,
                     ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const ValiarkAuthNoticeBlock(
+                  onLightBackground: true,
+                  compact: true,
                 ),
                 SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
               ],

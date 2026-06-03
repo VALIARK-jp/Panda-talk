@@ -8,7 +8,6 @@ import '../../../../infrastructure/auth/auth_service.dart';
 import '../../../../infrastructure/post_auth_flow.dart';
 import '../../../../presentation/providers/auth_providers.dart';
 import '../../widgets/auth_app_bar.dart';
-import '../../widgets/terms_consent_footer.dart';
 import '../../widgets/terms_consent_checkbox.dart';
 import '../../widgets/valiark_auth_notice_block.dart';
 import 'email_auth_screen.dart';
@@ -143,10 +142,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       const SizedBox(height: AppSpacing.xl),
                       const ValiarkAuthNoticeBlock(
                         onLightBackground: false,
-                        showCreatedByHeader: true,
+                        compact: true,
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      const TermsConsentFooter(onLightBackground: false),
                       SizedBox(height: MediaQuery.paddingOf(context).bottom),
                     ],
                   ),
