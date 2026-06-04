@@ -1,6 +1,10 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../../config/app_config.dart';
 import '../../../core/design_tokens.dart';
+import 'legal_url_launcher.dart';
+
 class TermsConsentCheckbox extends StatelessWidget {
   const TermsConsentCheckbox({
     super.key,
@@ -39,43 +43,93 @@ class TermsConsentCheckbox extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: GestureDetector(
-            onTap: () => onChanged(!value),
-            child: Text.rich(
-              TextSpan(
-                style: TextStyle(
-                  fontSize: AppFontSize.sm,
-                  height: 1.45,
-                  color: _body,
-                  fontWeight: FontWeight.w500,
-                ),
-                children: [
-                  TextSpan(
-                    text: '利用規約',
-                    style: TextStyle(
-                      color: _title,
-                      fontWeight: FontWeight.w800,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  const TextSpan(text: ' と '),
-                  TextSpan(
-                    text: 'プライバシーポリシー',
-                    style: TextStyle(
-                      color: _title,
-                      fontWeight: FontWeight.w800,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' に同意します（VALIARK合同会社）',
-                  ),
-                ],
-              ),
-            ),
+          child: _TermsConsentLabel(
+            bodyColor: _body,
+            linkColor: _title,
+            onToggle: () => onChanged(!value),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TermsConsentLabel extends StatefulWidget {
+  const _TermsConsentLabel({
+    required this.bodyColor,
+    required this.linkColor,
+    required this.onToggle,
+  });
+
+  final Color bodyColor;
+  final Color linkColor;
+  final VoidCallback onToggle;
+
+  @override
+  State<_TermsConsentLabel> createState() => _TermsConsentLabelState();
+}
+
+class _TermsConsentLabelState extends State<_TermsConsentLabel> {
+  late final TapGestureRecognizer _termsRecognizer;
+  late final TapGestureRecognizer _privacyRecognizer;
+  late final TapGestureRecognizer _bodyRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () => openLegalUrl(
+            context,
+            AppConfig.termsOfServiceUrl,
+            '利用規約',
+          );
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () => openLegalUrl(
+            context,
+            AppConfig.privacyPolicyUrl,
+            'プライバシーポリシー',
+          );
+    _bodyRecognizer = TapGestureRecognizer()..onTap = widget.onToggle;
+  }
+
+  @override
+  void dispose() {
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
+    _bodyRecognizer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final linkStyle = TextStyle(
+      color: widget.linkColor,
+      fontWeight: FontWeight.w800,
+      decoration: TextDecoration.underline,
+    );
+
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontSize: AppFontSize.sm,
+          height: 1.45,
+          color: widget.bodyColor,
+          fontWeight: FontWeight.w500,
+        ),
+        children: [
+          TextSpan(text: '利用規約', style: linkStyle, recognizer: _termsRecognizer),
+          const TextSpan(text: ' と '),
+          TextSpan(
+            text: 'プライバシーポリシー',
+            style: linkStyle,
+            recognizer: _privacyRecognizer,
+          ),
+          TextSpan(
+            text: ' に同意します（VALIARK合同会社）',
+            recognizer: _bodyRecognizer,
+          ),
+        ],
+      ),
     );
   }
 }

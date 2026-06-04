@@ -55,6 +55,17 @@ if (!fs.existsSync(envProd)) {
   } else {
     ok('.env.prod has API base URL')
   }
+  for (const [key, label] of [
+    ['PANDA_TALK_TERMS_URL', 'terms URL'],
+    ['PANDA_TALK_PRIVACY_URL', 'privacy URL'],
+  ]) {
+    const value = env[key]
+    if (!value || !value.startsWith('https://')) {
+      fail(`.env.prod: ${key} must be an https URL`)
+    } else {
+      ok(`.env.prod has ${label}`)
+    }
+  }
 }
 
 const refsPath = path.join(root, 'scripts', 'valiark-project-refs.env')
