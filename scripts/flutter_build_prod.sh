@@ -20,6 +20,8 @@ DEFINES=(
   "--dart-define=PANDA_TALK_SUPABASE_ANON_KEY=${PANDA_TALK_SUPABASE_ANON_KEY:?}"
   "--dart-define=PANDA_TALK_API_BASE_URL=${PANDA_TALK_API_BASE_URL:?}"
   "--dart-define=PANDA_TALK_AUTH_REDIRECT_URL=${PANDA_TALK_AUTH_REDIRECT_URL:-io.valiark.pandatalk://callback}"
+  "--dart-define=PANDA_TALK_TERMS_URL=${PANDA_TALK_TERMS_URL:?}"
+  "--dart-define=PANDA_TALK_PRIVACY_URL=${PANDA_TALK_PRIVACY_URL:?}"
 )
 
 node "$ROOT/scripts/check-prod-config.mjs"

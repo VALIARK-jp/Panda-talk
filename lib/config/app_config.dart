@@ -99,6 +99,11 @@ class AppConfig {
     return supabaseUrl.replaceFirst('.supabase.co', '.functions.supabase.co');
   }
 
+  static const _defaultTermsUrl =
+      'https://valiark.jp/panda-talk/terms_of_service';
+  static const _defaultPrivacyUrl =
+      'https://valiark.jp/panda-talk/privacy_policy';
+
   /// 利用規約（HTTPS）。空のときはアプリ内リンクを出さない／タップで準備中。
   static String get termsOfServiceUrl {
     const fromDefine = String.fromEnvironment(
@@ -106,7 +111,10 @@ class AppConfig {
       defaultValue: '',
     );
     if (fromDefine.isNotEmpty) return fromDefine;
-    return dotenv.env['PANDA_TALK_TERMS_URL']?.trim() ?? '';
+    final fromFile = dotenv.env['PANDA_TALK_TERMS_URL']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    if (!usesLocalApiHost) return _defaultTermsUrl;
+    return '';
   }
 
   /// プライバシーポリシー（HTTPS）。
@@ -116,7 +124,10 @@ class AppConfig {
       defaultValue: '',
     );
     if (fromDefine.isNotEmpty) return fromDefine;
-    return dotenv.env['PANDA_TALK_PRIVACY_URL']?.trim() ?? '';
+    final fromFile = dotenv.env['PANDA_TALK_PRIVACY_URL']?.trim();
+    if (fromFile != null && fromFile.isNotEmpty) return fromFile;
+    if (!usesLocalApiHost) return _defaultPrivacyUrl;
+    return '';
   }
 
   /// SNS共有URLのベース。
