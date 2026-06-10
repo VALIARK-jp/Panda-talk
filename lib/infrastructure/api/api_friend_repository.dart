@@ -52,7 +52,10 @@ class ApiFriendRepository implements FriendRepository {
         .map((json) {
           final user = _parseUser(json as Map<String, dynamic>);
           if (user == null) return null;
-          return DummyFriendRequest(user: user, message: '友達申請が届いています');
+          return DummyFriendRequest(
+            user: user,
+            message: '友達申請が届いています',
+          );
         })
         .whereType<DummyFriendRequest>()
         .toList();

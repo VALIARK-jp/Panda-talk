@@ -44,8 +44,7 @@ class MockFriendRepository implements FriendRepository {
     if (query.isEmpty) return const [];
     return _candidates.where((user) {
       final code = (user.username ?? user.id).toLowerCase();
-      return code.startsWith(query) ||
-          user.name.toLowerCase().contains(query);
+      return code.startsWith(query) || user.name.toLowerCase().contains(query);
     }).toList();
   }
 
@@ -55,8 +54,7 @@ class MockFriendRepository implements FriendRepository {
     if (normalized.isEmpty) return null;
     for (final user in _candidates) {
       final code = (user.username ?? user.id).toLowerCase();
-      if (code == normalized ||
-          user.name.toLowerCase() == normalized) {
+      if (code == normalized || user.name.toLowerCase() == normalized) {
         return user;
       }
     }
