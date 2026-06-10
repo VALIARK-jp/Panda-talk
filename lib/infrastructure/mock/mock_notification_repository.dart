@@ -5,6 +5,8 @@ class MockNotificationRepository implements NotificationRepository {
   final List<DummyNotification> _notifications = [
     const DummyNotification(
       id: 'friend_request_rina',
+      type: 'friend_request',
+      targetId: 'friendship_rina',
       title: '友達申請が届きました',
       body: 'りなさんが友達になりたがっています',
       time: '3分前',
@@ -13,6 +15,8 @@ class MockNotificationRepository implements NotificationRepository {
     ),
     const DummyNotification(
       id: 'question_like_morning',
+      type: 'like',
+      targetId: 'question_morning',
       title: '質問にいいねされました',
       body: '投稿した「朝型？夜型？」にいいねがつきました',
       time: '1時間前',
@@ -20,7 +24,19 @@ class MockNotificationRepository implements NotificationRepository {
       targetLabel: '質問',
     ),
     const DummyNotification(
+      id: 'question_comment_lunch',
+      type: 'comment',
+      targetId: 'comment_lunch',
+      title: 'コメントが届きました',
+      body: '投稿した質問に新着コメントがあります',
+      time: '2時間前',
+      isRead: false,
+      targetLabel: '質問',
+    ),
+    const DummyNotification(
       id: 'friend_accepted_kotaro',
+      type: 'friend_accepted',
+      targetId: 'friendship_kotaro',
       title: '友達申請が承認されました',
       body: 'こうたろうさんと友達になりました',
       time: '昨日',
@@ -51,5 +67,23 @@ class MockNotificationRepository implements NotificationRepository {
     for (var i = 0; i < _notifications.length; i++) {
       _notifications[i] = _notifications[i].copyWith(isRead: true);
     }
+  }
+
+  @override
+  Future<void> sendTestNotification() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _notifications.insert(
+      0,
+      DummyNotification(
+        id: 'test_${DateTime.now().millisecondsSinceEpoch}',
+        type: 'test',
+        targetId: null,
+        title: '開発用テスト通知',
+        body: '通知の受信経路が正常に動作しています',
+        time: 'たった今',
+        isRead: false,
+        targetLabel: 'テスト',
+      ),
+    );
   }
 }

@@ -43,7 +43,8 @@ class MockFriendRepository implements FriendRepository {
     final query = keyword.trim().replaceFirst('@', '').toLowerCase();
     if (query.isEmpty) return const [];
     return _candidates.where((user) {
-      return user.id.toLowerCase().startsWith(query) ||
+      final code = (user.username ?? user.id).toLowerCase();
+      return code.startsWith(query) ||
           user.name.toLowerCase().contains(query);
     }).toList();
   }
@@ -53,7 +54,8 @@ class MockFriendRepository implements FriendRepository {
     final normalized = username.trim().replaceFirst('@', '').toLowerCase();
     if (normalized.isEmpty) return null;
     for (final user in _candidates) {
-      if (user.id.toLowerCase() == normalized ||
+      final code = (user.username ?? user.id).toLowerCase();
+      if (code == normalized ||
           user.name.toLowerCase() == normalized) {
         return user;
       }

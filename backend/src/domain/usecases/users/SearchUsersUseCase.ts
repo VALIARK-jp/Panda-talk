@@ -4,7 +4,9 @@ import type { User } from '../../entities/index'
 export class SearchUsersUseCase {
   constructor(private userRepo: IUserRepository) {}
 
-  async execute(prefix: string, limit: number): Promise<User[]> {
-    return this.userRepo.searchByUsername(prefix, limit)
+  async execute(query: string, limit: number): Promise<User[]> {
+    const normalized = query.trim().replace(/^@+/, '')
+    if (!normalized) return []
+    return this.userRepo.searchByUsername(normalized, limit)
   }
 }

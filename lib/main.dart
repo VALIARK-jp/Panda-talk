@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,8 +14,10 @@ import 'infrastructure/diagnosis_16_store.dart';
 import 'infrastructure/diagnosis_16_sync.dart';
 import 'infrastructure/guest_answer_sync.dart';
 import 'infrastructure/profile_onboarding_store.dart';
+import 'infrastructure/push/push_notification_manager.dart';
 import 'presentation/auth_gate.dart';
 import 'presentation/providers/auth_providers.dart';
+import 'presentation/providers/notification_providers.dart';
 import 'presentation/session_reset.dart';
 
 Future<void> main() async {
@@ -54,6 +58,35 @@ class PandaTalkApp extends ConsumerStatefulWidget {
 
 class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
   final GlobalKey<NavigatorState> _rootNavKey = GlobalKey<NavigatorState>();
+  final GlobalKey<ScaffoldMessengerState> _rootMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+  late final PushNotificationManager _pushManager;
+
+  @override
+  void initState() {
+    super.initState();
+    _pushManager = PushNotificationManager(
+      onNotificationChanged: () {
+        ref.invalidate(notificationControllerProvider);
+      },
+    );
+    unawaited(_bootstrapPushNotifications(_pushManager));
+  }
+
+  Future<void> _bootstrapPushNotifications(
+    PushNotificationManager pushManager,
+  ) async {
+    await pushManager.initialize();
+    if (Supabase.instance.client.auth.currentUser != null) {
+      await pushManager.syncCurrentUserToken();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pushManager.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +120,7 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
           await uploadPendingDiagnosis16Answers(ref);
           await uploadPendingGuestAnswers(ref);
           await syncDiagnosis16Result(ref);
+          await _pushManager.syncCurrentUserToken();
         } catch (e, st) {
           assert(() {
             debugPrint('post-login sync: $e $st');
@@ -102,6 +136,7 @@ class _PandaTalkAppState extends ConsumerState<PandaTalkApp> {
 
     return MaterialApp(
       navigatorKey: _rootNavKey,
+      scaffoldMessengerKey: _rootMessengerKey,
       title: 'パンダトーク',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

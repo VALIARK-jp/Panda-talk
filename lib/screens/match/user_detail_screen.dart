@@ -239,7 +239,8 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
         false;
 
     final displayName = profileAsync.valueOrNull?.name ?? u.name;
-    final displayUsername = profileAsync.valueOrNull?.username ?? u.id;
+    final displayUsername =
+        profileAsync.valueOrNull?.username ?? u.username ?? u.id;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isSelf = currentUserId != null && currentUserId == u.id;
 

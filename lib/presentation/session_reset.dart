@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../infrastructure/diagnosis_16_store.dart';
 import '../infrastructure/profile_onboarding_store.dart';
 import '../infrastructure/question_progress_store.dart';
+import '../infrastructure/push/push_notification_manager.dart';
 import '../infrastructure/providers/repositories.dart';
 import 'providers/auth_providers.dart';
 import 'providers/comment_providers.dart';
@@ -69,6 +70,11 @@ void resetSessionScopedState(
 }
 
 Future<void> performSignOut(WidgetRef ref) async {
+  try {
+    await ref.read(pushNotificationManagerProvider).clearCurrentToken();
+  } catch (_) {
+    // push token の掃除は best-effort で十分。signOut 自体は継続する。
+  }
   await ref.read(authServiceProvider).signOut();
   resetSessionScopedState(ref, clearGuestMode: true);
 }

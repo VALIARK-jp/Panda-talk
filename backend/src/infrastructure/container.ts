@@ -22,10 +22,12 @@ import { SupabaseCommentRepository } from './supabase/repositories/SupabaseComme
 import { SupabaseQuestionLikeRepository } from './supabase/repositories/SupabaseQuestionLikeRepository'
 import { SupabaseCommentLikeRepository } from './supabase/repositories/SupabaseCommentLikeRepository'
 import { SupabaseNotificationRepository } from './supabase/repositories/SupabaseNotificationRepository'
+import { SupabasePushTokenRepository } from './supabase/repositories/SupabasePushTokenRepository'
 import { SupabaseGroupRepository } from './supabase/repositories/SupabaseGroupRepository'
 import { SupabaseMessageRepository } from './supabase/repositories/SupabaseMessageRepository'
 import { SupabaseDirectMessageRepository } from './supabase/repositories/SupabaseDirectMessageRepository'
 import { SupabaseModerationRepository } from './supabase/repositories/SupabaseModerationRepository'
+import { FirebasePushNotifier } from './push/FirebasePushNotifier'
 
 import { GetDiagnosis16QuestionsUseCase } from '../domain/usecases/questions/GetDiagnosis16QuestionsUseCase'
 import { GetFeedUseCase } from '../domain/usecases/questions/GetFeedUseCase'
@@ -106,8 +108,17 @@ export function createContainer(env?: Env) {
     ? new SupabaseCommentLikeRepository(supabaseClient)
     : new MockCommentLikeRepository()
 
+  const pushTokenRepo = supabaseClient
+    ? new SupabasePushTokenRepository(supabaseClient)
+    : null
+
+  const pushNotifier =
+    supabaseClient && pushTokenRepo
+      ? new FirebasePushNotifier(env ?? {}, supabaseClient, userRepo, pushTokenRepo)
+      : null
+
   const notificationRepo = supabaseClient
-    ? new SupabaseNotificationRepository(supabaseClient)
+    ? new SupabaseNotificationRepository(supabaseClient, pushNotifier ?? undefined)
     : new MockNotificationRepository()
 
   const groupRepo = supabaseClient
@@ -139,6 +150,8 @@ export function createContainer(env?: Env) {
     : new MockModerationRepository()
 
   return {
+    notificationRepo,
+    pushTokenRepo,
     getDiagnosis16QuestionsUseCase: new GetDiagnosis16QuestionsUseCase(questionRepo),
     getFeedUseCase: new GetFeedUseCase(questionRepo),
     getFeedWindowUseCase: new GetFeedWindowUseCase(questionRepo),
@@ -161,14 +174,22 @@ export function createContainer(env?: Env) {
     searchUsersUseCase: new SearchUsersUseCase(userRepo),
     deleteUserUseCase: new DeleteUserUseCase(userRepo, env),
     getCommentsUseCase: new GetCommentsUseCase(commentRepo),
-    postCommentUseCase: new PostCommentUseCase(commentRepo),
+    postCommentUseCase: new PostCommentUseCase(commentRepo, questionRepo, notificationRepo),
     deleteCommentUseCase: new DeleteCommentUseCase(commentRepo),
-    toggleQuestionLikeUseCase: new ToggleQuestionLikeUseCase(questionLikeRepo),
-    toggleCommentLikeUseCase: new ToggleCommentLikeUseCase(commentLikeRepo),
+    toggleQuestionLikeUseCase: new ToggleQuestionLikeUseCase(
+      questionLikeRepo,
+      questionRepo,
+      notificationRepo
+    ),
+    toggleCommentLikeUseCase: new ToggleCommentLikeUseCase(
+      commentLikeRepo,
+      commentRepo,
+      notificationRepo
+    ),
     getNotificationsUseCase: new GetNotificationsUseCase(notificationRepo),
     markAsReadUseCase: new MarkAsReadUseCase(notificationRepo),
-    sendFriendRequestUseCase: new SendFriendRequestUseCase(friendshipRepo),
-    acceptFriendRequestUseCase: new AcceptFriendRequestUseCase(friendshipRepo),
+    sendFriendRequestUseCase: new SendFriendRequestUseCase(friendshipRepo, notificationRepo),
+    acceptFriendRequestUseCase: new AcceptFriendRequestUseCase(friendshipRepo, notificationRepo),
     deleteFriendshipUseCase: new DeleteFriendshipUseCase(friendshipRepo),
     getFriendsUseCase: new GetFriendsUseCase(friendshipRepo, userRepo),
     getGroupsUseCase: new GetGroupsUseCase(groupRepo),

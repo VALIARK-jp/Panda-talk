@@ -35,10 +35,10 @@ class ApiSettingsRepository implements SettingsRepository {
     );
     final settings = data['settings'] as Map<String, dynamic>;
     return DummyNotificationSettings(
-      friendRequests: settings['friendRequests'] as bool? ?? true,
-      questionLikes: settings['questionLikes'] as bool? ?? true,
-      messages: settings['messages'] as bool? ?? true,
-      groupUpdates: settings['groupUpdates'] as bool? ?? false,
+      likesEnabled: settings['likesEnabled'] as bool? ?? true,
+      commentsEnabled: settings['commentsEnabled'] as bool? ?? true,
+      friendRequestsEnabled: settings['friendRequestsEnabled'] as bool? ?? true,
+      friendAcceptedEnabled: settings['friendAcceptedEnabled'] as bool? ?? true,
     );
   }
 
@@ -50,12 +50,21 @@ class ApiSettingsRepository implements SettingsRepository {
       Uri.parse('$_apiBaseUrl/users/me/settings'),
       body: {
         'settings': {
-          'friendRequests': settings.friendRequests,
-          'questionLikes': settings.questionLikes,
-          'messages': settings.messages,
-          'groupUpdates': settings.groupUpdates,
+          'likesEnabled': settings.likesEnabled,
+          'commentsEnabled': settings.commentsEnabled,
+          'friendRequestsEnabled': settings.friendRequestsEnabled,
+          'friendAcceptedEnabled': settings.friendAcceptedEnabled,
         },
       },
+      auth: true,
+    );
+  }
+
+  @override
+  Future<void> sendTestNotification() async {
+    await _postJson(
+      Uri.parse('$_apiBaseUrl/notifications/test'),
+      body: {},
       auth: true,
     );
   }
@@ -74,6 +83,19 @@ class ApiSettingsRepository implements SettingsRepository {
     bool auth = false,
   }) async {
     final response = await _client.patch(
+      uri,
+      headers: await _headers(auth: auth),
+      body: jsonEncode(body),
+    );
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> _postJson(
+    Uri uri, {
+    required Map<String, Object?> body,
+    bool auth = false,
+  }) async {
+    final response = await _client.post(
       uri,
       headers: await _headers(auth: auth),
       body: jsonEncode(body),

@@ -189,7 +189,7 @@ class _FriendTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '@${user.id}',
+                    '@${user.username ?? user.id}',
                     style: const TextStyle(
                       fontSize: AppFontSize.sm,
                       color: AppColors.textGray,

@@ -152,6 +152,7 @@ export type NotificationType =
   | 'friend_accepted'
   | 'new_match'
   | 'group_created'
+  | 'test'
 
 export type Notification = {
   id: UUID

@@ -1,8 +1,12 @@
 import type { IFriendshipRepository } from '../../repositories/IFriendshipRepository'
+import type { INotificationRepository } from '../../repositories/INotificationRepository'
 import type { Friendship } from '../../entities/index'
 
 export class SendFriendRequestUseCase {
-  constructor(private friendshipRepo: IFriendshipRepository) {}
+  constructor(
+    private friendshipRepo: IFriendshipRepository,
+    private notificationRepo: INotificationRepository
+  ) {}
 
   async execute(senderId: string, targetId: string): Promise<Friendship> {
     if (senderId === targetId) {
@@ -16,6 +20,13 @@ export class SendFriendRequestUseCase {
       throw Object.assign(new Error('Friendship already exists'), { code: 'CONFLICT' })
     }
 
-    return this.friendshipRepo.sendRequest(userAId, userBId, senderId)
+    const friendship = await this.friendshipRepo.sendRequest(userAId, userBId, senderId)
+    await this.notificationRepo.create({
+      userId: targetId,
+      actorId: senderId,
+      type: 'friend_request',
+      targetId: friendship.id,
+    })
+    return friendship
   }
 }

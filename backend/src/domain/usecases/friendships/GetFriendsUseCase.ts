@@ -28,13 +28,13 @@ export class GetFriendsUseCase {
 
   async getPendingReceived(userId: string): Promise<{ friendship: Friendship; user: User }[]> {
     const friendships = await this.friendshipRepo.findPendingReceived(userId)
-    const requesterIds = friendships.map((f) => f.userAId)
+    const requesterIds = friendships.map((f) => f.requestedBy)
     const users = await this.userRepo.findByIds(requesterIds)
     const userMap = new Map(users.map((u) => [u.id, u]))
 
     return friendships
       .map((f) => {
-        const user = userMap.get(f.userAId)
+        const user = userMap.get(f.requestedBy)
         if (!user) return null
         return { friendship: f, user }
       })

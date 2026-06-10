@@ -117,10 +117,13 @@ class ApiFriendRepository implements FriendRepository {
 
   @override
   Future<void> acceptRequest(String userId) async {
-    await _client.patch(
+    final response = await _client.patch(
       Uri.parse('$_apiBaseUrl/friendships/$userId/accept'),
       headers: await _headers(auth: true),
     );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(response.body);
+    }
   }
 
   @override
@@ -144,6 +147,9 @@ class ApiFriendRepository implements FriendRepository {
 
     return DummyUser(
       id: userId,
+      username:
+          _readString(normalizedUserMap, 'username') ??
+          _readString(userMap, 'username'),
       name:
           _readString(normalizedUserMap, 'name') ??
           _readString(normalizedUserMap, 'username') ??

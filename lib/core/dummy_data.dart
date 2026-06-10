@@ -5,6 +5,7 @@ import 'match_rate_utils.dart';
 class DummyUser {
   final String name;
   final String id;
+  final String? username;
   final int matchRate;
   final int? commonAnswerCount;
   final int? sameAnswerCount;
@@ -12,6 +13,7 @@ class DummyUser {
   const DummyUser({
     required this.name,
     required this.id,
+    this.username,
     required this.matchRate,
     this.commonAnswerCount,
     this.sameAnswerCount,
@@ -149,6 +151,8 @@ class DummyFriendRequest {
 
 class DummyNotification {
   final String id;
+  final String type;
+  final String? targetId;
   final String title;
   final String body;
   final String time;
@@ -156,6 +160,8 @@ class DummyNotification {
   final String targetLabel;
   const DummyNotification({
     required this.id,
+    required this.type,
+    this.targetId,
     required this.title,
     required this.body,
     required this.time,
@@ -166,6 +172,8 @@ class DummyNotification {
   DummyNotification copyWith({bool? isRead}) {
     return DummyNotification(
       id: id,
+      type: type,
+      targetId: targetId,
       title: title,
       body: body,
       time: time,
@@ -205,29 +213,31 @@ class DummyComment {
 }
 
 class DummyNotificationSettings {
-  final bool friendRequests;
-  final bool questionLikes;
-  final bool messages;
-  final bool groupUpdates;
+  final bool likesEnabled;
+  final bool commentsEnabled;
+  final bool friendRequestsEnabled;
+  final bool friendAcceptedEnabled;
 
   const DummyNotificationSettings({
-    required this.friendRequests,
-    required this.questionLikes,
-    required this.messages,
-    required this.groupUpdates,
+    required this.likesEnabled,
+    required this.commentsEnabled,
+    required this.friendRequestsEnabled,
+    required this.friendAcceptedEnabled,
   });
 
   DummyNotificationSettings copyWith({
-    bool? friendRequests,
-    bool? questionLikes,
-    bool? messages,
-    bool? groupUpdates,
+    bool? likesEnabled,
+    bool? commentsEnabled,
+    bool? friendRequestsEnabled,
+    bool? friendAcceptedEnabled,
   }) {
     return DummyNotificationSettings(
-      friendRequests: friendRequests ?? this.friendRequests,
-      questionLikes: questionLikes ?? this.questionLikes,
-      messages: messages ?? this.messages,
-      groupUpdates: groupUpdates ?? this.groupUpdates,
+      likesEnabled: likesEnabled ?? this.likesEnabled,
+      commentsEnabled: commentsEnabled ?? this.commentsEnabled,
+      friendRequestsEnabled:
+          friendRequestsEnabled ?? this.friendRequestsEnabled,
+      friendAcceptedEnabled:
+          friendAcceptedEnabled ?? this.friendAcceptedEnabled,
     );
   }
 }

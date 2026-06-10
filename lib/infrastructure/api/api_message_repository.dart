@@ -89,6 +89,7 @@ class ApiMessageRepository implements MessageRepository {
             partner['username'] as String? ??
             'unknown',
         id: partner['id'] as String,
+        username: partner['username'] as String?,
         matchRate: 0, // In a real app, this might come from another join
         avatarUrl: partner['avatarUrl'] as String?,
       ),

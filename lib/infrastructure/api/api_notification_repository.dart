@@ -36,6 +36,7 @@ class ApiNotificationRepository implements NotificationRepository {
     final notifications = data['notifications'] as List<dynamic>? ?? [];
     return notifications
         .map((n) => _parseNotification(n as Map<String, dynamic>))
+        .where((notification) => notification.type != 'test')
         .toList();
   }
 
@@ -55,6 +56,15 @@ class ApiNotificationRepository implements NotificationRepository {
   Future<void> markAllAsRead() async {
     await _patchJson(
       Uri.parse('$_apiBaseUrl/notifications/read'),
+      body: {},
+      auth: true,
+    );
+  }
+
+  @override
+  Future<void> sendTestNotification() async {
+    await _postJson(
+      Uri.parse('$_apiBaseUrl/notifications/test'),
       body: {},
       auth: true,
     );
@@ -87,20 +97,12 @@ class ApiNotificationRepository implements NotificationRepository {
         body = '友達申請が承認されました！トークを始めましょう';
         targetLabel = 'プロフィール';
         break;
-      case 'new_match':
-        title = '新しいマッチング';
-        body = '一致率の高いパンダが見つかりました';
-        targetLabel = 'マッチ';
-        break;
-      case 'group_created':
-        title = 'グループ作成';
-        body = '新しいグループに参加しました';
-        targetLabel = 'グループ';
-        break;
     }
 
     return DummyNotification(
       id: json['id'] as String,
+      type: type,
+      targetId: json['targetId'] as String?,
       title: title,
       body: body,
       time: _formatTime(json['createdAt'] as String),
@@ -138,6 +140,19 @@ class ApiNotificationRepository implements NotificationRepository {
     bool auth = false,
   }) async {
     final response = await _client.patch(
+      uri,
+      headers: await _headers(auth: auth),
+      body: jsonEncode(body),
+    );
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> _postJson(
+    Uri uri, {
+    required Map<String, Object?> body,
+    bool auth = false,
+  }) async {
+    final response = await _client.post(
       uri,
       headers: await _headers(auth: auth),
       body: jsonEncode(body),

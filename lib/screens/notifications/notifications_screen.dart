@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/design_tokens.dart';
 import '../../core/dummy_data.dart';
+import '../../infrastructure/providers/repositories.dart';
 import '../../presentation/providers/notification_providers.dart';
 import '../../widgets/panda_avatar.dart';
+import '../home/question_comments_screen.dart';
 import '../friends/friends_screen.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -67,19 +69,7 @@ class NotificationsScreen extends ConsumerWidget {
                     return _NotificationTile(
                       notification: n,
                       isRead: n.isRead,
-                      onTap: () {
-                        ref
-                            .read(notificationControllerProvider.notifier)
-                            .markAsRead(n.id);
-                        if (n.targetLabel == '友達申請') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const FriendsScreen(),
-                            ),
-                          );
-                        }
-                      },
+                      onTap: () => _handleNotificationTap(context, ref, n),
                     );
                   },
                 ),
@@ -89,6 +79,52 @@ class NotificationsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+Future<void> _handleNotificationTap(
+  BuildContext context,
+  WidgetRef ref,
+  DummyNotification notification,
+) async {
+  await ref
+      .read(notificationControllerProvider.notifier)
+      .markAsRead(notification.id);
+
+  if (!context.mounted) return;
+
+  if (notification.type == 'friend_request' ||
+      notification.type == 'friend_accepted') {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const FriendsScreen(),
+      ),
+    );
+    return;
+  }
+
+  if ((notification.type == 'like' || notification.type == 'comment') &&
+      notification.targetId != null) {
+    try {
+      final repo = ref.read(questionRepositoryProvider);
+      final questions = await repo.getFeedWindowAround(
+        before: 0,
+        after: 0,
+        questionId: notification.targetId,
+      );
+      final question = questions.isNotEmpty ? questions.first : null;
+      if (question != null && context.mounted) {
+        await QuestionCommentsScreen.openFocus(
+          context,
+          question: question,
+          percentA: question.percentA,
+          selectedOption: question.myAnswer,
+        );
+      }
+    } catch (_) {
+      // Fall through: mark-as-read already completed.
+    }
   }
 }
 

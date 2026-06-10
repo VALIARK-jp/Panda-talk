@@ -81,7 +81,7 @@ export class SupabaseUserRepository implements IUserRepository {
   async searchByUsername(prefix: string, limit: number): Promise<User[]> {
     const rows = await this.client.get<UserRow[]>(this.resource, {
       select: '*',
-      username: `ilike.${prefix}%`,
+      or: `(username.ilike.${prefix}%,name.ilike.%${prefix}%)`,
       order: 'username.asc',
       limit,
     })

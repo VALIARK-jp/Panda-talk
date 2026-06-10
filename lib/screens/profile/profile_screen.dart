@@ -16,6 +16,7 @@ import '../../widgets/username_label.dart';
 import '../friends/friends_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../presentation/providers/notification_providers.dart';
+import '../notifications/notifications_screen.dart';
 import 'profile_edit_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -32,22 +33,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(profileControllerProvider);
     });
-  }
-
-  Future<void> _showNotificationsComingSoonModal() {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('お知らせ'),
-        content: const Text('現在開発中です'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -81,7 +66,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       GestureDetector(
-                        onTap: _showNotificationsComingSoonModal,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
+                        ),
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [

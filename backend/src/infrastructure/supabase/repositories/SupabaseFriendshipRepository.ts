@@ -30,8 +30,11 @@ export class SupabaseFriendshipRepository implements IFriendshipRepository {
   async accept(userAId: UUID, userBId: UUID): Promise<Friendship> {
     const rows = await this.client.update<FriendshipRow>(
       this.resource,
-      { user_a_id: `eq.${userAId}`, user_b_id: `eq.${userBId}` },
-      { status: 'accepted' }
+      {
+        or: `(and(user_a_id.eq.${userAId},user_b_id.eq.${userBId}),and(user_a_id.eq.${userBId},user_b_id.eq.${userAId}))`,
+        status: 'eq.pending',
+      },
+      { status: 'accepted', accepted_at: new Date().toISOString() }
     )
     if (!rows[0]) throw new Error('Friendship not found')
     return mapFriendship(rows[0])
@@ -39,8 +42,7 @@ export class SupabaseFriendshipRepository implements IFriendshipRepository {
 
   async delete(userAId: UUID, userBId: UUID): Promise<void> {
     await this.client.delete(this.resource, {
-      user_a_id: `eq.${userAId}`,
-      user_b_id: `eq.${userBId}`,
+      or: `(and(user_a_id.eq.${userAId},user_b_id.eq.${userBId}),and(user_a_id.eq.${userBId},user_b_id.eq.${userAId}))`,
     })
   }
 
@@ -66,8 +68,7 @@ export class SupabaseFriendshipRepository implements IFriendshipRepository {
   async findBetween(userAId: UUID, userBId: UUID): Promise<Friendship | null> {
     const rows = await this.client.get<FriendshipRow[]>(this.resource, {
       select: '*',
-      user_a_id: `eq.${userAId}`,
-      user_b_id: `eq.${userBId}`,
+      or: `(and(user_a_id.eq.${userAId},user_b_id.eq.${userBId}),and(user_a_id.eq.${userBId},user_b_id.eq.${userAId}))`,
       limit: 1,
     })
     return rows[0] ? mapFriendship(rows[0]) : null

@@ -241,4 +241,5 @@ SUPABASE_URL=
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 FIREBASE_PROJECT_ID=      # FCM送信用（認証とは別）
+FIREBASE_SERVICE_ACCOUNT_JSON=  # Firebase service account JSON を 1 本の secret にして入れる
 ```

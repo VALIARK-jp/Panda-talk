@@ -34,4 +34,30 @@ app.patch('/read', authMiddleware, async (c) => {
   }
 })
 
+// POST /notifications/test - 開発用テスト通知（認証必要）
+app.post('/test', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId')
+    console.log('[notifications/test] start', { userId })
+    const { notificationRepo } = createContainer(c.env)
+    const notification = await notificationRepo.create({
+      userId,
+      actorId: null,
+      type: 'test',
+      targetId: null,
+    })
+    console.log('[notifications/test] created', {
+      userId,
+      notificationId: notification.id,
+    })
+    return c.json({
+      success: true,
+      notification,
+    })
+  } catch (err) {
+    console.error('[notifications/test] failed', err)
+    return handleError(err, c)
+  }
+})
+
 export default app
