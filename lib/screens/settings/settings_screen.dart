@@ -1,17 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../config/app_config.dart';
 import '../../core/design_tokens.dart';
+import '../../infrastructure/providers/repositories.dart';
+import '../../presentation/providers/notification_providers.dart';
 import '../../presentation/providers/settings_providers.dart';
 import '../../presentation/session_reset.dart';
 import '../../widgets/panda_button.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _sendingTestNotification = false;
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
     final controller = ref.read(settingsControllerProvider.notifier);
+
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -52,23 +64,23 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   _SwitchRow(
                     title: '友達申請',
-                    value: s.friendRequests,
+                    value: s.friendRequestsEnabled,
                     onChanged: controller.updateFriendRequests,
                   ),
                   _SwitchRow(
                     title: '質問へのいいね',
-                    value: s.questionLikes,
+                    value: s.likesEnabled,
                     onChanged: controller.updateQuestionLikes,
                   ),
                   _SwitchRow(
-                    title: 'DM・グループチャット',
-                    value: s.messages,
-                    onChanged: controller.updateMessages,
+                    title: 'コメント',
+                    value: s.commentsEnabled,
+                    onChanged: controller.updateComments,
                   ),
                   _SwitchRow(
-                    title: 'グループ再編成',
-                    value: s.groupUpdates,
-                    onChanged: controller.updateGroupUpdates,
+                    title: '友達承認',
+                    value: s.friendAcceptedEnabled,
+                    onChanged: controller.updateFriendAccepted,
                   ),
                 ],
               ),
@@ -81,6 +93,15 @@ class SettingsScreen extends ConsumerWidget {
                 if (context.mounted) Navigator.pop(context);
               },
             ),
+            if (AppConfig.notificationTestEnabled) ...[
+              const SizedBox(height: AppSpacing.sm),
+              PandaOutlinedButton(
+                label: _sendingTestNotification
+                    ? '通知テスト送信中...'
+                    : '通知テストを送る',
+                onTap: _sendingTestNotification ? null : _sendTestNotification,
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             PandaButton(
               label: 'アカウントを削除',
@@ -90,6 +111,30 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _sendTestNotification() async {
+    debugPrint('settings:sendTestNotification:start');
+    setState(() => _sendingTestNotification = true);
+    try {
+      await ref.read(settingsRepositoryProvider).sendTestNotification();
+      debugPrint('settings:sendTestNotification:done');
+      ref.invalidate(notificationControllerProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('通知テストを送信しました')),
+      );
+    } catch (e) {
+      debugPrint('settings:sendTestNotification:error $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('通知テストの送信に失敗しました: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _sendingTestNotification = false);
+      }
+    }
   }
 
   void _showDeleteDialog(BuildContext context, WidgetRef ref) {

@@ -11,22 +11,22 @@ class SettingsController extends AsyncNotifier<DummyNotificationSettings> {
   }
 
   Future<void> updateFriendRequests(bool value) async {
-    final newSettings = state.value!.copyWith(friendRequests: value);
+    final newSettings = state.value!.copyWith(friendRequestsEnabled: value);
     await _update(newSettings);
   }
 
   Future<void> updateQuestionLikes(bool value) async {
-    final newSettings = state.value!.copyWith(questionLikes: value);
+    final newSettings = state.value!.copyWith(likesEnabled: value);
     await _update(newSettings);
   }
 
-  Future<void> updateMessages(bool value) async {
-    final newSettings = state.value!.copyWith(messages: value);
+  Future<void> updateComments(bool value) async {
+    final newSettings = state.value!.copyWith(commentsEnabled: value);
     await _update(newSettings);
   }
 
-  Future<void> updateGroupUpdates(bool value) async {
-    final newSettings = state.value!.copyWith(groupUpdates: value);
+  Future<void> updateFriendAccepted(bool value) async {
+    final newSettings = state.value!.copyWith(friendAcceptedEnabled: value);
     await _update(newSettings);
   }
 

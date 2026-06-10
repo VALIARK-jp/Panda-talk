@@ -37,6 +37,7 @@ class ApiFriendRepository implements FriendRepository {
     final friendsData = data['friends'] as List<dynamic>? ?? [];
     return friendsData
         .map((json) => _parseUser(json as Map<String, dynamic>))
+        .whereType<DummyUser>()
         .toList();
   }
 
@@ -47,10 +48,17 @@ class ApiFriendRepository implements FriendRepository {
       auth: true,
     );
     final pendingData = data['pendingReceived'] as List<dynamic>? ?? [];
-    return pendingData.map((json) {
-      final user = _parseUser(json as Map<String, dynamic>);
-      return DummyFriendRequest(user: user, message: '友達申請が届いています');
-    }).toList();
+    return pendingData
+        .map((json) {
+          final user = _parseUser(json as Map<String, dynamic>);
+          if (user == null) return null;
+          return DummyFriendRequest(
+            user: user,
+            message: '友達申請が届いています',
+          );
+        })
+        .whereType<DummyFriendRequest>()
+        .toList();
   }
 
   @override
@@ -74,7 +82,30 @@ class ApiFriendRepository implements FriendRepository {
     final usersData = data['users'] as List<dynamic>? ?? [];
     return usersData
         .map((json) => _parseUser(json as Map<String, dynamic>))
+        .whereType<DummyUser>()
         .toList();
+  }
+
+  @override
+  Future<DummyUser?> findUserByUsername(String username) async {
+    final normalized = username.trim().replaceFirst('@', '').toLowerCase();
+    if (normalized.isEmpty) return null;
+
+    final data = await _getJson(
+      Uri.parse(
+        '$_apiBaseUrl/users/search?q=${Uri.encodeQueryComponent(normalized)}&limit=20',
+      ),
+      auth: true,
+    );
+    final usersData = data['users'] as List<dynamic>? ?? [];
+    for (final raw in usersData) {
+      final map = raw as Map<String, dynamic>;
+      final found = (map['username'] as String?)?.toLowerCase();
+      if (found == normalized) {
+        return _parseUser(map);
+      }
+    }
+    return null;
   }
 
   @override
@@ -89,10 +120,13 @@ class ApiFriendRepository implements FriendRepository {
 
   @override
   Future<void> acceptRequest(String userId) async {
-    await _client.patch(
+    final response = await _client.patch(
       Uri.parse('$_apiBaseUrl/friendships/$userId/accept'),
       headers: await _headers(auth: true),
     );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(response.body);
+    }
   }
 
   @override
@@ -105,16 +139,46 @@ class ApiFriendRepository implements FriendRepository {
     await _delete(Uri.parse('$_apiBaseUrl/friendships/$userId'), auth: true);
   }
 
-  DummyUser _parseUser(Map<String, dynamic> userMap) {
+  DummyUser? _parseUser(Map<String, dynamic> userMap) {
+    final normalizedUserMap = _extractUserMap(userMap);
+    final userId =
+        _readString(normalizedUserMap, 'id') ??
+        _readString(userMap, 'id');
+    if (userId == null || userId.isEmpty) {
+      return null;
+    }
+
     return DummyUser(
-      id: userMap['id'] as String,
+      id: userId,
+      username:
+          _readString(normalizedUserMap, 'username') ??
+          _readString(userMap, 'username'),
       name:
-          userMap['name'] as String? ??
-          userMap['username'] as String? ??
+          _readString(normalizedUserMap, 'name') ??
+          _readString(normalizedUserMap, 'username') ??
+          _readString(userMap, 'name') ??
+          _readString(userMap, 'username') ??
           '名無しさん',
       matchRate: 0, // Not provided by this API
-      avatarUrl: userMap['avatarUrl'] as String?,
+      avatarUrl:
+          _readString(normalizedUserMap, 'avatarUrl') ??
+          _readString(userMap, 'avatarUrl'),
     );
+  }
+
+  Map<String, dynamic> _extractUserMap(Map<String, dynamic> payload) {
+    final nestedUser = payload['user'];
+    if (nestedUser is Map) {
+      return Map<String, dynamic>.from(nestedUser);
+    }
+    return payload;
+  }
+
+  String? _readString(Map<String, dynamic> map, String key) {
+    final value = map[key];
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   Future<Map<String, dynamic>> _getJson(Uri uri, {bool auth = false}) async {

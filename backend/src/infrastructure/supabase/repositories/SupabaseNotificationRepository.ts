@@ -1,5 +1,6 @@
 import type { UUID, Notification, NotificationType } from '../../../domain/entities/index'
 import type { INotificationRepository } from '../../../domain/repositories/INotificationRepository'
+import type { FirebasePushNotifier } from '../../push/FirebasePushNotifier'
 import { SupabaseRestClient } from '../SupabaseRestClient'
 
 type NotificationRow = {
@@ -13,7 +14,10 @@ type NotificationRow = {
 }
 
 export class SupabaseNotificationRepository implements INotificationRepository {
-  constructor(private readonly client: SupabaseRestClient) {}
+  constructor(
+    private readonly client: SupabaseRestClient,
+    private readonly pushNotifier?: FirebasePushNotifier
+  ) {}
 
   private readonly resource = 'panda_notifications'
 
@@ -60,7 +64,15 @@ export class SupabaseNotificationRepository implements INotificationRepository {
       is_read: false,
     })
     if (!rows[0]) throw new Error('Failed to create notification')
-    return mapNotification(rows[0])
+    const notification = mapNotification(rows[0])
+    if (this.pushNotifier) {
+      try {
+        await this.pushNotifier.notify(notification)
+      } catch (err) {
+        console.warn('push notify failed:', err)
+      }
+    }
+    return notification
   }
 }
 

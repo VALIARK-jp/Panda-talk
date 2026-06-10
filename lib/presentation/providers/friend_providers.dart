@@ -79,7 +79,7 @@ class FriendController extends AsyncNotifier<FriendState> {
     state = const AsyncValue.loading();
     try {
       await ref.read(friendRepositoryProvider).sendFriendRequest(userId);
-      await _refresh();
+      await _refresh(prev);
       await setSearchQuery(prev.searchQuery);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -94,7 +94,7 @@ class FriendController extends AsyncNotifier<FriendState> {
     state = const AsyncValue.loading();
     try {
       await ref.read(friendRepositoryProvider).acceptRequest(userId);
-      await _refresh();
+      await _refresh(prev);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       ref.invalidateSelf();
@@ -108,7 +108,7 @@ class FriendController extends AsyncNotifier<FriendState> {
     state = const AsyncValue.loading();
     try {
       await ref.read(friendRepositoryProvider).rejectRequest(userId);
-      await _refresh();
+      await _refresh(prev);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       ref.invalidateSelf();
@@ -122,17 +122,14 @@ class FriendController extends AsyncNotifier<FriendState> {
     state = const AsyncValue.loading();
     try {
       await ref.read(friendRepositoryProvider).deleteFriendship(userId);
-      await _refresh();
+      await _refresh(prev);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       ref.invalidateSelf();
     }
   }
 
-  Future<void> _refresh() async {
-    final prev = state.value;
-    if (prev == null) return;
-
+  Future<void> _refresh(FriendState prev) async {
     final repository = ref.read(friendRepositoryProvider);
     final friends = await repository.getFriends();
     final requests = await repository.getRequests();

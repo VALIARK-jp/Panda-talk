@@ -3,10 +3,10 @@ import '../../core/dummy_data.dart';
 
 class MockSettingsRepository implements SettingsRepository {
   DummyNotificationSettings _settings = const DummyNotificationSettings(
-    friendRequests: true,
-    questionLikes: true,
-    messages: true,
-    groupUpdates: false,
+    likesEnabled: true,
+    commentsEnabled: true,
+    friendRequestsEnabled: true,
+    friendAcceptedEnabled: true,
   );
 
   @override
@@ -19,5 +19,10 @@ class MockSettingsRepository implements SettingsRepository {
   Future<void> updateNotificationSettings(DummyNotificationSettings settings) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _settings = settings;
+  }
+
+  @override
+  Future<void> sendTestNotification() async {
+    await Future.delayed(const Duration(milliseconds: 300));
   }
 }

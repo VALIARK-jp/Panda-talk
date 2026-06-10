@@ -68,14 +68,28 @@ export const getProfileUseCase = new GetProfileUseCase(userRepo)
 export const updateProfileUseCase = new UpdateProfileUseCase(userRepo)
 export const searchUsersUseCase = new SearchUsersUseCase(userRepo)
 export const getCommentsUseCase = new GetCommentsUseCase(commentRepo)
-export const postCommentUseCase = new PostCommentUseCase(commentRepo)
+export const postCommentUseCase = new PostCommentUseCase(commentRepo, questionRepo, notificationRepo)
 export const deleteCommentUseCase = new DeleteCommentUseCase(commentRepo)
-export const toggleQuestionLikeUseCase = new ToggleQuestionLikeUseCase(questionLikeRepo)
-export const toggleCommentLikeUseCase = new ToggleCommentLikeUseCase(commentLikeRepo)
+export const toggleQuestionLikeUseCase = new ToggleQuestionLikeUseCase(
+  questionLikeRepo,
+  questionRepo,
+  notificationRepo
+)
+export const toggleCommentLikeUseCase = new ToggleCommentLikeUseCase(
+  commentLikeRepo,
+  commentRepo,
+  notificationRepo
+)
 export const getNotificationsUseCase = new GetNotificationsUseCase(notificationRepo)
 export const markAsReadUseCase = new MarkAsReadUseCase(notificationRepo)
-export const sendFriendRequestUseCase = new SendFriendRequestUseCase(friendshipRepo)
-export const acceptFriendRequestUseCase = new AcceptFriendRequestUseCase(friendshipRepo)
+export const sendFriendRequestUseCase = new SendFriendRequestUseCase(
+  friendshipRepo,
+  notificationRepo
+)
+export const acceptFriendRequestUseCase = new AcceptFriendRequestUseCase(
+  friendshipRepo,
+  notificationRepo
+)
 export const deleteFriendshipUseCase = new DeleteFriendshipUseCase(friendshipRepo)
 export const getFriendsUseCase = new GetFriendsUseCase(friendshipRepo, userRepo)
 export const getGroupsUseCase = new GetGroupsUseCase(groupRepo)
@@ -83,4 +97,3 @@ export const getGroupMessagesUseCase = new GetGroupMessagesUseCase(messageRepo, 
 export const sendGroupMessageUseCase = new SendGroupMessageUseCase(messageRepo, groupRepo)
 export const getDirectMessagesUseCase = new GetDirectMessagesUseCase(dmRepo)
 export const sendDirectMessageUseCase = new SendDirectMessageUseCase(dmRepo)
-

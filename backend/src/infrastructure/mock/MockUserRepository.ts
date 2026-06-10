@@ -46,7 +46,10 @@ export class MockUserRepository implements IUserRepository {
 
   async searchByUsername(prefix: string, limit: number): Promise<User[]> {
     return users
-      .filter((u) => u.username.startsWith(prefix))
+      .filter((u) =>
+        u.username.startsWith(prefix) ||
+        u.name.toLowerCase().includes(prefix.toLowerCase())
+      )
       .slice(0, limit)
   }
 

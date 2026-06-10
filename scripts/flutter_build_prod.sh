@@ -22,6 +22,7 @@ DEFINES=(
   "--dart-define=PANDA_TALK_AUTH_REDIRECT_URL=${PANDA_TALK_AUTH_REDIRECT_URL:-io.valiark.pandatalk://callback}"
   "--dart-define=PANDA_TALK_TERMS_URL=${PANDA_TALK_TERMS_URL:?}"
   "--dart-define=PANDA_TALK_PRIVACY_URL=${PANDA_TALK_PRIVACY_URL:?}"
+  "--dart-define=PANDA_TALK_ENABLE_NOTIFICATION_TEST=${PANDA_TALK_ENABLE_NOTIFICATION_TEST:-true}"
 )
 
 node "$ROOT/scripts/check-prod-config.mjs"

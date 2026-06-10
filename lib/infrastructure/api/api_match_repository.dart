@@ -86,6 +86,7 @@ class ApiMatchRepository implements MatchRepository {
 
       return DummyUser(
         id: user['id'] as String,
+        username: user['username'] as String?,
         name: user['name'] as String? ?? '名無しさん',
         matchRate: percent,
         commonAnswerCount: commonAnswerCount,

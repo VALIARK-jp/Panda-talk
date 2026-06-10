@@ -243,7 +243,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
 
     final displayName = profileAsync.valueOrNull?.name ?? u.name;
     final displayUsername =
-        profileAsync.valueOrNull?.username ?? u.id;
+        profileAsync.valueOrNull?.username ?? u.username ?? u.id;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isSelf = currentUserId != null && currentUserId == u.id;
 
@@ -277,7 +277,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                     GestureDetector(
                       onTap: () => AppShare.text(
                         context,
-                        '${displayName}さんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
+                        '$displayNameさんと合致度$displayedMatchRate%！\n価値観めっちゃ近い\n#パンダトーク',
                       ),
                       child: const Icon(Icons.ios_share, color: AppColors.black),
                     ),
@@ -317,7 +317,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
             const SizedBox(height: AppSpacing.md),
             profileAsync.when(
               loading: () => const UserAvatar(size: 80),
-              error: (_, __) => const UserAvatar(size: 80),
+              error: (_, _) => const UserAvatar(size: 80),
               data: (profile) => UserAvatar(
                 size: 80,
                 imageUrl: profile.avatarUrl,
@@ -374,7 +374,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                       loading: () => const Center(
                         child: CircularProgressIndicator(),
                       ),
-                      error: (_, __) => Center(
+                      error: (_, _) => Center(
                         child: Padding(
                           padding: const EdgeInsets.all(AppSpacing.md),
                           child: Text(

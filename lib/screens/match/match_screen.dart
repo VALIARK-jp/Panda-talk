@@ -138,7 +138,7 @@ class _MatchScreenState extends ConsumerState<MatchScreen> {
                               .setSearchQuery(value);
                         },
                         decoration: const InputDecoration.collapsed(
-                          hintText: '@usernameで友達検索',
+                          hintText: 'ユーザー名 / ユーザーコードで友達検索',
                         ),
                         style: const TextStyle(
                           fontSize: AppFontSize.md,
@@ -325,7 +325,7 @@ class _FriendSearchResults extends StatelessWidget {
                     ),
                     SizedBox(height: AppSpacing.sm),
                     Text(
-                      '@usernameを変えて検索してみてください',
+                      'ユーザー名かユーザーコードを変えて検索してみてください',
                       style: TextStyle(
                         fontSize: AppFontSize.sm,
                         color: AppColors.textGray,
@@ -378,7 +378,7 @@ class _FriendSearchResults extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '@${user.id}  合致度 ${user.matchRate}%',
+                        '@${user.username ?? user.id}  合致度 ${user.matchRate}%',
                         style: const TextStyle(
                           fontSize: AppFontSize.sm,
                           color: AppColors.textGray,

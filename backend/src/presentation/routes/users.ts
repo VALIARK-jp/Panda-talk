@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import { handleError } from '../middleware/errorHandler'
 import { createContainer } from '../../infrastructure/container'
+import { SupabaseRestClient } from '../../infrastructure/supabase/SupabaseRestClient'
 import type { Env } from '../../infrastructure/env'
 
 type Variables = { userId: string }
@@ -88,19 +89,104 @@ app.patch('/me', authMiddleware, async (c) => {
   }
 })
 
-// In-memory settings storage for mock API
-const mockSettings: Record<string, any> = {}
+type NotificationSettings = {
+  likesEnabled: boolean
+  commentsEnabled: boolean
+  friendRequestsEnabled: boolean
+  friendAcceptedEnabled: boolean
+}
+
+type NotificationSettingsRow = {
+  user_id: string
+  likes_enabled: boolean
+  comments_enabled: boolean
+  friend_requests_enabled: boolean
+  friend_accepted_enabled?: boolean
+}
+
+const defaultNotificationSettings: NotificationSettings = {
+  likesEnabled: true,
+  commentsEnabled: true,
+  friendRequestsEnabled: true,
+  friendAcceptedEnabled: true,
+}
+
+const mockSettings: Record<string, NotificationSettings> = {}
+
+function createNotificationSettingsClient(env: Env) {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return null
+  return new SupabaseRestClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+}
+
+function toNotificationSettings(row: NotificationSettingsRow): NotificationSettings {
+  return {
+    likesEnabled: row.likes_enabled,
+    commentsEnabled: row.comments_enabled,
+    friendRequestsEnabled: row.friend_requests_enabled,
+    friendAcceptedEnabled:
+      row.friend_accepted_enabled ?? row.friend_requests_enabled,
+  }
+}
+
+function toNotificationSettingsRow(
+  userId: string,
+  settings: NotificationSettings
+): NotificationSettingsRow {
+  return {
+    user_id: userId,
+    likes_enabled: settings.likesEnabled,
+    comments_enabled: settings.commentsEnabled,
+    friend_requests_enabled: settings.friendRequestsEnabled,
+    friend_accepted_enabled: settings.friendAcceptedEnabled,
+  }
+}
 
 // GET /users/me/settings - 通知設定取得（認証必要）
 app.get('/me/settings', authMiddleware, async (c) => {
   try {
     const userId = c.get('userId')
-    const settings = mockSettings[userId] ?? {
-      friendRequests: true,
-      questionLikes: true,
-      messages: true,
-      groupUpdates: false,
-    }
+    const client = createNotificationSettingsClient(c.env)
+    const settings = client
+      ? await (async () => {
+          try {
+            const rows = await client.get<NotificationSettingsRow[]>(
+              'panda_notification_settings',
+              {
+                select: '*',
+                user_id: `eq.${userId}`,
+                limit: 1,
+              }
+            )
+            return toNotificationSettings(rows[0] ?? {
+              user_id: userId,
+              likes_enabled: defaultNotificationSettings.likesEnabled,
+              comments_enabled: defaultNotificationSettings.commentsEnabled,
+              friend_requests_enabled:
+                defaultNotificationSettings.friendRequestsEnabled,
+              friend_accepted_enabled:
+                defaultNotificationSettings.friendAcceptedEnabled,
+            })
+          } catch {
+            const rows = await client.get<NotificationSettingsRow[]>(
+              'panda_notification_settings',
+              {
+                select: 'user_id,likes_enabled,comments_enabled,friend_requests_enabled',
+                user_id: `eq.${userId}`,
+                limit: 1,
+              }
+            )
+            return toNotificationSettings(rows[0] ?? {
+              user_id: userId,
+              likes_enabled: defaultNotificationSettings.likesEnabled,
+              comments_enabled: defaultNotificationSettings.commentsEnabled,
+              friend_requests_enabled:
+                defaultNotificationSettings.friendRequestsEnabled,
+              friend_accepted_enabled:
+                defaultNotificationSettings.friendAcceptedEnabled,
+            })
+          }
+        })()
+      : mockSettings[userId] ?? defaultNotificationSettings
     return c.json({ settings })
   } catch (err) {
     return handleError(err, c)
@@ -111,7 +197,57 @@ app.get('/me/settings', authMiddleware, async (c) => {
 app.patch('/me/settings', authMiddleware, async (c) => {
   try {
     const userId = c.get('userId')
-    const body = await c.req.json<{ settings: any }>()
+    const body = await c.req.json<{ settings: NotificationSettings }>()
+    const client = createNotificationSettingsClient(c.env)
+    if (client) {
+      const row = toNotificationSettingsRow(userId, body.settings)
+      try {
+        const existing = await client.get<NotificationSettingsRow[]>(
+          'panda_notification_settings',
+          {
+            select: 'user_id',
+            user_id: `eq.${userId}`,
+            limit: 1,
+          }
+        )
+        if (existing.length > 0) {
+          await client.update(
+            'panda_notification_settings',
+            { user_id: `eq.${userId}` },
+            row
+          )
+        } else {
+          await client.insert('panda_notification_settings', row)
+        }
+      } catch {
+        const legacyRow = {
+          user_id: userId,
+          likes_enabled: body.settings.likesEnabled,
+          comments_enabled: body.settings.commentsEnabled,
+          friend_requests_enabled:
+            body.settings.friendRequestsEnabled ||
+            body.settings.friendAcceptedEnabled,
+        }
+        const existing = await client.get<NotificationSettingsRow[]>(
+          'panda_notification_settings',
+          {
+            select: 'user_id',
+            user_id: `eq.${userId}`,
+            limit: 1,
+          }
+        )
+        if (existing.length > 0) {
+          await client.update(
+            'panda_notification_settings',
+            { user_id: `eq.${userId}` },
+            legacyRow
+          )
+        } else {
+          await client.insert('panda_notification_settings', legacyRow)
+        }
+      }
+      return c.json({ success: true, settings: body.settings })
+    }
     mockSettings[userId] = body.settings
     return c.json({ success: true, settings: mockSettings[userId] })
   } catch (err) {

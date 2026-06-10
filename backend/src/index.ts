@@ -8,6 +8,7 @@ import friendshipsRouter from './presentation/routes/friendships'
 import commentsRouter from './presentation/routes/comments'
 import likesRouter from './presentation/routes/likes'
 import notificationsRouter from './presentation/routes/notifications'
+import pushTokensRouter from './presentation/routes/push_tokens'
 import groupsRouter from './presentation/routes/groups'
 import directMessagesRouter from './presentation/routes/direct_messages'
 import moderationRouter from './presentation/routes/moderation'
@@ -32,6 +33,7 @@ app.route('/', commentsRouter)
 app.route('/', likesRouter)
 
 app.route('/notifications', notificationsRouter)
+app.route('/push-tokens', pushTokensRouter)
 app.route('/groups', groupsRouter)
 app.route('/direct_messages', directMessagesRouter)
 app.route('/moderation', moderationRouter)

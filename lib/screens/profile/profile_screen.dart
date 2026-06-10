@@ -16,6 +16,7 @@ import '../friends/friends_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../presentation/providers/notification_providers.dart';
+import '../notifications/notifications_screen.dart';
 import 'profile_edit_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {

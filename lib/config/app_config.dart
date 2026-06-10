@@ -35,6 +35,12 @@ class AppConfig {
     return base.contains('localhost') || base.contains('127.0.0.1');
   }
 
+  /// Settings 画面の通知テストボタン。
+  /// 本番では非表示に固定する。
+  static bool get notificationTestEnabled {
+    return false;
+  }
+
   static String get supabaseUrl {
     const fromDefine = String.fromEnvironment(
       'PANDA_TALK_SUPABASE_URL',
