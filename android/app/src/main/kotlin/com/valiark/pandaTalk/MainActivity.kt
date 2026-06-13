@@ -1,4 +1,4 @@
-package com.pandatalk.panda_talk
+package com.valiark.pandaTalk
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -8,8 +8,6 @@
 | dev デプロイ | root `.env` の `PANDA_TALK_SUPABASE_*` | `wrangler secret put SUPABASE_SERVICE_ROLE_KEY` |
 | prod デプロイ | root `.env.prod` | `wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env production` |
 
-FCM 送信用に `FIREBASE_PROJECT_ID` と `FIREBASE_SERVICE_ACCOUNT_JSON` も Cloudflare Workers 側の secret として設定する。
-
 `wrangler.toml` には **秘密・URL を書かない**（`npm run deploy` / `deploy:prod` が env ファイルから `--var` で渡す）。
 
 ## コマンド
