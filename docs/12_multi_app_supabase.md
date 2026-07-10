@@ -2,7 +2,7 @@
 
 ### 共有するもの（全アプリ共通）
 
-- **Supabase Project URL**: `https://rothadmykmuxncagbwqd.supabase.co`
+- **Supabase Project URL**: `https://<valiark-dev の project ref>.supabase.co`
 - **anon key**: `valiark-dev` の `anon`（各クライアントの env に同じ値を入れる）
 - **Auth（auth.users）**: 1プロジェクトなので共通（アプリ別はプロフィール表で分ける）
 - **メール / マジックリンク用リダイレクト URI**: valiark-dev の Dashboard に **アプリごとの URI をすべて**登録（例: Panda Talk `io.valiark.pandatalk://callback`、Who eats `io.valiark.whoeats://callback`）。各アプリの `.env`（`PANDA_TALK_AUTH_REDIRECT_URL` 等）と Android / iOS の URL scheme を **同じ値**に揃える（共通 `io.valiark.auth` は取り違えの原因になるため非推奨）。
@@ -51,7 +51,7 @@
 ### 各リポジトリ（アプリ）側のやることチェックリスト
 
 - **env**:
-  - `SUPABASE_URL=https://rothadmykmuxncagbwqd.supabase.co`
+  - `SUPABASE_URL=https://<valiark-dev の project ref>.supabase.co`
   - `SUPABASE_ANON_KEY=<valiark-dev の anon>`
   - （backend があるなら）`SUPABASE_SERVICE_ROLE_KEY` を secret 管理に入れる
 - **LINE / Apple（1人1 auth を守る）**:
@@ -66,7 +66,7 @@
 
 ```sh
 supabase login
-supabase link --project-ref rothadmykmuxncagbwqd
+supabase link --project-ref <valiark-dev の project ref>
 supabase db push
 supabase functions deploy <function-name>
 ```

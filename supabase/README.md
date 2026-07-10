@@ -31,19 +31,19 @@ supabase link --project-ref <valiark-dev の project ref>
 
 ## Panda Talk: DB と API を順に紐付ける
 
-次の順でやると、DB → バックエンド → Flutter が一貫します（例: project ref `rothadmykmuxncagbwqd`）。
+次の順でやると、DB → バックエンド → Flutter が一貫します（`<valiark-dev の project ref>` を置き換える）。
 
 1. **Supabase に schema を載せる**（Panda 用 migration のみ）
    ```sh
    cd /path/to/panda_talk
    supabase login
-   supabase link --project-ref rothadmykmuxncagbwqd
+   supabase link --project-ref <valiark-dev の project ref>
    supabase db push
    ```
 2. **開発用データ投入**（任意・API の動作確認に便利）
    ```sh
    cd backend
-   export SUPABASE_PROJECT_REF=rothadmykmuxncagbwqd
+   export SUPABASE_PROJECT_REF=<valiark-dev の project ref>
    npm run seed:dev
    ```
 3. **バックエンドを実 DB モードで起動**
@@ -51,7 +51,7 @@ supabase link --project-ref <valiark-dev の project ref>
    - 本番相当の Workers では `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`（ローカル `npm run dev:db` は CLI から一時取得して渡す）。
    ```sh
    cd backend
-   export SUPABASE_PROJECT_REF=rothadmykmuxncagbwqd
+   export SUPABASE_PROJECT_REF=<valiark-dev の project ref>
    npm run dev:db
    ```
 4. **API 疎通**（別ターミナル）

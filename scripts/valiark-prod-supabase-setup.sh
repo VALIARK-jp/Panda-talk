@@ -60,11 +60,7 @@ run_db() {
   fi
 
   supabase link "${link_args[@]}"
-  if (( ${#push_args[@]} > 0 )); then
-    supabase db push "${push_args[@]}"
-  else
-    supabase db push
-  fi
+  supabase db push "${push_args[@]}"
   echo "==> Done. Verify panda_* tables and auth RPCs in Dashboard."
 }
 

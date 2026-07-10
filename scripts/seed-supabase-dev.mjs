@@ -6,9 +6,18 @@ import { loadProjectRef } from '../backend/scripts/read-supabase-config.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const VALIARK_DEV_PROJECT_REF = 'rothadmykmuxncagbwqd'
+function loadDevProjectRef() {
+  const refsFile = path.join(__dirname, 'valiark-project-refs.env')
+  if (fs.existsSync(refsFile)) {
+    const text = fs.readFileSync(refsFile, 'utf8')
+    const match = text.match(/^VALIARK_DEV_PROJECT_REF=(.+)$/m)
+    if (match?.[1]?.trim()) return match[1].trim()
+  }
+  return process.env.VALIARK_DEV_PROJECT_REF ?? null
+}
 
 const projectRef = process.env.SUPABASE_PROJECT_REF ?? loadProjectRef()
+const VALIARK_DEV_PROJECT_REF = loadDevProjectRef()
 if (!projectRef) {
   throw new Error(
     'Set SUPABASE_PROJECT_REF or SUPABASE_URL in backend/wrangler.toml (https://<ref>.supabase.co)'
@@ -16,11 +25,12 @@ if (!projectRef) {
 }
 
 if (
-  projectRef !== VALIARK_DEV_PROJECT_REF &&
-  process.env.ALLOW_DEV_SEED_ON_PROJECT !== projectRef
+  !VALIARK_DEV_PROJECT_REF ||
+  (projectRef !== VALIARK_DEV_PROJECT_REF &&
+    process.env.ALLOW_DEV_SEED_ON_PROJECT !== projectRef)
 ) {
   console.error(
-    `seed:dev is restricted to valiark-dev (${VALIARK_DEV_PROJECT_REF}). ` +
+    `seed:dev is restricted to valiark-dev (${VALIARK_DEV_PROJECT_REF ?? 'set VALIARK_DEV_PROJECT_REF in scripts/valiark-project-refs.env'}). ` +
       `Target was ${projectRef}. For prod use manual Q1–16 (docs/16_valiark_prod_panda_talk_setup.md). ` +
       `To override: ALLOW_DEV_SEED_ON_PROJECT=${projectRef} npm run seed:dev`
   )

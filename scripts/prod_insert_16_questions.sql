@@ -1,6 +1,6 @@
 -- Run in Supabase SQL Editor on valiark-prod.
 -- Purpose: seed Q1-Q16 as panda_questions for a specific operator user.
--- Default user_id here is the one provided in chat; change only if needed.
+-- Replace OPERATOR_USER_ID with your operator account UUID in panda_profiles.
 
 begin;
 
@@ -8,7 +8,7 @@ begin;
 -- If this fails, create the profile row first (or login once with this account).
 do $$
 declare
-  _uid uuid := '5aafcbd6-efa8-4d34-8c8d-776e9f8f1c22';
+  _uid uuid := '00000000-0000-0000-0000-000000000001'; -- OPERATOR_USER_ID
 begin
   if not exists (select 1 from public.panda_profiles p where p.id = _uid) then
     raise exception 'panda_profiles row not found for user_id=%', _uid;
@@ -16,7 +16,7 @@ begin
 end $$;
 
 with target_user as (
-  select '5aafcbd6-efa8-4d34-8c8d-776e9f8f1c22'::uuid as user_id
+  select '00000000-0000-0000-0000-000000000001'::uuid as user_id -- OPERATOR_USER_ID
 )
 insert into public.panda_questions (user_id, text, option_a, option_b, category)
 select

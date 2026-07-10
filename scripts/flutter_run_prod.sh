@@ -22,7 +22,6 @@ DEFINES=(
   "--dart-define=PANDA_TALK_API_BASE_URL=${PANDA_TALK_API_BASE_URL:?}"
   "--dart-define=PANDA_TALK_AUTH_REDIRECT_URL=${PANDA_TALK_AUTH_REDIRECT_URL:-io.valiark.pandatalk://callback}"
   "--dart-define=PANDA_TALK_WEB_AUTH_REDIRECT_URL=${PANDA_TALK_WEB_AUTH_REDIRECT_URL:-https://valiark.jp/panda-talk/auth/callback}"
-  "--dart-define=PANDA_TALK_ENABLE_NOTIFICATION_TEST=${PANDA_TALK_ENABLE_NOTIFICATION_TEST:-true}"
 )
 
 if [[ -f .env ]]; then

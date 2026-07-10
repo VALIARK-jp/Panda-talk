@@ -89,7 +89,7 @@ Dashboard → **Database → Settings** → **Network Bans** で自分の IP が
 CLI（experimental）:
 
 ```bash
-supabase network-bans get --project-ref nvkmoftnweltanmsenrz --experimental
+supabase network-bans get --project-ref "$VALIARK_PROD_PROJECT_REF" --experimental
 # 必要なら unban（Dashboard の方が簡単）
 ```
 
@@ -124,7 +124,7 @@ CLI を新しくして link し直す:
 brew upgrade supabase
 rm -rf supabase/.temp
 export SUPABASE_DB_PASSWORD='<password>'
-supabase link --project-ref nvkmoftnweltanmsenrz -p "$SUPABASE_DB_PASSWORD"
+supabase link --project-ref "$VALIARK_PROD_PROJECT_REF" -p "$SUPABASE_DB_PASSWORD"
 supabase db push -p "$SUPABASE_DB_PASSWORD"
 ```
 
@@ -133,7 +133,7 @@ supabase db push -p "$SUPABASE_DB_PASSWORD"
 Dashboard → **Connect** → **Session pooler** → URI をコピー（`aws-1-ap-northeast-1.pooler.supabase.com:5432`、IPv4）。
 
 ```bash
-export SUPABASE_DB_URL='postgresql://postgres.nvkmoftnweltanmsenrz:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres'
+export SUPABASE_DB_URL='postgresql://postgres.<YOUR_VALIARK_PROD_PROJECT_REF>:[PASSWORD]@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres'
 ./scripts/valiark-prod-supabase-setup.sh db
 ```
 

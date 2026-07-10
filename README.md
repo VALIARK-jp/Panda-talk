@@ -1,72 +1,84 @@
-# panda_talk
+# パンダトーク（Panda Talk）
 
-質問・マッチ・トークなどの Flutter アプリ（Valiark / valiark-dev）。
+二択質問に答え続けることで価値観が可視化され、合致度で人とつながる SNS。  
+**Web / iOS 公開済み:** https://valiark.jp/panda-talk
 
-## 開発を始める
+> 業務委託・受託案件（BtoB SaaS、動画SNS等）のコードは、契約上の権利・守秘義務の関係で公開できないため、GitHub の公開リポジトリは自社プロジェクトの一部のみです。
 
-1. [.env.example](.env.example) を `.env` にコピーし、**Supabase URL / anon** を埋める（チーム配布）。
-2. **API（Worker）の dev URL** を `.env` の `PANDA_TALK_API_BASE_URL` に書く（下記「API の向き先」）。
-3. `flutter run`（初回は [scripts/flutter_run_dev.sh](scripts/flutter_run_dev.sh) でも可）。
+## 自分の役割
 
-| ドキュメント | 内容 |
-|-------------|------|
-| **[valiark-prod テスター配布](./docs/16_valiark_prod_panda_talk_setup.md)** | **テスター30人** — prod のみ・DB/Worker/ビルド手順 |
-| **[開発: API・実機・localhost](./docs/14_development_api_and_devices.md)** | **必読** — なぜ 2 ホストあるか、シミュレータ vs 実機、deploy / ngrok |
-| [valiark_client_secrets_playbook.md](docs/valiark_client_secrets_playbook.md) | 秘密の配布・Git に載せないもの |
-| [05_auth.md](docs/05_auth.md) | 認証（メール / LINE / Apple）の構築・運用 |
-| [06_tech.md](docs/06_tech.md) | 技術構成・BFF（Hono + Worker）方針 |
+- **代表 / フルスタック開発** — ハッカソン優勝案から自社で 0→1 リリースまで一貫して担当
+- **バックエンド設計・実装** — Hono + Cloudflare Workers 上の BFF、UseCase 層、Supabase 連携
+- **認証** — Supabase Auth + Edge Functions（メール / LINE / Apple ネイティブフロー）
+- **モバイル** — Flutter（iOS / Android）、App Store 提出・運用
+- **インフラ** — Supabase（PostgreSQL / Auth / Storage）、Cloudflare Workers（dev / prod 分離）
 
-## Git ブランチ運用（`develop` / `main`）
+## 技術スタック
 
-| ブランチ | 責務 |
-|---------|------|
-| **`develop`** | 日常開発の統合先。機能追加・バグ修正・`pubspec.yaml` のバージョン更新（例: `1.0.8+1`）はここで行う。 |
-| **`main`** | **本番リリース用**。TestFlight / App Store 提出用 IPA は **`main` 上だけ**でビルドする。 |
+| レイヤー | 技術 |
+|---|---|
+| クライアント | Flutter（iOS / Android / Web ビルド可） |
+| API（BFF） | Hono + TypeScript / Cloudflare Workers |
+| DB / Auth | Supabase（PostgreSQL + Auth + Storage） |
+| プッシュ | Firebase Cloud Messaging |
+| 認証連携 | LINE Login / Sign in with Apple（Edge Functions） |
 
-### 通常フロー
+## 設計のポイント
 
-1. **`develop` で作業** — 機能ブランチは `develop` 向けに PR / マージする。
-2. **リリース準備** — `develop` で `pubspec.yaml` の `version` を上げ、必要な修正をコミットする（例: `version1.0.8+1`）。
-3. **`develop` を push** — `git push origin develop`
-4. **`main` にマージ** — `git checkout main && git merge develop && git push origin main`
-5. **`main` で本番ビルド** — リポジトリルートで `./scripts/flutter_build_prod.sh`（`.env.prod` 必須）。出力: `build/ios/ipa/パンダトーク.ipa`
-6. **App Store Connect** — Transporter で IPA をアップロードし、審査提出。
+### 1. Supabase 直叩きではなく BFF を挟む
 
-### 向き先の対応
+Flutter は Bearer JWT 付きで Cloudflare Workers（Hono）のみを呼び出す。合致度更新・プロフィール初期化・モデレーションなどのビジネスロジックは **UseCase 層** に集約し、Supabase は DB / Auth の基盤として利用する。将来のテスト追加や DB 差し替えに耐えるため、Presentation → UseCase → Domain ← Infrastructure の依存方向を守っている。
 
-| 環境 | Supabase / Worker | Flutter 設定 |
-|------|-------------------|--------------|
-| 日常開発（`develop`） | valiark-**dev** | ルート `.env` + `flutter run` |
-| テスター・本番（`main` ビルド） | valiark-**prod** | `.env.prod` → `flutter_build_prod.sh` の `--dart-define` |
+### 2. ネイティブ OAuth（LINE / Apple）のセッション確立
 
-- **`main` に直接機能開発しない**（ホットフィックスのみ例外。修正後は `develop` にも戻す）。
-- **IPA は `main` のみ** — `develop` から `./scripts/flutter_build_prod.sh` しない。
-- 詳細: [valiark-prod テスター配布](./docs/16_valiark_prod_panda_talk_setup.md)
+LINE / Apple は Edge Function でプロバイダ検証 → Admin API でユーザー upsert → `hashed_token` 経由でクライアントが `verifyOTP` しセッションを確立する。メール認証と異なる経路だが、ログイン後は同一の `auth.users` / `panda_profiles` フローに合流する。
 
-## API の向き先（設計方針・要約）
+### 3. dev / prod の環境分離
 
-このアプリは **Supabase（認証）** と **Cloudflare Worker（マッチ等の BFF）** の **2 つ** に繋ぐ。  
-**全部 Supabase だけ** のプロジェクトと違い、**API 用 URL を開発モードで切り替える**必要がある。
+Supabase プロジェクト（valiark-dev / valiark-prod）と Cloudflare Worker（`panda-talk-backend` / `panda-talk-backend-prod`）を分離。Flutter は `--dart-define` で接続先を切り替え、秘密情報は `.env` / Wrangler secrets に閉じる。
 
-| いつ | `PANDA_TALK_API_BASE_URL` | Worker（Mac） |
-|------|---------------------------|----------------|
-| **普段（シミュレータ）** | `http://localhost:8787` | `cd backend && npm run dev` |
-| **実機** | `https://panda-talk-backend.valiark.workers.dev` | 不要（クラウド dev） |
-| **実機 × 最新ローカル API** | ngrok URL、またはそのときだけ `npm run deploy` | `dev` + ngrok など |
+## リポジトリ構成
 
-- **実機にスマホの IP を書く運用はしない**（baselink のクラウド dev API と同じ）。
-- **API を変えるたびの deploy は不要**。詳細は [docs/14_development_api_and_devices.md](docs/14_development_api_and_devices.md)。
+| パス | 内容 |
+|---|---|
+| `lib/` | Flutter クライアント（認証ゲート・フィード・プロフィール） |
+| `backend/` | Hono BFF（UseCase / Domain / Infrastructure レイヤー） |
+| `supabase/` | PostgreSQL migration・Edge Functions（LINE / Apple ネイティブ認証） |
+| `docs/` | 認証・DB・API 設計仕様 |
 
-### Worker の初回デプロイ（dev URL がまだ無い場合）
+## セットアップ
+
+**アーキテクチャ参照用リポジトリ**として公開しています。全機能をローカルで動かすには Supabase プロジェクト・Cloudflare・LINE / Apple 開発者設定が必要です。
+
+### 最小構成（Flutter + dev API）
+
+```bash
+cp .env.example .env
+# PANDA_TALK_SUPABASE_URL / ANON_KEY / API_BASE_URL を設定
+
+flutter pub get
+flutter run
+```
+
+### バックエンド（ローカル）
 
 ```bash
 cd backend
-npx wrangler login
-npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-npm run deploy
-# → https://panda-talk-backend.valiark.workers.dev を .env に記載
+npm install
+npm run sync:dev-vars   # ルート .env → backend/.dev.vars
+npm run dev             # localhost:8787
 ```
 
-## Getting Started (Flutter)
+### 詳細ドキュメント
 
-See the [online documentation](https://docs.flutter.dev/) for tutorials and API reference.
+| ドキュメント | 内容 |
+|---|---|
+| [docs/06_tech.md](docs/06_tech.md) | 技術構成・クリーンアーキテクチャ |
+| [docs/13_auth_flow_spec.md](docs/13_auth_flow_spec.md) | 認証フロー設計仕様 |
+| [docs/05_auth.md](docs/05_auth.md) | Supabase / Edge Functions 構築 |
+| [docs/14_development_api_and_devices.md](docs/14_development_api_and_devices.md) | API 向き先・実機開発 |
+| [docs/16_valiark_prod_panda_talk_setup.md](docs/16_valiark_prod_panda_talk_setup.md) | prod 環境セットアップ |
+
+## ライセンス
+
+Copyright © VALIARK LLC. All rights reserved.
