@@ -24,7 +24,7 @@ Apply the auth helper migration（`get_user_by_email` と **service_role への 
 
 ```sh
 # 未リンクのときのみ（ref は Dashboard の Project Settings → General）
-supabase link --project-ref rothadmykmuxncagbwqd
+supabase link --project-ref <valiark-dev の project ref>
 
 supabase db push
 ```

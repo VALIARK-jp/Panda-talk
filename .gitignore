@@ -57,3 +57,4 @@ app.*.map.json
 # Secret files
 lib/.env
 backend/.dev.vars
+android/app/google-services.json

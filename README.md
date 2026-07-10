@@ -37,6 +37,15 @@ LINE / Apple は Edge Function でプロバイダ検証 → Admin API でユー�
 
 Supabase プロジェクト（valiark-dev / valiark-prod）と Cloudflare Worker（`panda-talk-backend` / `panda-talk-backend-prod`）を分離。Flutter は `--dart-define` で接続先を切り替え、秘密情報は `.env` / Wrangler secrets に閉じる。
 
+## リポジトリ構成
+
+| パス | 内容 |
+|---|---|
+| `lib/` | Flutter クライアント（認証ゲート・フィード・プロフィール） |
+| `backend/` | Hono BFF（UseCase / Domain / Infrastructure レイヤー） |
+| `supabase/` | PostgreSQL migration・Edge Functions（LINE / Apple ネイティブ認証） |
+| `docs/` | 認証・DB・API 設計仕様 |
+
 ## セットアップ
 
 **アーキテクチャ参照用リポジトリ**として公開しています。全機能をローカルで動かすには Supabase プロジェクト・Cloudflare・LINE / Apple 開発者設定が必要です。
